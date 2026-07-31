@@ -1,10 +1,3 @@
-import AppRoutes from "@/routes/AppRoutes";
-
-/**
- * Root Application Component
- */
-function App() {
-    return <AppRoutes />;
+export default function App() {
+    return null;
 }
-
-export default App;
