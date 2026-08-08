@@ -4,6 +4,10 @@
  * ============================================================================
  *
  * Single source of truth for report status values and image upload rules.
+ *
+ * Labels deliberately mirror the backend names rather than inventing
+ * friendlier synonyms, so what the user reads matches what the API stores.
+ *
  * These values are kept in sync with the Spring Boot backend:
  *
  * - ReportStatus enum        -> PENDING | IN_PROGRESS | RESOLVED
@@ -28,18 +32,21 @@ export const REPORT_STATUS = {
 export const REPORT_STATUS_META = {
     PENDING: {
         label: "Pending",
-        // Amber = waiting for action
-        className: "bg-amber-100 text-amber-700 border border-amber-200",
+        // Saffron = logged, not yet picked up by a cleanup team
+        className: "bg-orange-50 text-orange-800 border border-orange-300",
+        dotClassName: "bg-saffron",
     },
     IN_PROGRESS: {
         label: "In Progress",
-        // Blue = work is happening
-        className: "bg-blue-100 text-blue-700 border border-blue-200",
+        // Blue = work is underway
+        className: "bg-blue-50 text-gov-blue border border-blue-300",
+        dotClassName: "bg-gov-blue",
     },
     RESOLVED: {
         label: "Resolved",
-        // Green = completed
-        className: "bg-emerald-100 text-emerald-700 border border-emerald-200",
+        // India green = closed successfully
+        className: "bg-green-50 text-india-green border border-green-300",
+        dotClassName: "bg-india-green",
     },
 };
 
@@ -48,8 +55,10 @@ export const REPORT_STATUS_META = {
  */
 export const DEFAULT_STATUS_META = {
     label: "Unknown",
-    className: "bg-slate-100 text-slate-600 border border-slate-200",
+    className: "bg-slate-50 text-ink-muted border border-rule",
+    dotClassName: "bg-ink-muted",
 };
+
 
 /**
  * Status filter options used on the report listing pages
@@ -60,6 +69,25 @@ export const REPORT_STATUS_FILTERS = [
     { value: REPORT_STATUS.IN_PROGRESS, label: "In Progress" },
     { value: REPORT_STATUS.RESOLVED, label: "Resolved" },
 ];
+
+/**
+ * Builds the reference number shown to the user.
+ *
+ * A quotable reference is far easier to cite in a conversation than a bare
+ * database id, so the report id is formatted as REP-<year>-<padded id> for
+ * display only. The raw id is still what gets sent to the backend.
+ */
+export function formatReportRef(id, createdAt) {
+
+    // Fall back to the current year if the timestamp is missing
+    const year = createdAt
+        ? new Date(createdAt).getFullYear()
+        : new Date().getFullYear();
+
+    // Pad so references line up neatly in tables
+    return `REP-${year}-${String(id).padStart(6, "0")}`;
+}
+
 
 /**
  * Image types accepted by the backend AI validation (ImageUtil)
@@ -84,3 +112,71 @@ export const MAX_IMAGE_SIZE_BYTES = 10 * 1024 * 1024;
  * Human readable maximum size, shown in the upload hint
  */
 export const MAX_IMAGE_SIZE_LABEL = "10MB";
+
+
+/**
+ * ============================================================================
+ * AI Photograph Rejection Reasons
+ * ============================================================================
+ *
+ * The backend AI validation returns a `reason` code with every rejected
+ * photograph (ImageRejectionReason enum). The guidance sentence comes from the
+ * backend in `message`, so only the heading and the practical tips live here.
+ *
+ * Tips are deliberately about what the citizen should do next, since a
+ * rejection is only useful if the next attempt is likely to succeed.
+ * ============================================================================
+ */
+export const IMAGE_REJECTION_META = {
+    NO_GARBAGE: {
+        title: "No Garbage Detected",
+        tips: [
+            "Frame the waste itself in the centre of the photograph",
+            "Move closer so the waste fills most of the frame",
+        ],
+    },
+    INSIGNIFICANT_GARBAGE: {
+        title: "Waste Too Small to Report",
+        tips: [
+            "Step back to capture the full extent of the affected area",
+            "Isolated litter is best cleared locally rather than reported",
+        ],
+    },
+    NOT_REAL_IMAGE: {
+        title: "Photograph Not Accepted",
+        tips: [
+            "Take the photograph yourself at the site",
+            "Avoid screenshots, drawings and images downloaded from the internet",
+        ],
+    },
+    POOR_QUALITY: {
+        title: "Photograph Not Clear",
+        tips: [
+            "Hold the camera steady and let it focus before capturing",
+            "Photograph during daylight where possible",
+        ],
+    },
+    IRRELEVANT_SUBJECT: {
+        title: "Waste Not Visible",
+        tips: [
+            "Ensure the waste, not the surroundings, is the main subject",
+            "Avoid photographs where the waste is far away or obscured",
+        ],
+    },
+    UNCERTAIN: {
+        title: "Photograph Could Not Be Verified",
+        tips: [
+            "Retake the photograph closer to the waste",
+            "Make sure the waste is well lit and clearly in view",
+        ],
+    },
+};
+
+/**
+ * Fallback heading for a reason code this build does not recognise yet,
+ * so a newly added backend reason still renders sensibly.
+ */
+export const DEFAULT_IMAGE_REJECTION_META = {
+    title: "Photograph Not Accepted",
+    tips: [],
+};

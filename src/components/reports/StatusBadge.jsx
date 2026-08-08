@@ -7,30 +7,39 @@ import {
  * ==========================================================
  * Status Badge
  * ----------------------------------------------------------
- * Shows the report status (PENDING / IN_PROGRESS / RESOLVED)
- * as a coloured pill. Colours come from reportConstants so
- * every page looks the same.
+ * Shows the report status using the tricolour mapping:
+ *
+ *   Pending     -> saffron
+ *   In Progress -> blue
+ *   Resolved    -> India green
+ *
+ * Square corners and a status dot, so it reads as a record
+ * marker rather than a decorative pill.
  * ==========================================================
  */
 
 export default function StatusBadge({ status }) {
 
-    // Fall back to a neutral style if backend sends a new status
+    // Fall back to a neutral style if the backend adds a new status
     const meta = REPORT_STATUS_META[status] || DEFAULT_STATUS_META;
 
     return (
         <span
             className={`
-                inline-flex
-                items-center
-                rounded-full
-                px-3
-                py-1
-                text-xs
-                font-semibold
+                inline-flex items-center gap-1.5
+                rounded-gov
+                px-2.5 py-1
+                text-[11px] font-semibold tracking-wide uppercase
+                whitespace-nowrap
                 ${meta.className}
             `}
         >
+            {/* Colour dot repeats the status without relying on colour alone */}
+            <span
+                className={`h-1.5 w-1.5 rounded-full ${meta.dotClassName}`}
+                aria-hidden="true"
+            />
+
             {meta.label}
         </span>
     );

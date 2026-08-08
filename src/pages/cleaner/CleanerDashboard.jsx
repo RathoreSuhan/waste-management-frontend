@@ -7,7 +7,7 @@ export default function CleanerDashboard() {
                 <StatCard
                     title="Open Tasks"
                     value="7"
-                    description="Pending sanitation jobs in your assigned zone."
+                    description="Cleanup jobs waiting in your assigned area."
                     accent="amber"
                 />
                 <StatCard

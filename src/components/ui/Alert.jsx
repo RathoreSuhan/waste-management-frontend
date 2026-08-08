@@ -1,49 +1,82 @@
+import {
+    AlertTriangle,
+    CheckCircle2,
+    Info,
+    XCircle,
+} from "lucide-react";
+
 /**
  * ==========================================================
- * Reusable Alert Component
- * ==========================================================
+ * Alert
+ * ----------------------------------------------------------
+ * Notice block used for errors, confirmations and guidance.
  *
- * Used for:
- * ✓ Success messages
- * ✓ Error messages
- * ✓ Warning messages
- * ✓ Information messages
- *
- * This keeps UI consistent across the project.
+ * Styled as an official notice: a coloured left rule, a pale
+ * tint and a matching icon, rather than a rounded toast.
  * ==========================================================
  */
 
+// Colours and icon per notice type
+const VARIANTS = {
+    error: {
+        wrapper: "border-l-4 border-l-red-700 bg-red-50 text-red-900",
+        icon: XCircle,
+        iconClass: "text-red-700",
+        title: "Error",
+    },
+    success: {
+        wrapper: "border-l-4 border-l-india-green bg-green-50 text-green-900",
+        icon: CheckCircle2,
+        iconClass: "text-india-green",
+        title: "Success",
+    },
+    warning: {
+        wrapper: "border-l-4 border-l-saffron bg-orange-50 text-orange-900",
+        icon: AlertTriangle,
+        iconClass: "text-orange-600",
+        title: "Please Note",
+    },
+    info: {
+        wrapper: "border-l-4 border-l-gov-blue bg-blue-50 text-gov-navy",
+        icon: Info,
+        iconClass: "text-gov-blue",
+        title: "Information",
+    },
+};
+
 export default function Alert({
-    type = "error", // error | success | warning | info
+    type = "error",
+    // Heading can be overridden, otherwise the variant default is used
+    title,
     children,
 }) {
 
-    // Tailwind classes according to alert type
-    const styles = {
-        error:
-            "bg-red-100 text-red-700 border border-red-300",
+    const variant = VARIANTS[type] || VARIANTS.error;
 
-        success:
-            "bg-green-100 text-green-700 border border-green-300",
-
-        warning:
-            "bg-yellow-100 text-yellow-700 border border-yellow-300",
-
-        info:
-            "bg-blue-100 text-blue-700 border border-blue-300",
-    };
+    const Icon = variant.icon;
 
     return (
         <div
-            className={`
-                rounded-lg
-                px-4
-                py-3
-                text-sm
-                ${styles[type]}
-            `}
+            // Errors interrupt; the rest are announced without stealing focus
+            role={type === "error" ? "alert" : "status"}
+            className={`flex gap-3 rounded-gov border border-rule px-4 py-3 ${variant.wrapper}`}
         >
-            {children}
+            <Icon
+                size={18}
+                className={`mt-0.5 shrink-0 ${variant.iconClass}`}
+                aria-hidden="true"
+            />
+
+            <div className="text-sm">
+                {/* Formal notices always carry a heading */}
+                <p className="font-semibold">
+                    {title || variant.title}
+                </p>
+
+                <div className="mt-0.5 leading-relaxed">
+                    {children}
+                </div>
+            </div>
         </div>
     );
 }

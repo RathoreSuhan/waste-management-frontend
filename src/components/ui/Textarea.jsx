@@ -1,62 +1,65 @@
 /**
  * ==========================================================
- * Reusable Textarea Component
+ * Textarea
  * ----------------------------------------------------------
- * Same look and behaviour as the Input component but for
- * multi-line text such as report descriptions.
- *
- * Features:
- * ✓ Label
- * ✓ Error message
- * ✓ React Hook Form support
- * ✓ Tailwind styling
+ * Multi-line field matching the Input styling so forms stay
+ * visually consistent.
  * ==========================================================
  */
 
 export default function Textarea({
     label,
     error,
-    rows = 4,
+    required = false,
+    hint,
+    rows = 5,
     className = "",
     ...props
 }) {
-    return (
-        <div className="space-y-1">
 
-            {/* Textarea Label */}
+    return (
+        <div className="space-y-1.5">
+
             {label && (
-                <label className="block text-sm font-medium text-gray-700">
+                <label className="block text-sm font-semibold text-ink">
                     {label}
+
+                    {/* Mandatory field marker */}
+                    {required && (
+                        <span className="ml-0.5 text-red-700" aria-hidden="true">
+                            *
+                        </span>
+                    )}
                 </label>
             )}
 
-            {/* Textarea Field */}
+            {hint && <p className="text-xs text-ink-muted">{hint}</p>}
+
             <textarea
                 {...props}
                 rows={rows}
+                aria-invalid={error ? "true" : undefined}
                 className={`
                     w-full
-                    rounded-lg
+                    rounded-gov
                     border
-                    border-gray-300
-                    px-4
-                    py-2
+                    bg-white
+                    px-3 py-2
+                    text-sm
                     outline-none
                     transition
-                    focus:border-blue-600
-                    focus:ring-2
-                    focus:ring-blue-200
+                    placeholder:text-ink-muted/60
+                    focus:border-gov-blue
+                    ${error ? "border-red-600" : "border-rule"}
                     ${className}
                 `}
             />
 
-            {/* Validation Error */}
             {error && (
-                <p className="text-sm text-red-500">
+                <p role="alert" className="text-xs font-medium text-red-700">
                     {error.message}
                 </p>
             )}
-
         </div>
     );
 }

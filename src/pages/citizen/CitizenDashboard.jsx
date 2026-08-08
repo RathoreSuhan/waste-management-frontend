@@ -1,6 +1,8 @@
 import { useMemo } from "react";
 import { Link } from "react-router-dom";
+import { FileText, CheckCircle2, Clock, FilePlus2, ArrowRight } from "lucide-react";
 
+import PageHeading from "@/components/common/PageHeading";
 import StatCard from "@/components/common/StatCard";
 import ReportCard from "@/components/reports/ReportCard";
 import {
@@ -18,18 +20,18 @@ import { REPORT_STATUS } from "@/constants/reportConstants";
  * Citizen Dashboard
  * ============================================================================
  *
- * Overview of the citizen's own reporting activity.
+ * Summary of the citizen's own reporting activity.
  * Data comes from GET /api/reports/my (Phase 2).
  * ============================================================================
  */
 
 export default function CitizenDashboard() {
 
-    // Load the reports created by this citizen
+    // Load the reports filed by this citizen
     const { data: reports, loading, error, reload } = useReports(getMyReports);
 
     /**
-     * Build the dashboard statistics from the report list.
+     * Build the summary figures from the report list.
      */
     const stats = useMemo(() => {
 
@@ -48,16 +50,11 @@ export default function CitizenDashboard() {
             total: list.length,
             resolved,
             pending,
-
-            // Share of reports that ended up cleaned
-            resolvedRate: list.length
-                ? Math.round((resolved / list.length) * 100)
-                : 0,
         };
     }, [reports]);
 
     /**
-     * Latest three reports for the activity section.
+     * Three most recent reports for the activity section.
      */
     const recentReports = useMemo(() => {
 
@@ -70,97 +67,113 @@ export default function CitizenDashboard() {
     }, [reports]);
 
     return (
-        <div className="space-y-6">
+        <div>
+            {/* Rendered once here - the layout no longer prints the title */}
+            <PageHeading
+                title="Citizen Dashboard"
+                titleHi="नागरिक डैशबोर्ड"
+                subtitle="Summary of the waste reports you have filed."
+            />
 
-            {/* Key numbers */}
-            <section className="grid gap-4 md:grid-cols-3">
-                <StatCard
-                    title="Reports Submitted"
-                    // Show a dash while the request is running
-                    value={loading ? "—" : String(stats.total)}
-                    description="You helped improve cleanliness in your area."
-                    accent="blue"
-                />
-                <StatCard
-                    title="Resolved Reports"
-                    value={loading ? "—" : String(stats.resolved)}
-                    description="Cleanups completed from your reports."
-                    accent="emerald"
-                />
-                <StatCard
-                    title="Awaiting Action"
-                    value={loading ? "—" : String(stats.pending)}
-                    description="Reports still waiting for a cleaner."
-                    accent="violet"
-                />
-            </section>
+            <div className="space-y-6">
 
-            {/* Quick action to report garbage */}
-            <section className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-emerald-200 bg-emerald-50 p-6">
-                <div>
-                    <h2 className="text-lg font-semibold text-emerald-900">
-                        Spotted garbage nearby?
-                    </h2>
+                {/* Key figures */}
+                <section className="grid gap-4 md:grid-cols-3">
+                    <StatCard
+                        title="Reports Filed"
+                        // Dash while the request is running
+                        value={loading ? "—" : String(stats.total)}
+                        description="Total reports you have submitted."
+                        accent="navy"
+                        icon={FileText}
+                    />
+                    <StatCard
+                        title="Resolved"
+                        value={loading ? "—" : String(stats.resolved)}
+                        description="Closed after successful cleanup."
+                        accent="green"
+                        icon={CheckCircle2}
+                    />
+                    <StatCard
+                        title="Pending"
+                        value={loading ? "—" : String(stats.pending)}
+                        description="Waiting to be assigned to a cleanup team."
+                        accent="saffron"
+                        icon={Clock}
+                    />
+                </section>
 
-                    <p className="mt-1 text-sm text-emerald-700">
-                        Submit a photo with the location and a cleaner will be assigned.
-                    </p>
-                </div>
+                {/* Primary call to action, framed as a notice strip */}
+                <section className="flex flex-wrap items-center justify-between gap-4 rounded-gov border border-rule border-l-4 border-l-gov-blue bg-white p-5">
+                    <div>
+                        <h2 className="font-serif text-lg font-bold text-gov-navy">
+                            Report an uncollected waste site
+                        </h2>
 
-                <Link
-                    to="/citizen/report"
-                    className="rounded-lg bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-emerald-700"
-                >
-                    Report Garbage
-                </Link>
-            </section>
+                        <p className="mt-1 text-sm text-ink-muted">
+                            Submit a photograph with the location. Your report is recorded
+                            and passed to a cleanup team working in that area.
+                        </p>
+                    </div>
 
-            {/* Recent reports */}
-            <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                    <h2 className="text-xl font-semibold text-slate-900">
-                        Recent Activity
-                    </h2>
-
-                    {/* Link to the full history */}
                     <Link
-                        to="/citizen/history"
-                        className="text-sm font-medium text-emerald-700 hover:underline"
+                        to="/citizen/report"
+                        className="inline-flex items-center gap-2 rounded-gov border border-gov-blue bg-gov-blue px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-gov-blue-dark"
                     >
-                        View all reports →
+                        <FilePlus2 size={15} aria-hidden="true" />
+                        File a Report
                     </Link>
-                </div>
+                </section>
 
-                <div className="mt-4">
+                {/* Recent submissions */}
+                <section className="rounded-gov border border-rule bg-white">
 
-                    {/* Loading state */}
-                    {loading && <ReportListSkeleton count={2} />}
+                    {/* Section bar - tinted header strip keeps the grouping clear */}
+                    <div className="flex flex-wrap items-center justify-between gap-3 border-b border-rule bg-paper px-5 py-3">
+                        <h2 className="font-serif text-base font-bold text-gov-navy">
+                            Recent Reports
+                        </h2>
 
-                    {/* Error state with retry */}
-                    {!loading && error && (
-                        <ReportListError message={error} onRetry={reload} />
-                    )}
+                        {/* Link to the full history */}
+                        <Link
+                            to="/citizen/history"
+                            className="inline-flex items-center gap-1 text-sm font-semibold text-gov-blue hover:underline"
+                        >
+                            View all
+                            <ArrowRight size={13} aria-hidden="true" />
+                        </Link>
+                    </div>
 
-                    {/* Data state */}
-                    {!loading && !error && (
-                        recentReports.length > 0 ? (
-                            <div className="space-y-3">
-                                {recentReports.map((report) => (
-                                    <ReportCard key={report.id} report={report} />
-                                ))}
-                            </div>
-                        ) : (
-                            <ReportListEmpty
-                                title="No activity yet"
-                                description="Your reports will appear here once you submit one."
-                                actionLabel="Report Garbage"
-                                actionTo="/citizen/report"
-                            />
-                        )
-                    )}
-                </div>
-            </section>
+                    <div className="p-5">
+
+                        {/* Loading state */}
+                        {loading && <ReportListSkeleton count={2} />}
+
+                        {/* Error state with retry */}
+                        {!loading && error && (
+                            <ReportListError message={error} onRetry={reload} />
+                        )}
+
+                        {/* Data state */}
+                        {!loading && !error && (
+                            recentReports.length > 0 ? (
+                                <div className="space-y-3">
+                                    {recentReports.map((report) => (
+                                        <ReportCard key={report.id} report={report} />
+                                    ))}
+                                </div>
+                            ) : (
+                                <ReportListEmpty
+                                    title="No reports yet"
+                                    description="Reports you file will be listed here for tracking."
+                                    actionLabel="File a Report"
+                                    actionTo="/citizen/report"
+                                />
+                            )
+                        )}
+                    </div>
+                </section>
+            </div>
         </div>
     );
 }

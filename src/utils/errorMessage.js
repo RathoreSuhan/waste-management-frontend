@@ -65,3 +65,38 @@ export function getDuplicateReportDetails(error) {
 
     return null;
 }
+
+/**
+ * Detect an AI photograph rejection returned by the backend.
+ *
+ * InvalidReportImageException responds with HTTP 400 and a body containing
+ * { message, status, reason, aiRemarks, confidence } where `reason` is one of
+ * the ImageRejectionReason values.
+ *
+ * Only AI rejections carry a `reason`, so other 400s (an unsupported file
+ * format, for instance) fall through to the ordinary error message.
+ *
+ * @param {Object} error - error thrown by Axios
+ * @returns {Object|null} rejection details, or null when not an AI rejection
+ */
+export function getImageValidationDetails(error) {
+    const data = error?.response?.data;
+
+    if (error?.response?.status === 400 && data?.reason) {
+        return {
+            // Guidance written by the backend for this reason
+            message: data.message,
+
+            // Reason code, used to pick the heading and tips
+            reason: data.reason,
+
+            // What the AI reported seeing, shown as its observation
+            aiRemarks: data.aiRemarks,
+
+            // Confidence, only useful when actually returned
+            confidence: data.confidence,
+        };
+    }
+
+    return null;
+}

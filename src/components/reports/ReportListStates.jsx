@@ -1,39 +1,40 @@
 import { Link } from "react-router-dom";
+import { FileSearch, RotateCcw } from "lucide-react";
 import Alert from "@/components/ui/Alert";
 
 /**
  * ==========================================================
  * Report List States
  * ----------------------------------------------------------
- * Shared UI for the three non-data states of a list page:
+ * Shared UI for the three non-data states of a register page:
  *
- * ✓ Loading  - animated placeholder cards
- * ✓ Error    - message with a retry button
- * ✓ Empty    - friendly message with an optional action
+ *   Loading - placeholder rows
+ *   Error   - notice with a retry action
+ *   Empty   - guidance with an optional next step
  * ==========================================================
  */
 
 /**
- * Skeleton cards shown while reports are loading
+ * Placeholder rows shown while the register loads.
+ * Mirrors the ReportCard layout so the page does not jump.
  */
 export function ReportListSkeleton({ count = 3 }) {
 
     return (
         <div className="space-y-3">
-            {/* Render placeholder rows matching the ReportCard layout */}
             {Array.from({ length: count }).map((_, index) => (
                 <div
                     key={index}
-                    className="flex animate-pulse gap-4 rounded-2xl border border-slate-200 bg-white p-4"
+                    className="flex animate-pulse gap-4 rounded-gov border border-rule bg-white p-3.5"
                 >
-                    {/* Image placeholder */}
-                    <div className="h-24 w-24 shrink-0 rounded-xl bg-slate-200" />
+                    {/* Photograph placeholder */}
+                    <div className="h-24 w-24 shrink-0 rounded-gov bg-paper" />
 
                     {/* Text placeholders */}
                     <div className="flex-1 space-y-3 py-1">
-                        <div className="h-4 w-1/3 rounded bg-slate-200" />
-                        <div className="h-3 w-3/4 rounded bg-slate-200" />
-                        <div className="h-3 w-1/2 rounded bg-slate-200" />
+                        <div className="h-3 w-1/4 rounded bg-paper" />
+                        <div className="h-4 w-1/2 rounded bg-paper" />
+                        <div className="h-3 w-3/4 rounded bg-paper" />
                     </div>
                 </div>
             ))}
@@ -48,16 +49,19 @@ export function ReportListError({ message, onRetry }) {
 
     return (
         <div className="space-y-3">
-            {/* Backend or network error message */}
-            <Alert type="error">{message}</Alert>
+            {/* Backend or network failure */}
+            <Alert type="error" title="Unable to load records">
+                {message}
+            </Alert>
 
-            {/* Let the user retry without refreshing the page */}
+            {/* Retry without a full page reload */}
             {onRetry && (
                 <button
                     onClick={onRetry}
-                    className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+                    className="inline-flex items-center gap-2 rounded-gov border border-gov-blue bg-white px-4 py-2 text-sm font-semibold text-gov-blue transition hover:bg-gov-blue/5"
                 >
-                    Try Again
+                    <RotateCcw size={14} aria-hidden="true" />
+                    Retry
                 </button>
             )}
         </div>
@@ -65,36 +69,38 @@ export function ReportListError({ message, onRetry }) {
 }
 
 /**
- * Empty state shown when no reports match
+ * Empty state shown when the register has no matching records
  */
 export function ReportListEmpty({
-    title = "No reports found",
-    description = "There is nothing to show here yet.",
+    title = "No records found",
+    description = "There are no reports matching the selected criteria.",
     actionLabel,
     actionTo,
 }) {
 
     return (
-        <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-10 text-center">
+        <div className="rounded-gov border border-dashed border-rule bg-white p-10 text-center">
 
-            {/* Simple illustration */}
-            <div className="text-4xl">🗑️</div>
+            {/* Neutral icon rather than an emoji */}
+            <FileSearch
+                size={32}
+                className="mx-auto text-ink-muted"
+                aria-hidden="true"
+            />
 
-            {/* Headline */}
-            <h3 className="mt-3 text-lg font-semibold text-slate-900">
+            <h3 className="mt-3 font-serif text-lg font-bold text-gov-navy">
                 {title}
             </h3>
 
-            {/* Supporting text */}
-            <p className="mt-1 text-sm text-slate-500">
+            <p className="mx-auto mt-1 max-w-md text-sm text-ink-muted">
                 {description}
             </p>
 
-            {/* Optional call to action (e.g. create first report) */}
+            {/* Optional next step, e.g. file the first report */}
             {actionLabel && actionTo && (
                 <Link
                     to={actionTo}
-                    className="mt-5 inline-block rounded-lg bg-emerald-600 px-5 py-2 text-sm font-semibold text-white transition hover:bg-emerald-700"
+                    className="mt-5 inline-block rounded-gov border border-gov-blue bg-gov-blue px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-gov-blue-dark"
                 >
                     {actionLabel}
                 </Link>

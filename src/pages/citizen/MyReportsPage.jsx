@@ -1,6 +1,8 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
+import { FilePlus2 } from "lucide-react";
 
+import PageHeading from "@/components/common/PageHeading";
 import ReportCard from "@/components/reports/ReportCard";
 import {
     ReportListSkeleton,
@@ -68,58 +70,59 @@ export default function MyReportsPage() {
     return (
         <div className="space-y-6">
 
-            {/* Header with the create action */}
-            <div className="flex flex-wrap items-center justify-between gap-3">
-                <div>
-                    <h1 className="text-2xl font-semibold text-slate-900">
-                        My Reports
-                    </h1>
-
-                    <p className="mt-1 text-sm text-slate-500">
-                        Track the garbage reports you have submitted.
-                    </p>
-                </div>
-
-                {/* Shortcut to the report form */}
-                <Link
-                    to="/citizen/report"
-                    className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-700"
-                >
-                    + New Report
-                </Link>
-            </div>
+            {/* Page heading with the primary action */}
+            <PageHeading
+                title="My Reports"
+                titleHi="मेरी रिपोर्ट"
+                subtitle="Track the status of every report you have filed."
+                action={
+                    // Shortcut to the report form
+                    <Link
+                        to="/citizen/report"
+                        className="inline-flex items-center gap-2 rounded-gov border border-gov-blue bg-gov-blue px-4 py-2 text-sm font-semibold text-white transition hover:bg-gov-blue-dark"
+                    >
+                        <FilePlus2 size={15} aria-hidden="true" />
+                        File a Report
+                    </Link>
+                }
+            />
 
             {/* Status summary (hidden until data is available) */}
             {!loading && !error && counts.total > 0 && (
                 <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
 
                     {/* Total submitted */}
-                    <SummaryTile label="Total" value={counts.total} />
+                    <SummaryTile label="Total" value={counts.total} accent="border-l-gov-navy" />
 
-                    {/* Waiting for a cleaner */}
-                    <SummaryTile label="Pending" value={counts.pending} />
+                    {/* Filed, not yet picked up */}
+                    <SummaryTile label="Pending" value={counts.pending} accent="border-l-saffron" />
 
-                    {/* Being cleaned right now */}
-                    <SummaryTile label="In Progress" value={counts.inProgress} />
+                    {/* Currently being actioned */}
+                    <SummaryTile label="Under Process" value={counts.inProgress} accent="border-l-gov-blue" />
 
-                    {/* Completed cleanups */}
-                    <SummaryTile label="Resolved" value={counts.resolved} />
+                    {/* Closed successfully */}
+                    <SummaryTile label="Resolved" value={counts.resolved} accent="border-l-india-green" />
                 </div>
             )}
 
             {/* Status filter buttons */}
             {!loading && !error && counts.total > 0 && (
-                <div className="flex flex-wrap gap-2">
+                <div className="flex flex-wrap items-center gap-2 rounded-gov border border-rule bg-white px-3 py-2.5">
+
+                    {/* Filters are labelled, as on official record searches */}
+                    <span className="mr-1 text-xs font-semibold tracking-wide text-ink-muted uppercase">
+                        Filter by status
+                    </span>
+
                     {REPORT_STATUS_FILTERS.map((filter) => (
                         <button
                             key={filter.value}
                             onClick={() => setStatusFilter(filter.value)}
-                            // Highlight the active filter
-                            className={`rounded-full px-4 py-1.5 text-sm font-medium transition ${
-                                statusFilter === filter.value
-                                    ? "bg-slate-900 text-white"
-                                    : "border border-slate-300 bg-white text-slate-600 hover:bg-slate-50"
-                            }`}
+                            // Selected filter is filled navy, the rest outlined
+                            className={`rounded-gov border px-3 py-1.5 text-xs font-semibold transition ${statusFilter === filter.value
+                                ? "border-gov-navy bg-gov-navy text-white"
+                                : "border-rule bg-white text-ink-muted hover:border-gov-blue hover:text-gov-blue"
+                                }`}
                         >
                             {filter.label}
                         </button>
@@ -148,15 +151,15 @@ export default function MyReportsPage() {
                     <ReportListEmpty
                         title={
                             counts.total === 0
-                                ? "You have not reported any garbage yet"
+                                ? "No reports yet"
                                 : "No reports match this filter"
                         }
                         description={
                             counts.total === 0
-                                ? "Submit your first report and help keep your neighbourhood clean."
-                                : "Try selecting a different status."
+                                ? "File your first report to have it recorded and assigned to a cleanup team."
+                                : "Select a different status to view other reports."
                         }
-                        actionLabel={counts.total === 0 ? "Report Garbage" : undefined}
+                        actionLabel={counts.total === 0 ? "File a Report" : undefined}
                         actionTo={counts.total === 0 ? "/citizen/report" : undefined}
                     />
                 )
@@ -168,17 +171,18 @@ export default function MyReportsPage() {
 /**
  * Small tile used in the status summary row
  */
-function SummaryTile({ label, value }) {
+function SummaryTile({ label, value, accent = "border-l-gov-navy" }) {
 
     return (
-        <div className="rounded-xl border border-slate-200 bg-white p-4">
+        // Accent rule on the left ties the tile to its status colour
+        <div className={`rounded-gov border border-rule border-l-4 bg-white p-3.5 ${accent}`}>
             {/* Status name */}
-            <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
+            <p className="text-[11px] font-semibold tracking-[0.1em] text-ink-muted uppercase">
                 {label}
             </p>
 
-            {/* Number of reports */}
-            <p className="mt-1 text-2xl font-semibold text-slate-900">
+            {/* Number of records */}
+            <p className="mt-1 font-serif text-2xl font-bold text-gov-navy">
                 {value}
             </p>
         </div>

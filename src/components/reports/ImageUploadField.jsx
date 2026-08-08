@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef } from "react";
+import { Camera, Trash2 } from "lucide-react";
 import {
     IMAGE_ACCEPT_ATTRIBUTE,
     MAX_IMAGE_SIZE_LABEL,
@@ -73,20 +74,23 @@ export default function ImageUploadField({ file, onFileChange, error }) {
     return (
         <div className="space-y-1">
 
-            {/* Field label */}
-            <label className="block text-sm font-medium text-gray-700">
-                Garbage Photo
+            {/* Field label - photograph is mandatory for a report */}
+            <label className="block text-sm font-semibold text-ink">
+                Photographic Evidence
+                <span className="ml-0.5 text-red-700" aria-hidden="true">
+                    *
+                </span>
             </label>
 
             {/* Upload area / preview area */}
             <div
                 className={`
-                    rounded-xl
-                    border-2
+                    rounded-gov
+                    border
                     border-dashed
                     p-4
                     transition
-                    ${error ? "border-red-300 bg-red-50" : "border-slate-300 bg-slate-50"}
+                    ${error ? "border-red-600 bg-red-50" : "border-rule bg-paper"}
                 `}
             >
                 {previewUrl ? (
@@ -94,43 +98,48 @@ export default function ImageUploadField({ file, onFileChange, error }) {
                     <div className="flex items-center gap-4">
                         <img
                             src={previewUrl}
-                            alt="Selected garbage"
-                            className="h-28 w-28 rounded-lg object-cover"
+                            alt="Selected photograph of the reported waste"
+                            className="h-28 w-28 rounded-gov border border-rule object-cover"
                         />
 
                         <div className="min-w-0 flex-1">
                             {/* File name */}
-                            <p className="truncate text-sm font-medium text-slate-800">
+                            <p className="truncate text-sm font-semibold text-ink">
                                 {file?.name}
                             </p>
 
                             {/* File size */}
-                            <p className="mt-1 text-xs text-slate-500">
+                            <p className="mt-1 text-xs text-ink-muted">
                                 {formatFileSize(file?.size)}
                             </p>
 
-                            {/* Remove selected image */}
+                            {/* Discard the selected photograph */}
                             <button
                                 type="button"
                                 onClick={handleRemove}
-                                className="mt-2 text-sm font-medium text-red-600 hover:underline"
+                                className="mt-2 inline-flex items-center gap-1.5 text-sm font-semibold text-red-700 hover:underline"
                             >
-                                Remove photo
+                                <Trash2 size={13} aria-hidden="true" />
+                                Remove photograph
                             </button>
                         </div>
                     </div>
                 ) : (
                     // Empty upload prompt
                     <div className="text-center">
-                        <div className="text-3xl">📷</div>
+                        <Camera
+                            size={26}
+                            className="mx-auto text-ink-muted"
+                            aria-hidden="true"
+                        />
 
-                        <p className="mt-2 text-sm text-slate-600">
-                            Upload a clear photo of the garbage
+                        <p className="mt-2 text-sm font-medium text-ink">
+                            Attach a clear photograph of the waste
                         </p>
 
                         {/* Rules that match the backend limits */}
-                        <p className="mt-1 text-xs text-slate-400">
-                            JPG, PNG or WEBP • up to {MAX_IMAGE_SIZE_LABEL}
+                        <p className="mt-1 text-xs text-ink-muted">
+                            JPG, PNG or WEBP &bull; maximum {MAX_IMAGE_SIZE_LABEL}
                         </p>
                     </div>
                 )}
@@ -141,13 +150,15 @@ export default function ImageUploadField({ file, onFileChange, error }) {
                     type="file"
                     accept={IMAGE_ACCEPT_ATTRIBUTE}
                     onChange={handleChange}
-                    className="mt-4 block w-full text-sm text-slate-600 file:mr-4 file:rounded-lg file:border-0 file:bg-blue-700 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-white hover:file:bg-blue-800"
+                    className="mt-4 block w-full text-sm text-ink-muted file:mr-4 file:rounded-gov file:border-0 file:bg-gov-blue file:px-4 file:py-2 file:text-sm file:font-semibold file:text-white hover:file:bg-gov-blue-dark"
                 />
             </div>
 
             {/* Validation error */}
             {error && (
-                <p className="text-sm text-red-500">{error}</p>
+                <p role="alert" className="text-xs font-medium text-red-700">
+                    {error}
+                </p>
             )}
         </div>
     );

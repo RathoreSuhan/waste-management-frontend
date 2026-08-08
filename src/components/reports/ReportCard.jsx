@@ -1,14 +1,18 @@
 import { Link } from "react-router-dom";
+import { MapPin, Clock, User, ImageOff, ChevronRight } from "lucide-react";
 import StatusBadge from "@/components/reports/StatusBadge";
 import { formatRelativeTime } from "@/utils/formatters";
+import { formatReportRef } from "@/constants/reportConstants";
 
 /**
  * ==========================================================
  * Report Card
  * ----------------------------------------------------------
- * Compact preview of a single garbage report.
- * Used by "My Reports" and "All Reports" listing pages.
- * Clicking the card opens the report detail page.
+ * One row in the report listing.
+ *
+ * Styled as an official record rather than a marketing card:
+ * square corners, a visible reference number, and metadata
+ * laid out in a single scannable line.
  * ==========================================================
  */
 
@@ -17,56 +21,76 @@ export default function ReportCard({ report }) {
     return (
         <Link
             to={`/reports/${report.id}`}
-            className="group flex gap-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition hover:border-emerald-300 hover:shadow-md"
+            className="group flex gap-4 rounded-gov border border-rule bg-white p-3.5 transition hover:border-gov-blue hover:bg-gov-blue/[0.02]"
         >
-            {/* Garbage photo uploaded by the citizen */}
-            <div className="h-24 w-24 shrink-0 overflow-hidden rounded-xl bg-slate-100">
+            {/* Photograph submitted with the report */}
+            <div className="h-24 w-24 shrink-0 overflow-hidden rounded-gov border border-rule bg-paper">
                 {report.imageUrl ? (
                     <img
                         src={report.imageUrl}
-                        alt={report.title}
-                        // Lazy load keeps long lists fast
+                        alt={`Photograph for ${report.title}`}
+                        // Lazy loading keeps long registers responsive
                         loading="lazy"
-                        className="h-full w-full object-cover transition group-hover:scale-105"
+                        className="h-full w-full object-cover"
                     />
                 ) : (
-                    // Placeholder when no image is available
-                    <div className="flex h-full w-full items-center justify-center text-2xl">
-                        🗑️
+                    // Shown when no photograph was attached
+                    <div className="flex h-full w-full flex-col items-center justify-center gap-1 text-ink-muted">
+                        <ImageOff size={18} aria-hidden="true" />
+                        <span className="text-[10px]">No photo</span>
                     </div>
                 )}
             </div>
 
-            {/* Report summary */}
             <div className="min-w-0 flex-1">
 
-                {/* Title and current status */}
+                {/* Reference number sits above the title, as on official records */}
                 <div className="flex items-start justify-between gap-3">
-                    <h3 className="truncate font-semibold text-slate-900">
-                        {report.title}
-                    </h3>
+                    <div className="min-w-0">
+                        <p className="font-mono text-[11px] tracking-wide text-ink-muted">
+                            {formatReportRef(report.id, report.createdAt)}
+                        </p>
+
+                        <h3 className="mt-0.5 truncate font-semibold text-gov-navy">
+                            {report.title}
+                        </h3>
+                    </div>
 
                     <StatusBadge status={report.status} />
                 </div>
 
-                {/* Short description (clamped to two lines) */}
-                <p className="mt-1 line-clamp-2 text-sm text-slate-500">
+                {/* Description, limited to two lines to keep rows even */}
+                <p className="mt-1 line-clamp-2 text-sm text-ink-muted">
                     {report.description || "No description provided."}
                 </p>
 
-                {/* Location and time */}
-                <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-500">
-                    <span className="truncate">
-                        📍 {report.city}
+                {/* Metadata line - thin rule separates it from the description */}
+                <div className="mt-2.5 flex flex-wrap items-center gap-x-4 gap-y-1 border-t border-rule pt-2 text-xs text-ink-muted">
+
+                    <span className="flex items-center gap-1 truncate">
+                        <MapPin size={12} aria-hidden="true" />
+                        {report.city}
                         {report.state ? `, ${report.state}` : ""}
                     </span>
 
-                    <span>🕘 {formatRelativeTime(report.createdAt)}</span>
+                    <span className="flex items-center gap-1">
+                        <Clock size={12} aria-hidden="true" />
+                        {formatRelativeTime(report.createdAt)}
+                    </span>
 
-                    {/* Reporter name is useful on the public/all reports list */}
+                    {/* Only present on the public register */}
                     {report.reportedBy && (
-                        <span className="truncate">👤 {report.reportedBy}</span>
+                        <span className="flex items-center gap-1 truncate">
+                            <User size={12} aria-hidden="true" />
+                            {report.reportedBy}
+                        </span>
                     )}
+
+                    {/* Affordance hinting the row opens a detail page */}
+                    <span className="ml-auto hidden items-center gap-0.5 font-medium text-gov-blue group-hover:flex">
+                        View details
+                        <ChevronRight size={12} aria-hidden="true" />
+                    </span>
                 </div>
             </div>
         </Link>

@@ -1,67 +1,128 @@
 import { NavLink } from "react-router-dom";
+import { LogOut, LifeBuoy, UserRound } from "lucide-react";
 import useAuth from "@/hooks/useAuth";
+import { getRoleLabel } from "@/constants/roleLabels";
 
 /**
+ * ============================================================================
  * Sidebar Navigation
- * 
- * Shows role-based menu items and logout button.
- * Uses NavLink to highlight the active page.
+ * ============================================================================
+ *
+ * Formal side navigation.
+ *
+ * Design notes:
+ * - Navy panel with square corners, kept sober rather than app-like.
+ * - The active item is marked with a saffron left border rather than a
+ *   coloured pill, which reads as steadier on a dense panel.
+ * - Icons are passed in as Lucide components, never emoji.
+ * ============================================================================
  */
 
 export default function Sidebar({ menuItems = [] }) {
-    // Get user info and logout function from auth context
+
+    // Session details and the logout action
     const { user, logout } = useAuth();
 
     return (
-        <aside className="flex h-full w-72 flex-col border-r border-slate-200 bg-slate-950 text-slate-100">
-            {/* Header section - brand name and user email */}
-            <div className="border-b border-slate-800 p-6">
-                {/* Platform name */}
-                <p className="text-sm font-semibold uppercase tracking-[0.3em] text-emerald-400">
-                    Clean Bharat
+        <aside className="flex w-72 shrink-0 flex-col bg-gov-navy text-white">
+
+            {/* ---------------- Logged-in user panel ---------------- */}
+            <div className="border-b border-white/15 px-5 py-4">
+
+                <p className="text-[10px] font-semibold tracking-[0.2em] text-white/60 uppercase">
+                    Logged in as
                 </p>
-                {/* Page title based on role */}
-                <h2 className="mt-2 text-xl font-semibold">
-                    {user?.role === "ROLE_ADMIN"
-                        ? "Admin Portal"
-                        : user?.role === "ROLE_CLEANER"
-                            ? "Cleaner Hub"
-                            : "Citizen Dashboard"}
-                </h2>
-                {/* User email */}
-                <p className="mt-2 text-sm text-slate-400">{user?.email}</p>
+
+                <div className="mt-2 flex items-start gap-2.5">
+
+                    {/* Avatar placeholder - initial letter of the email */}
+                    <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center border border-white/25 bg-white/10">
+                        <UserRound size={16} aria-hidden="true" />
+                    </span>
+
+                    <div className="min-w-0">
+                        {/* Email can be long, so it truncates rather than wrapping */}
+                        <p className="truncate text-sm font-semibold" title={user?.email}>
+                            {user?.email}
+                        </p>
+
+                        {/* Role is shown as a formal designation */}
+                        <p className="mt-0.5 text-xs text-saffron">
+                            {getRoleLabel(user?.role)}
+                        </p>
+                    </div>
+                </div>
             </div>
 
-            {/* Navigation menu items */}
-            <nav className="flex-1 space-y-1 p-4">
-                {menuItems.map((item) => (
-                    <NavLink
-                        key={item.to}
-                        to={item.to}
-                        // Highlight current page in green
-                        className={({ isActive }) =>
-                            `flex items-center rounded-xl px-4 py-3 text-sm font-medium transition ${
-                                isActive
-                                    ? "bg-emerald-500 text-white shadow"
-                                    : "text-slate-300 hover:bg-slate-800 hover:text-white"
-                            }`
-                        }
-                    >
-                        {/* Menu icon */}
-                        <span className="mr-3 text-base">{item.icon}</span>
-                        {/* Menu label */}
-                        {item.label}
-                    </NavLink>
-                ))}
+            {/* ---------------- Navigation ---------------- */}
+            <nav className="flex-1 py-4" aria-label="Site sections">
+
+                <p className="px-5 pb-2 text-[10px] font-semibold tracking-[0.2em] text-white/50 uppercase">
+                    Services
+                </p>
+
+                <ul>
+                    {menuItems.map((item) => {
+
+                        // Icon arrives as a component reference, rendered below
+                        const Icon = item.icon;
+
+                        return (
+                            <li key={item.to}>
+                                <NavLink
+                                    to={item.to}
+                                    // Exact matching stops the parent route staying highlighted
+                                    end={item.end}
+                                    className={({ isActive }) =>
+                                        `flex items-center gap-3 border-l-4 px-4 py-2.5 text-sm transition ${isActive
+                                            ? "border-saffron bg-white/12 font-semibold text-white"
+                                            : "border-transparent text-white/75 hover:border-white/30 hover:bg-white/5 hover:text-white"
+                                        }`
+                                    }
+                                >
+                                    {Icon && <Icon size={16} aria-hidden="true" />}
+
+                                    <span>{item.label}</span>
+
+                                    {/* Optional Hindi gloss, kept small and secondary */}
+                                    {item.labelHi && (
+                                        <span className="ml-auto text-[11px] text-white/45">
+                                            {item.labelHi}
+                                        </span>
+                                    )}
+                                </NavLink>
+                            </li>
+                        );
+                    })}
+                </ul>
             </nav>
 
-            {/* Logout button at bottom */}
-            <div className="border-t border-slate-800 p-4">
+            {/* ---------------- Helpline ---------------- */}
+            <div className="border-t border-white/15 px-5 py-4">
+
+                {/* Email support, since a community project has no call centre */}
+                <p className="flex items-center gap-2 text-[11px] text-white/60">
+                    <LifeBuoy size={12} aria-hidden="true" />
+                    Community Helpdesk
+                </p>
+
+                <p className="mt-1 text-sm font-semibold tracking-wide">
+                    support@cleanbharat.org
+                </p>
+
+                <p className="mt-0.5 text-[11px] text-white/50">
+                    Replies usually within two working days
+                </p>
+            </div>
+
+            {/* ---------------- Sign out ---------------- */}
+            <div className="border-t border-white/15 p-4">
                 <button
                     onClick={logout}
-                    className="w-full rounded-xl border border-slate-700 px-4 py-3 text-sm font-medium text-slate-200 transition hover:bg-slate-800"
+                    className="flex w-full items-center justify-center gap-2 border border-white/30 px-4 py-2.5 text-sm font-medium transition hover:bg-white/10"
                 >
-                    Logout
+                    <LogOut size={15} aria-hidden="true" />
+                    Sign Out
                 </button>
             </div>
         </aside>

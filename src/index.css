@@ -1,13 +1,60 @@
 /*
 |--------------------------------------------------------------------------
-| Global Styles
+| Global Styles - Clean Bharat Government Portal
 |--------------------------------------------------------------------------
-| Tailwind CSS entry point.
-| Global project styles will also live here.
+| Design language follows Indian government civic portals:
+| sharp corners, thin rules, dense information, tricolour accents.
 |--------------------------------------------------------------------------
 */
 
+/* Noto family - the typeface used across india.gov.in, supports Devanagari */
+@import url("https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;500;600;700&family=Noto+Serif:wght@600;700&display=swap");
+
 @import "tailwindcss";
+
+/*
+| Design tokens
+| Tailwind v4 reads these and generates utilities automatically,
+| e.g. --color-gov-navy becomes bg-gov-navy / text-gov-navy / border-gov-navy
+*/
+@theme {
+  /* Masthead and sidebar - deep institutional navy */
+  --color-gov-navy: #0b2b4e;
+
+  /* Primary actions and links */
+  --color-gov-blue: #0f4c81;
+
+  /* Hover state for primary actions */
+  --color-gov-blue-dark: #0a3a63;
+
+  /* Tricolour saffron - accents and active markers */
+  --color-saffron: #ff9933;
+
+  /* Tricolour green - success and resolved states */
+  --color-india-green: #138808;
+
+  /* Ashoka Chakra navy - used in the tricolour rule */
+  --color-chakra: #000080;
+
+  /* Page background - a paper-like off white */
+  --color-paper: #f4f6f8;
+
+  /* Hairline rules and card borders */
+  --color-rule: #d5dbe1;
+
+  /* Body copy */
+  --color-ink: #1f2937;
+
+  /* Secondary copy */
+  --color-ink-muted: #5b6b7c;
+
+  /* Institutional UI keeps corners nearly square */
+  --radius-gov: 4px;
+
+  /* Noto Sans everywhere, Noto Serif reserved for headings */
+  --font-sans: "Noto Sans", system-ui, -apple-system, sans-serif;
+  --font-serif: "Noto Serif", Georgia, serif;
+}
 
 html,
 body,
@@ -18,6 +65,68 @@ body,
 }
 
 body {
-  font-family: Arial, Helvetica, sans-serif;
-  background-color: #f8fafc;
+  font-family: var(--font-sans);
+  background-color: var(--color-paper);
+  color: var(--color-ink);
+}
+
+/*
+| Accessibility - text resizing
+| The A- / A / A+ controls in the header set these classes on <html>.
+| Because all sizing uses rem, changing the root scales the whole portal.
+*/
+html.text-sm-scale {
+  font-size: 14px;
+}
+
+html.text-md-scale {
+  font-size: 16px;
+}
+
+html.text-lg-scale {
+  font-size: 18px;
+}
+
+/*
+| Visible focus ring for keyboard users.
+| Government portals must meet accessibility guidelines, so focus is
+| never removed - only styled.
+*/
+:focus-visible {
+  outline: 2px solid var(--color-saffron);
+  outline-offset: 2px;
+}
+
+/* Skip link - hidden until focused, then revealed for screen reader users */
+.skip-link {
+  position: absolute;
+  left: -9999px;
+  top: 0;
+  z-index: 100;
+}
+
+.skip-link:focus {
+  left: 0;
+  padding: 0.5rem 1rem;
+  background: var(--color-gov-navy);
+  color: #fff;
+}
+
+/*
+| Tricolour rule
+| A 3px divider used under the utility strip and masthead.
+| This is the single strongest visual cue that a site is an Indian
+| government portal, and it stays subtle by being a thin line.
+*/
+.tricolour-rule {
+  height: 3px;
+  background: linear-gradient(
+    to right,
+    var(--color-saffron) 0%,
+    var(--color-saffron) 33.33%,
+    #ffffff 33.33%,
+    #ffffff 66.66%,
+    var(--color-india-green) 66.66%,
+    var(--color-india-green) 100%
+  );
 }

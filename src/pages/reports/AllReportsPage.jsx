@@ -1,5 +1,7 @@
 import { useMemo, useState } from "react";
+import { Search } from "lucide-react";
 
+import PageHeading from "@/components/common/PageHeading";
 import ReportCard from "@/components/reports/ReportCard";
 import {
     ReportListSkeleton,
@@ -73,44 +75,62 @@ export default function AllReportsPage() {
         <div className="space-y-6">
 
             {/* Page heading */}
-            <div>
-                <h1 className="text-2xl font-semibold text-slate-900">
-                    Community Reports
-                </h1>
+            <PageHeading
+                title="Public Reports"
+                titleHi="सार्वजनिक रिपोर्ट"
+                subtitle="Every waste report filed on the platform, visible to all users."
+            />
 
-                <p className="mt-1 text-sm text-slate-500">
-                    Browse garbage reports submitted across the platform.
-                </p>
-            </div>
+            {/* Search and filter controls, framed as a record search panel */}
+            <div className="rounded-gov border border-rule bg-white">
 
-            {/* Search and filter controls */}
-            <div className="rounded-2xl border border-slate-200 bg-white p-4">
+                <div className="border-b border-rule bg-paper px-4 py-2">
+                    <h2 className="text-[11px] font-semibold tracking-[0.15em] text-ink-muted uppercase">
+                        Search Records
+                    </h2>
+                </div>
 
-                {/* Search box */}
-                <input
-                    type="text"
-                    value={search}
-                    onChange={(event) => setSearch(event.target.value)}
-                    placeholder="Search by title, city, state or address..."
-                    className="w-full rounded-lg border border-gray-300 px-4 py-2 outline-none transition focus:border-blue-600 focus:ring-2 focus:ring-blue-200"
-                />
+                <div className="p-4">
 
-                {/* Status filter buttons */}
-                <div className="mt-3 flex flex-wrap gap-2">
-                    {REPORT_STATUS_FILTERS.map((filter) => (
-                        <button
-                            key={filter.value}
-                            onClick={() => setStatusFilter(filter.value)}
-                            // Highlight the active filter
-                            className={`rounded-full px-4 py-1.5 text-sm font-medium transition ${
-                                statusFilter === filter.value
-                                    ? "bg-slate-900 text-white"
-                                    : "border border-slate-300 bg-white text-slate-600 hover:bg-slate-50"
-                            }`}
-                        >
-                            {filter.label}
-                        </button>
-                    ))}
+                    {/* Search box with a leading icon */}
+                    <div className="relative">
+                        <Search
+                            size={15}
+                            className="absolute top-1/2 left-3 -translate-y-1/2 text-ink-muted"
+                            aria-hidden="true"
+                        />
+
+                        <input
+                            type="text"
+                            value={search}
+                            onChange={(event) => setSearch(event.target.value)}
+                            placeholder="Search by title, city, state or address"
+                            aria-label="Search reports"
+                            className="w-full rounded-gov border border-rule py-2 pr-3 pl-9 text-sm outline-none transition placeholder:text-ink-muted/60 focus:border-gov-blue"
+                        />
+                    </div>
+
+                    {/* Status filter buttons */}
+                    <div className="mt-3 flex flex-wrap items-center gap-2">
+
+                        <span className="mr-1 text-xs font-semibold tracking-wide text-ink-muted uppercase">
+                            Status
+                        </span>
+
+                        {REPORT_STATUS_FILTERS.map((filter) => (
+                            <button
+                                key={filter.value}
+                                onClick={() => setStatusFilter(filter.value)}
+                                // Selected filter is filled navy, the rest outlined
+                                className={`rounded-gov border px-3 py-1.5 text-xs font-semibold transition ${statusFilter === filter.value
+                                    ? "border-gov-navy bg-gov-navy text-white"
+                                    : "border-rule bg-white text-ink-muted hover:border-gov-blue hover:text-gov-blue"
+                                    }`}
+                            >
+                                {filter.label}
+                            </button>
+                        ))}
+                    </div>
                 </div>
             </div>
 
@@ -127,10 +147,13 @@ export default function AllReportsPage() {
                 visibleReports.length > 0 ? (
                     <div className="space-y-3">
 
-                        {/* Result counter */}
-                        <p className="text-sm text-slate-500">
-                            Showing {visibleReports.length} report
-                            {visibleReports.length > 1 ? "s" : ""}
+                        {/* Result counter, worded as an official record count */}
+                        <p className="border-b border-rule pb-2 text-xs text-ink-muted">
+                            Displaying{" "}
+                            <span className="font-semibold text-ink">
+                                {visibleReports.length}
+                            </span>{" "}
+                            record{visibleReports.length > 1 ? "s" : ""}
                         </p>
 
                         {visibleReports.map((report) => (
@@ -139,8 +162,8 @@ export default function AllReportsPage() {
                     </div>
                 ) : (
                     <ReportListEmpty
-                        title="No reports found"
-                        description="Try changing the search text or the status filter."
+                        title="No records found"
+                        description="Revise the search terms or select a different status filter."
                     />
                 )
             )}
