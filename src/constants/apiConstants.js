@@ -24,6 +24,22 @@ export const AUTH_API = "/api/auth";
 export const REPORTS_API = "/api/reports";
 
 /**
+ * Community Voting APIs (Phase 6)
+ *
+ * Restricted to ROLE_CITIZEN in the backend SecurityConfig,
+ * so other roles receive 403 and must not be shown the control.
+ */
+export const VOTES_API = "/api/votes";
+
+/**
+ * Community Discussion APIs (Phase 7)
+ *
+ * Open to every authenticated role (citizen, cleaner, admin).
+ */
+export const COMMENTS_API = "/api/comments";
+
+
+/**
  * Longer timeout for report creation.
  * Creating a report uploads an image and waits for AI image
  * validation on the backend, so it needs more than the default 10s.

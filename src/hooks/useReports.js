@@ -83,10 +83,27 @@ export default function useReports(fetcher, initialValue = []) {
         setReloadKey((key) => key + 1);
     }, []);
 
+    /**
+     * Re-fetch without showing the loading state.
+     *
+     * Used after an action succeeds - voting or commenting, for instance -
+     * where the data on screen is still valid and only needs to catch up.
+     * Raising the loading flag there would unmount the page and throw away
+     * anything the user had open, such as a half-written reply.
+     */
+    const refresh = useCallback(() => {
+
+        // Same trigger as reload, without disturbing what is rendered
+        setReloadKey((key) => key + 1);
+    }, []);
+
     return {
         data,
         loading,
         error,
         reload,
+        refresh,
     };
 }
+
+

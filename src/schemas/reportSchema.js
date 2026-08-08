@@ -65,7 +65,8 @@ export const createReportSchema = z.object({
     // Full address of the location
     address: z
         .string()
-        .min(5, "Address must contain at least 5 characters"),
+        .min(5, "Address must contain at least 5 characters")
+        .max(255, "Address cannot exceed 255 characters"),
 
     // Optional nearby landmark
     landmark: z
@@ -76,12 +77,14 @@ export const createReportSchema = z.object({
     // City name
     city: z
         .string()
-        .min(2, "City is required"),
+        .min(2, "City is required")
+        .max(100, "City cannot exceed 100 characters"),
 
     // State name
     state: z
         .string()
-        .min(2, "State is required"),
+        .min(2, "State is required")
+        .max(100, "State cannot exceed 100 characters"),
 
     // Indian postal code
     pincode: z

@@ -1,9 +1,12 @@
 import { useCallback } from "react";
 import { Link, useLocation, useParams } from "react-router-dom";
-import { ArrowLeft, ExternalLink, MapPin, FileText } from "lucide-react";
+import { ArrowLeft, ExternalLink, MapPin, FileText, Star } from "lucide-react";
 
 import Alert from "@/components/ui/Alert";
 import StatusBadge from "@/components/reports/StatusBadge";
+import UrgencyRating from "@/components/reports/UrgencyRating";
+import CommentSection from "@/components/comments/CommentSection";
+
 import {
     ReportListSkeleton,
     ReportListError,
@@ -47,12 +50,23 @@ export default function ReportDetailPage() {
     const fetchReport = useCallback(() => getReport(id), [id]);
 
     // Load the record (null until the request finishes)
-    const { data: report, loading, error, reload } = useReports(fetchReport, null);
+    const {
+        data: report,
+        loading,
+        error,
+        reload,
+        refresh,
+    } = useReports(fetchReport, null);
 
     // External maps link built from the stored coordinates
     const mapsUrl = report
         ? buildMapsUrl(report.latitude, report.longitude)
         : null;
+
+    // Once the garbage is cleared there is nothing left to prioritise
+    const resolved =
+        report?.status === "RESOLVED" || report?.status === "COMPLETED";
+
 
     return (
         <div className="mx-auto max-w-4xl space-y-5">
@@ -191,8 +205,20 @@ export default function ReportDetailPage() {
                             </dl>
                         </Section>
 
+                        {/* Citizen voting - decides which reports are attended first */}
+                        <Section title="Community Priority" icon={Star}>
+                            <UrgencyRating
+                                reportId={report.id}
+                                urgencyScore={report.urgencyScore}
+                                resolved={resolved}
+                                // A vote moves both scores, so reload the record
+                                onVoted={refresh}
+                            />
+                        </Section>
+
                         {/* Record metadata */}
                         <Section title="Record Details">
+
                             <dl className="grid gap-x-6 gap-y-3 sm:grid-cols-2">
 
                                 {/* Internal identifier, kept for support queries */}
@@ -204,16 +230,8 @@ export default function ReportDetailPage() {
                                     value={formatDateTime(report.createdAt)}
                                 />
 
-                                {/* Urgency rating, populated in later phases */}
-                                {report.urgencyScore !== null &&
-                                    report.urgencyScore !== undefined && (
-                                        <DetailItem
-                                            label="Priority Rating"
-                                            value={`${Number(report.urgencyScore).toFixed(1)} / 5`}
-                                        />
-                                    )}
-
                                 {/* Public interest score from votes and comments */}
+
                                 {report.engagementScore !== null &&
                                     report.engagementScore !== undefined && (
                                         <DetailItem
@@ -224,8 +242,16 @@ export default function ReportDetailPage() {
                             </dl>
                         </Section>
 
+                        {/* Threaded discussion between citizens, cleaners and admins */}
+                        <CommentSection
+                            reportId={report.id}
+                            // Comments and replies feed the engagement score
+                            onChanged={refresh}
+                        />
+
                         {/* Closing note, as printed on an acknowledgement slip */}
                         <p className="mt-6 border-t border-rule pt-3 text-[11px] leading-relaxed text-ink-muted">
+
                             This is an automatically generated acknowledgement. Please
                             quote the report reference number whenever you contact the
                             community helpdesk about this report.
