@@ -28,6 +28,10 @@ import MyReportsPage from "@/pages/citizen/MyReportsPage";
 import AllReportsPage from "@/pages/reports/AllReportsPage";
 import ReportDetailPage from "@/pages/reports/ReportDetailPage";
 
+// Cleanup Assignment Pages (Phase 8)
+import AvailableTasksPage from "@/pages/cleaner/AvailableTasksPage";
+import MyTasksPage from "@/pages/cleaner/MyTasksPage";
+
 /**
  * Defines all routes for the application.
  * BrowserRouter is wrapped in main.jsx, only Routes should be here.
@@ -60,9 +64,15 @@ export default function AppRoutes() {
                         <Route path="/citizen/history" element={<MyReportsPage />} />
                     </Route>
 
-                    {/* Cleaner-only dashboard */}
+                    {/* Cleaner-only pages */}
                     <Route element={<RoleRoute allowedRole="ROLE_CLEANER" />}>
                         <Route path="/cleaner/dashboard" element={<CleanerDashboard />} />
+
+                        {/* Unclaimed cleanup work open to any cleaner */}
+                        <Route path="/cleaner/available" element={<AvailableTasksPage />} />
+
+                        {/* Work claimed by the logged-in cleaner */}
+                        <Route path="/cleaner/tasks" element={<MyTasksPage />} />
                     </Route>
 
                     {/* Admin-only dashboard */}

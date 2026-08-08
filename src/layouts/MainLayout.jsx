@@ -9,6 +9,7 @@ import {
     Trophy,
     CheckSquare,
     Brush,
+    Search,
 } from "lucide-react";
 
 import SiteHeader from "@/components/layout/SiteHeader";
@@ -56,7 +57,8 @@ export default function MainLayout() {
             : user?.role === "ROLE_CLEANER"
                 ? [
                     { to: "/cleaner/dashboard", label: "Overview", labelHi: "अवलोकन", icon: Brush },
-                    { to: "/cleaner/tasks", label: "Assigned Tasks", icon: CheckSquare },
+                    { to: "/cleaner/available", label: "Available Tasks", labelHi: "उपलब्ध कार्य", icon: Search },
+                    { to: "/cleaner/tasks", label: "My Tasks", labelHi: "मेरे कार्य", icon: CheckSquare },
                     { to: "/reports", label: "All Reports", icon: Globe2 },
                     { to: "/cleaner/leaderboard", label: "Leaderboard", icon: Trophy },
                 ]
@@ -71,6 +73,14 @@ export default function MainLayout() {
     const breadcrumbMap = {
         "/admin/dashboard": [{ label: "Admin Dashboard" }],
         "/cleaner/dashboard": [{ label: "Cleaner Dashboard" }],
+        "/cleaner/available": [
+            { label: "Cleaner Dashboard", to: "/cleaner/dashboard" },
+            { label: "Available Tasks" },
+        ],
+        "/cleaner/tasks": [
+            { label: "Cleaner Dashboard", to: "/cleaner/dashboard" },
+            { label: "My Tasks" },
+        ],
         "/citizen/dashboard": [{ label: "Citizen Dashboard" }],
         "/citizen/report": [
             { label: "Citizen Dashboard", to: "/citizen/dashboard" },

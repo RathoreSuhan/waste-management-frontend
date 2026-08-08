@@ -1,42 +1,207 @@
+import { useMemo } from "react";
+import { Link } from "react-router-dom";
+import {
+    ClipboardList,
+    Loader,
+    CheckCircle2,
+    ArrowRight,
+    Search,
+} from "lucide-react";
+
+import PageHeading from "@/components/common/PageHeading";
 import StatCard from "@/components/common/StatCard";
+import TaskCard from "@/components/cleanup/TaskCard";
+import useAssignments from "@/hooks/useAssignments";
+import { getMyTasks } from "@/services/cleanupService";
+import { ASSIGNMENT_STATUS } from "@/constants/assignmentConstants";
+import {
+    ReportListSkeleton,
+    ReportListError,
+    ReportListEmpty,
+} from "@/components/reports/ReportListStates";
+
+/**
+ * ============================================================================
+ * Cleaner Dashboard (Phase 8)
+ * ============================================================================
+ *
+ * Summary of the cleaner's own workload.
+ * Data comes from GET /api/cleanup-assignments/my-tasks.
+ *
+ * Every figure here is derived from that one response. Nothing is estimated:
+ * a metric like "efficiency" would need a target time the backend does not
+ * record, so the dashboard reports only what the API can actually support.
+ * ============================================================================
+ */
 
 export default function CleanerDashboard() {
-    return (
-        <div className="space-y-6">
-            <section className="grid gap-4 md:grid-cols-3">
-                <StatCard
-                    title="Open Tasks"
-                    value="7"
-                    description="Cleanup jobs waiting in your assigned area."
-                    accent="amber"
-                />
-                <StatCard
-                    title="Completed Today"
-                    value="4"
-                    description="Great progress for the current shift."
-                    accent="emerald"
-                />
-                <StatCard
-                    title="Efficiency"
-                    value="89%"
-                    description="Your completion rate is above average."
-                    accent="blue"
-                />
-            </section>
 
-            <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-                <h2 className="text-xl font-semibold text-slate-900">Today’s Assignments</h2>
-                <div className="mt-4 space-y-3">
-                    <div className="rounded-xl border border-slate-200 p-4">
-                        <p className="font-medium text-slate-800">Street cleanup near Sector 12</p>
-                        <p className="mt-1 text-sm text-slate-500">Priority: High • Due in 2 hours</p>
+    // All assignments for this cleaner, in every state
+    const { assignments, loading, error, reload } = useAssignments(getMyTasks);
+
+    /**
+     * Workload figures, counted from the task list.
+     */
+    const stats = useMemo(() => {
+
+        // Guard against a non-array response
+        const list = Array.isArray(assignments) ? assignments : [];
+
+        const claimed = list.filter(
+            (task) => task.assignmentStatus === ASSIGNMENT_STATUS.CLAIMED
+        ).length;
+
+        const inProgress = list.filter(
+            (task) => task.assignmentStatus === ASSIGNMENT_STATUS.IN_PROGRESS
+        ).length;
+
+        const completed = list.filter(
+            (task) => task.assignmentStatus === ASSIGNMENT_STATUS.COMPLETED
+        ).length;
+
+        return { claimed, inProgress, completed };
+    }, [assignments]);
+
+    /**
+     * Tasks still to be finished, newest first.
+     *
+     * In-progress work is listed before claimed work because it is closer to
+     * completion and only needs a photograph to close.
+     */
+    const activeTasks = useMemo(() => {
+
+        const list = Array.isArray(assignments) ? assignments : [];
+
+        return list
+            .filter(
+                (task) =>
+                    task.assignmentStatus === ASSIGNMENT_STATUS.IN_PROGRESS ||
+                    task.assignmentStatus === ASSIGNMENT_STATUS.CLAIMED
+            )
+            .sort((a, b) => {
+
+                // In-progress first
+                if (a.assignmentStatus !== b.assignmentStatus) {
+                    return a.assignmentStatus === ASSIGNMENT_STATUS.IN_PROGRESS
+                        ? -1
+                        : 1;
+                }
+
+                // Then oldest report first - the longest waiting site matters most
+                return new Date(a.reportCreatedAt) - new Date(b.reportCreatedAt);
+            })
+            .slice(0, 3);
+    }, [assignments]);
+
+    return (
+        <div>
+            <PageHeading
+                title="Cleaner Dashboard"
+                titleHi="सफाई कर्मचारी डैशबोर्ड"
+                subtitle="Your current cleanup workload and recent progress."
+            />
+
+            <div className="space-y-6">
+
+                {/* Key figures */}
+                <section className="grid gap-4 md:grid-cols-3">
+                    <StatCard
+                        title="Claimed"
+                        // Dash while the request is running
+                        value={loading ? "—" : String(stats.claimed)}
+                        description="Tasks you have taken but not yet started."
+                        accent="saffron"
+                        icon={ClipboardList}
+                    />
+                    <StatCard
+                        title="In Progress"
+                        value={loading ? "—" : String(stats.inProgress)}
+                        description="Work underway, awaiting a cleanup photograph."
+                        accent="navy"
+                        icon={Loader}
+                    />
+                    <StatCard
+                        title="Completed"
+                        value={loading ? "—" : String(stats.completed)}
+                        description="Cleanups verified by AI and closed."
+                        accent="green"
+                        icon={CheckCircle2}
+                    />
+                </section>
+
+                {/* Primary call to action, framed as a notice strip */}
+                <section className="flex flex-wrap items-center justify-between gap-4 rounded-gov border border-rule border-l-4 border-l-gov-blue bg-white p-5">
+                    <div>
+                        <h2 className="font-serif text-lg font-bold text-gov-navy">
+                            Find cleanup work in your area
+                        </h2>
+
+                        <p className="mt-1 text-sm text-ink-muted">
+                            Citizens report uncollected waste every day. Claim a task
+                            to add it to your list and begin work.
+                        </p>
                     </div>
-                    <div className="rounded-xl border border-slate-200 p-4">
-                        <p className="font-medium text-slate-800">Drain clearance in local market</p>
-                        <p className="mt-1 text-sm text-slate-500">Priority: Medium • Due later today</p>
+
+                    <Link
+                        to="/cleaner/available"
+                        className="inline-flex items-center gap-2 rounded-gov border border-gov-blue bg-gov-blue px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-gov-blue-dark"
+                    >
+                        <Search size={15} aria-hidden="true" />
+                        Browse Available Tasks
+                    </Link>
+                </section>
+
+                {/* Work still open */}
+                <section className="rounded-gov border border-rule bg-white">
+
+                    {/* Section bar - tinted header strip keeps the grouping clear */}
+                    <div className="flex flex-wrap items-center justify-between gap-3 border-b border-rule bg-paper px-5 py-3">
+                        <h2 className="font-serif text-base font-bold text-gov-navy">
+                            Active Tasks
+                        </h2>
+
+                        <Link
+                            to="/cleaner/tasks"
+                            className="inline-flex items-center gap-1 text-sm font-semibold text-gov-blue hover:underline"
+                        >
+                            View all
+                            <ArrowRight size={13} aria-hidden="true" />
+                        </Link>
                     </div>
-                </div>
-            </section>
+
+                    <div className="p-5">
+
+                        {/* Loading state */}
+                        {loading && <ReportListSkeleton count={2} />}
+
+                        {/* Error state with retry */}
+                        {!loading && error && (
+                            <ReportListError message={error} onRetry={reload} />
+                        )}
+
+                        {/* Data state */}
+                        {!loading && !error && (
+                            activeTasks.length > 0 ? (
+                                <div className="space-y-3">
+                                    {activeTasks.map((assignment) => (
+                                        <TaskCard
+                                            key={assignment.assignmentId}
+                                            assignment={assignment}
+                                        />
+                                    ))}
+                                </div>
+                            ) : (
+                                <ReportListEmpty
+                                    title="No active tasks"
+                                    description="You have no cleanup work in hand. Claim a task to get started."
+                                    actionLabel="Browse Available Tasks"
+                                    actionTo="/cleaner/available"
+                                />
+                            )
+                        )}
+                    </div>
+                </section>
+            </div>
         </div>
     );
 }

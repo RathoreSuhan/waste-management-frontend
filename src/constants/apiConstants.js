@@ -38,6 +38,19 @@ export const VOTES_API = "/api/votes";
  */
 export const COMMENTS_API = "/api/comments";
 
+/**
+ * Cleanup Assignment APIs (Phase 8)
+ *
+ * Used by ROLE_CLEANER to claim pending assignments, start cleanup
+ * work, upload completion proof, and list tasks by lifecycle state.
+ *
+ * Note: these endpoints are NOT role-restricted in the backend
+ * SecurityConfig - they fall through to anyRequest().authenticated().
+ * The service layer rejects non-cleaners with 403, but frontend gating
+ * is not a security control; worth a hasRole("CLEANER") matcher later.
+ */
+export const CLEANUP_ASSIGNMENTS_API = "/api/cleanup-assignments";
+
 
 /**
  * Longer timeout for report creation.
