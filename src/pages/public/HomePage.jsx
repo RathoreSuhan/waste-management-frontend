@@ -11,6 +11,7 @@ import {
 
 import SiteHeader from "@/components/layout/SiteHeader";
 import SiteFooter from "@/components/layout/SiteFooter";
+import HomeSuccessSection from "@/components/feed/HomeSuccessSection";
 import useAuth from "@/hooks/useAuth";
 import { getDashboardPath } from "@/utils/roleRedirect";
 
@@ -178,7 +179,16 @@ export default function HomePage() {
                     </ol>
                 </section>
 
+                {/* ---------------- Community success ---------------- */}
+                {/*
+                  Placed after the process so the reader learns how the
+                  service works before being shown what it has produced.
+                  Renders nothing until there are verified cleanups to show.
+                */}
+                <HomeSuccessSection />
+
                 {/* ---------------- Public notice ---------------- */}
+
                 <section className="mx-auto max-w-7xl px-4 pb-14">
                     <div className="rounded-gov border border-rule border-l-4 border-l-saffron bg-white p-5">
 

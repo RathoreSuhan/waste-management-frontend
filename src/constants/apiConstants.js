@@ -82,7 +82,22 @@ export const REWARDS_API = "/api/rewards";
  */
 export const PUBLIC_FEED_API = "/api/public-feed";
 
-
+/**
+ * Engagement Analytics APIs (Phase 8)
+ *
+ * Engagement score = urgency score + (comments x 2) + (replies x 1),
+ * recalculated by the backend on every vote, comment and reply.
+ *
+ * NOT listed under permitAll() in the backend SecurityConfig, so these
+ * endpoints fall through to anyRequest().authenticated() and cannot be
+ * used on the logged-out homepage.
+ *
+ * Note the trending response carries only counts and ids - no title,
+ * image or timestamp - so it has to be joined against /api/reports to
+ * be renderable. ReportResponse already includes engagementScore, so
+ * the join is needed only for the comment and reply breakdown.
+ */
+export const ANALYTICS_API = "/api/analytics";
 
 /**
  * Longer timeout for report creation.

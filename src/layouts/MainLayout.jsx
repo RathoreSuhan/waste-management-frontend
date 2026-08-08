@@ -11,6 +11,8 @@ import {
     Brush,
     Search,
     Award,
+    Sparkles,
+    TrendingUp,
 } from "lucide-react";
 
 import SiteHeader from "@/components/layout/SiteHeader";
@@ -53,7 +55,15 @@ export default function MainLayout() {
                 { to: "/admin/dashboard", label: "Overview", labelHi: "अवलोकन", icon: LayoutDashboard },
                 { to: "/admin/requests", label: "Requests", labelHi: "अनुरोध", icon: ClipboardList },
                 { to: "/admin/users", label: "Users", labelHi: "उपयोगकर्ता", icon: Users },
-                { to: "/reports", label: "All Reports", icon: Globe2 },
+                /*
+                  end: true is required now that /reports has a child nav
+                  item. NavLink matches by prefix by default, so without it
+                  both "All Reports" and "Engagement" light up together on
+                  /reports/trending.
+                */
+                { to: "/reports", label: "All Reports", icon: Globe2, end: true },
+                { to: "/reports/trending", label: "Engagement", labelHi: "सहभागिता", icon: TrendingUp },
+                { to: "/success-stories", label: "Success Stories", labelHi: "सफलता", icon: Sparkles },
             ]
             : user?.role === "ROLE_CLEANER"
                 ? [
@@ -61,14 +71,18 @@ export default function MainLayout() {
                     { to: "/cleaner/available", label: "Available Tasks", labelHi: "उपलब्ध कार्य", icon: Search },
                     { to: "/cleaner/tasks", label: "My Tasks", labelHi: "मेरे कार्य", icon: CheckSquare },
                     { to: "/cleaner/rewards", label: "My Rewards", labelHi: "मेरे पुरस्कार", icon: Award },
-                    { to: "/reports", label: "All Reports", icon: Globe2 },
+                    { to: "/reports", label: "All Reports", icon: Globe2, end: true },
                     { to: "/cleaner/leaderboard", label: "Leaderboard", icon: Trophy },
+                    { to: "/reports/trending", label: "Engagement", labelHi: "सहभागिता", icon: TrendingUp },
+                    { to: "/success-stories", label: "Success Stories", labelHi: "सफलता", icon: Sparkles },
                 ]
                 : [
                     { to: "/citizen/dashboard", label: "Overview", labelHi: "अवलोकन", icon: LayoutDashboard },
                     { to: "/citizen/report", label: "File a Report", labelHi: "रिपोर्ट दर्ज", icon: FilePlus2 },
                     { to: "/citizen/history", label: "My Reports", labelHi: "मेरी रिपोर्ट", icon: History },
-                    { to: "/reports", label: "Public Reports", labelHi: "सार्वजनिक", icon: Globe2 },
+                    { to: "/reports", label: "Public Reports", labelHi: "सार्वजनिक", icon: Globe2, end: true },
+                    { to: "/reports/trending", label: "Engagement", labelHi: "सहभागिता", icon: TrendingUp },
+                    { to: "/success-stories", label: "Success Stories", labelHi: "सफलता", icon: Sparkles },
                 ];
 
     // Breadcrumb trail per route. Only the trail lives here, not the page title.
@@ -97,6 +111,15 @@ export default function MainLayout() {
             { label: "My Reports" },
         ],
         "/reports": [{ label: "Public Reports" }],
+
+        /*
+          Needed as an exact entry: the prefix test below would otherwise
+          treat /reports/trending as a report detail page.
+        */
+        "/reports/trending": [
+            { label: "Public Reports", to: "/reports" },
+            { label: "Community Engagement" },
+        ],
     };
 
     // Detail routes such as /reports/12 are matched by prefix

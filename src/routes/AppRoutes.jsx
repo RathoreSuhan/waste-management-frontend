@@ -17,6 +17,10 @@ import LoginPage from "@/pages/auth/LoginPage";
 import RegisterPage from "@/pages/auth/RegisterPage";
 import NotFoundPage from "@/pages/common/NotFoundPage";
 
+// Public Feed Pages (Phase 10)
+import SuccessStoriesPage from "@/pages/public/SuccessStoriesPage";
+import SuccessStoryDetailPage from "@/pages/public/SuccessStoryDetailPage";
+
 // Dashboards
 import CitizenDashboard from "@/pages/citizen/CitizenDashboard";
 import CleanerDashboard from "@/pages/cleaner/CleanerDashboard";
@@ -35,6 +39,9 @@ import MyTasksPage from "@/pages/cleaner/MyTasksPage";
 // Reward Pages (Phase 9)
 import MyRewardsPage from "@/pages/cleaner/MyRewardsPage";
 
+// Engagement Analytics Pages (Phase 8)
+import TrendingReportsPage from "@/pages/reports/TrendingReportsPage";
+
 /**
  * Defines all routes for the application.
  * BrowserRouter is wrapped in main.jsx, only Routes should be here.
@@ -46,6 +53,18 @@ export default function AppRoutes() {
         <Routes>
             {/* Landing page - open to everyone, logged in or not */}
             <Route path="/" element={<HomePage />} />
+
+            {/*
+              Completed cleanups - deliberately outside the login guard.
+              The feed endpoints are public, and these pages exist to show
+              the programme's results to people without an account.
+            */}
+            <Route path="/success-stories" element={<SuccessStoriesPage />} />
+            <Route
+                path="/success-stories/:reportId"
+                element={<SuccessStoryDetailPage />}
+            />
+
 
             {/* Guest-only pages - logged-in users are sent to their dashboard */}
             <Route element={<PublicRoute />}>
@@ -88,6 +107,15 @@ export default function AppRoutes() {
 
                     {/* Shared report pages - any logged-in role can view them */}
                     <Route path="/reports" element={<AllReportsPage />} />
+
+                    {/*
+                      Declared before /reports/:id so the intent is obvious.
+                      Router v6 ranks a static segment above a dynamic one
+                      regardless of order, but relying on that silently
+                      would make "trending" look like a report id.
+                    */}
+                    <Route path="/reports/trending" element={<TrendingReportsPage />} />
+
                     <Route path="/reports/:id" element={<ReportDetailPage />} />
                 </Route>
             </Route>
