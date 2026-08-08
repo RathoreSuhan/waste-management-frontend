@@ -51,6 +51,38 @@ export const COMMENTS_API = "/api/comments";
  */
 export const CLEANUP_ASSIGNMENTS_API = "/api/cleanup-assignments";
 
+/**
+ * Reward APIs (Phase 9)
+ *
+ * Points earned by a cleaner for AI-verified cleanups.
+ *
+ * Note the summary path is /me, not /my-summary.
+ *
+ * Same caveat as the assignment endpoints: /api/rewards/** is NOT
+ * role-restricted in the backend SecurityConfig. RewardServiceImpl
+ * rejects non-cleaners, but a hasRole("CLEANER") matcher would be
+ * the correct place to enforce that.
+ */
+export const REWARDS_API = "/api/rewards";
+
+/**
+ * Public Feed APIs (Phase 10)
+ *
+ * AI-verified completed cleanups, shown as community success stories.
+ *
+ * Listed under permitAll() in the backend SecurityConfig, so these
+ * endpoints work while logged out and must never assume a token.
+ *
+ * This is also the only public source of an after-cleanup image:
+ * ReportResponse carries just imageUrl, so a resolved report has to
+ * read its after photograph from here.
+ *
+ * Caveat: the view/like/share endpoints take no user identity and do
+ * no de-duplication, so the counts can be inflated by repeat calls.
+ */
+export const PUBLIC_FEED_API = "/api/public-feed";
+
+
 
 /**
  * Longer timeout for report creation.

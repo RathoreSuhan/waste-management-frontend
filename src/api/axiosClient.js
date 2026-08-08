@@ -38,8 +38,27 @@ const axiosClient = axios.create({
  */
 axiosClient.interceptors.request.use(
     (config) => {
+        // File uploads must never inherit the JSON default above.
+        //
+        // Axios v1 inspects the Content-Type before sending: when the body is
+        // FormData *and* the header says application/json, it quietly converts
+        // the FormData into a JSON string. The file is dropped and Spring
+        // replies "Content-Type 'application/json' is not supported".
+        //
+        // Clearing the header lets the browser build the correct
+        // multipart/form-data value together with its required boundary.
+        if (typeof FormData !== "undefined" && config.data instanceof FormData) {
+            if (typeof config.headers?.setContentType === "function") {
+                // Axios 1.x exposes AxiosHeaders; false removes the header
+                config.headers.setContentType(false);
+            } else {
+                delete config.headers["Content-Type"];
+            }
+        }
+
         // Read JWT token from browser storage
         const token = localStorage.getItem("token");
+
 
         // Only attach token if it exists AND is not empty/whitespace
         // Valid JWT token format: should start with "eyJ" (base64 encoded '{"')

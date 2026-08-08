@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import {
     ClipboardList,
@@ -6,6 +6,7 @@ import {
     CheckCircle2,
     ArrowRight,
     Search,
+    Award,
 } from "lucide-react";
 
 import PageHeading from "@/components/common/PageHeading";
@@ -13,6 +14,7 @@ import StatCard from "@/components/common/StatCard";
 import TaskCard from "@/components/cleanup/TaskCard";
 import useAssignments from "@/hooks/useAssignments";
 import { getMyTasks } from "@/services/cleanupService";
+import { getMyRewardSummary } from "@/services/rewardService";
 import { ASSIGNMENT_STATUS } from "@/constants/assignmentConstants";
 import {
     ReportListSkeleton,
@@ -38,6 +40,40 @@ export default function CleanerDashboard() {
 
     // All assignments for this cleaner, in every state
     const { assignments, loading, error, reload } = useAssignments(getMyTasks);
+
+    // Total reward points, loaded independently of the task list
+    const [rewardPoints, setRewardPoints] = useState(null);
+
+    /**
+     * Fetch the reward total on its own.
+     *
+     * This is deliberately separate from the assignment request: rewards
+     * are a secondary figure, so a failure here must not take down the
+     * workload stats or the active task list. The card simply shows a
+     * dash instead, and the rest of the dashboard is unaffected.
+     */
+    useEffect(() => {
+
+        // Avoids setting state after unmount
+        let active = true;
+
+        getMyRewardSummary()
+            .then((summary) => {
+                if (active) {
+                    setRewardPoints(summary?.totalRewardPoints ?? 0);
+                }
+            })
+            .catch(() => {
+                // Non-fatal - the card falls back to a dash
+                if (active) {
+                    setRewardPoints(null);
+                }
+            });
+
+        return () => {
+            active = false;
+        };
+    }, []);
 
     /**
      * Workload figures, counted from the task list.
@@ -104,7 +140,7 @@ export default function CleanerDashboard() {
             <div className="space-y-6">
 
                 {/* Key figures */}
-                <section className="grid gap-4 md:grid-cols-3">
+                <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                     <StatCard
                         title="Claimed"
                         // Dash while the request is running
@@ -126,6 +162,14 @@ export default function CleanerDashboard() {
                         description="Cleanups verified by AI and closed."
                         accent="green"
                         icon={CheckCircle2}
+                    />
+                    <StatCard
+                        title="Reward Points"
+                        // Dash until the total arrives, or if the request failed
+                        value={rewardPoints === null ? "—" : String(rewardPoints)}
+                        description="Earned across all verified cleanups."
+                        accent="green"
+                        icon={Award}
                     />
                 </section>
 

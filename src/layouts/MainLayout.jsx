@@ -10,6 +10,7 @@ import {
     CheckSquare,
     Brush,
     Search,
+    Award,
 } from "lucide-react";
 
 import SiteHeader from "@/components/layout/SiteHeader";
@@ -59,6 +60,7 @@ export default function MainLayout() {
                     { to: "/cleaner/dashboard", label: "Overview", labelHi: "अवलोकन", icon: Brush },
                     { to: "/cleaner/available", label: "Available Tasks", labelHi: "उपलब्ध कार्य", icon: Search },
                     { to: "/cleaner/tasks", label: "My Tasks", labelHi: "मेरे कार्य", icon: CheckSquare },
+                    { to: "/cleaner/rewards", label: "My Rewards", labelHi: "मेरे पुरस्कार", icon: Award },
                     { to: "/reports", label: "All Reports", icon: Globe2 },
                     { to: "/cleaner/leaderboard", label: "Leaderboard", icon: Trophy },
                 ]
@@ -80,6 +82,10 @@ export default function MainLayout() {
         "/cleaner/tasks": [
             { label: "Cleaner Dashboard", to: "/cleaner/dashboard" },
             { label: "My Tasks" },
+        ],
+        "/cleaner/rewards": [
+            { label: "Cleaner Dashboard", to: "/cleaner/dashboard" },
+            { label: "My Rewards" },
         ],
         "/citizen/dashboard": [{ label: "Citizen Dashboard" }],
         "/citizen/report": [

@@ -32,6 +32,9 @@ import ReportDetailPage from "@/pages/reports/ReportDetailPage";
 import AvailableTasksPage from "@/pages/cleaner/AvailableTasksPage";
 import MyTasksPage from "@/pages/cleaner/MyTasksPage";
 
+// Reward Pages (Phase 9)
+import MyRewardsPage from "@/pages/cleaner/MyRewardsPage";
+
 /**
  * Defines all routes for the application.
  * BrowserRouter is wrapped in main.jsx, only Routes should be here.
@@ -73,6 +76,9 @@ export default function AppRoutes() {
 
                         {/* Work claimed by the logged-in cleaner */}
                         <Route path="/cleaner/tasks" element={<MyTasksPage />} />
+
+                        {/* Points earned for AI-verified cleanups */}
+                        <Route path="/cleaner/rewards" element={<MyRewardsPage />} />
                     </Route>
 
                     {/* Admin-only dashboard */}

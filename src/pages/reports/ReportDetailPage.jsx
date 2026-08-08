@@ -1,11 +1,13 @@
-import { useCallback } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Link, useLocation, useParams } from "react-router-dom";
 import { ArrowLeft, ExternalLink, MapPin, FileText, Star } from "lucide-react";
 
 import Alert from "@/components/ui/Alert";
 import StatusBadge from "@/components/reports/StatusBadge";
 import UrgencyRating from "@/components/reports/UrgencyRating";
+import BeforeAfterImage from "@/components/reports/BeforeAfterImage";
 import CommentSection from "@/components/comments/CommentSection";
+
 
 import {
     ReportListSkeleton,
@@ -14,6 +16,8 @@ import {
 
 import useReports from "@/hooks/useReports";
 import { getReport } from "@/services/reportService";
+import { findPublicFeedByReportId } from "@/services/publicFeedService";
+
 import { formatReportRef } from "@/constants/reportConstants";
 import {
     formatCoordinates,
@@ -66,6 +70,57 @@ export default function ReportDetailPage() {
     // Once the garbage is cleared there is nothing left to prioritise
     const resolved =
         report?.status === "RESOLVED" || report?.status === "COMPLETED";
+
+    /**
+     * Cleanup photograph, tagged with the report it belongs to.
+     *
+     * Keeping the id alongside the url means a slow response for the
+     * previous report can be discarded on sight, so one report can
+     * never briefly display another's photograph.
+     */
+    const [afterImage, setAfterImage] = useState({ reportId: null, url: null });
+
+    /**
+     * Fetch the after-cleanup photograph for a finished report.
+     *
+     * GET /api/reports/{id} returns only imageUrl, so the cleanup
+     * photograph has to come from the public feed, which carries both
+     * urls and is readable without a token.
+     *
+     * The feed holds AI-verified cleanups only, so a report can be
+     * resolved and still have no entry. That is an ordinary outcome:
+     * the lookup stays silent and the page falls back to the single
+     * before image rather than showing an error for a healthy record.
+     */
+    useEffect(() => {
+
+        // Only finished reports can have a cleanup photograph
+        if (!report?.id || !resolved) {
+            return;
+        }
+
+        // Ignores a resolved response once the id has moved on
+        let active = true;
+
+        findPublicFeedByReportId(report.id).then((story) => {
+            if (active) {
+                setAfterImage({
+                    reportId: report.id,
+                    url: story?.afterImageUrl || null,
+                });
+            }
+        });
+
+        return () => {
+            active = false;
+        };
+    }, [report?.id, resolved]);
+
+    // Derived rather than stored, so a stale url is never rendered
+    const afterImageUrl =
+        resolved && afterImage.reportId === report?.id ? afterImage.url : null;
+
+
 
 
     return (
@@ -139,20 +194,13 @@ export default function ReportDetailPage() {
                             {formatRelativeTime(report.createdAt)}
                         </p>
 
-                        {/* Photographic evidence */}
-                        {report.imageUrl && (
-                            <figure className="mt-5">
-                                <img
-                                    src={report.imageUrl}
-                                    alt={`Photographic evidence for ${report.title}`}
-                                    className="w-full rounded-gov border border-rule object-cover"
-                                />
+                        {/* Photographic evidence, paired once cleaned */}
+                        <BeforeAfterImage
+                            beforeUrl={report.imageUrl}
+                            afterUrl={afterImageUrl}
+                            title={report.title}
+                        />
 
-                                <figcaption className="mt-1.5 text-xs text-ink-muted">
-                                    Photograph submitted with the report.
-                                </figcaption>
-                            </figure>
-                        )}
 
                         {/* Description, matching the backend field name */}
                         <Section title="Description" icon={FileText}>
