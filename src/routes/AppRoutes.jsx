@@ -1,5 +1,4 @@
 import {
-    BrowserRouter,
     Routes,
     Route,
 } from "react-router-dom";
@@ -23,108 +22,62 @@ import CitizenDashboard from "@/pages/citizen/CitizenDashboard";
 import CleanerDashboard from "@/pages/cleaner/CleanerDashboard";
 import AdminDashboard from "@/pages/admin/AdminDashboard";
 
+// Report Pages (Phase 2)
+import CreateReportPage from "@/pages/citizen/CreateReportPage";
+import MyReportsPage from "@/pages/citizen/MyReportsPage";
+import AllReportsPage from "@/pages/reports/AllReportsPage";
+import ReportDetailPage from "@/pages/reports/ReportDetailPage";
+
+/**
+ * Defines all routes for the application.
+ * BrowserRouter is wrapped in main.jsx, only Routes should be here.
+ */
 export default function AppRoutes() {
 
     return (
 
-        <BrowserRouter>
+        <Routes>
+            {/* Landing page - open to everyone, logged in or not */}
+            <Route path="/" element={<HomePage />} />
 
-            <Routes>
+            {/* Guest-only pages - logged-in users are sent to their dashboard */}
+            <Route element={<PublicRoute />}>
+                <Route path="/login" element={<LoginPage />} />
+                <Route path="/register" element={<RegisterPage />} />
+            </Route>
 
-                {/* =======================================================
-                        PUBLIC ROUTES
-                ======================================================== */}
+            {/* Protected pages - require login */}
+            <Route element={<ProtectedRoute />}>
+                <Route element={<MainLayout />}>
+                    {/* Citizen-only pages */}
+                    <Route element={<RoleRoute allowedRole="ROLE_CITIZEN" />}>
+                        <Route path="/citizen/dashboard" element={<CitizenDashboard />} />
 
-                <Route element={<PublicRoute />}>
+                        {/* Create a new garbage report */}
+                        <Route path="/citizen/report" element={<CreateReportPage />} />
 
-                    <Route path="/" element={<HomePage />} />
-
-                    <Route
-                        path="/login"
-                        element={<LoginPage />}
-                    />
-
-                    <Route
-                        path="/register"
-                        element={<RegisterPage />}
-                    />
-
-                </Route>
-
-                {/* =======================================================
-                        PROTECTED ROUTES
-                ======================================================== */}
-
-                <Route element={<ProtectedRoute />}>
-
-                    <Route element={<MainLayout />}>
-
-                        {/* Citizen */}
-
-                        <Route
-                            element={
-                                <RoleRoute
-                                    allowedRole="ROLE_CITIZEN"
-                                />
-                            }
-                        >
-
-                            <Route
-                                path="/citizen/dashboard"
-                                element={<CitizenDashboard />}
-                            />
-
-                        </Route>
-
-                        {/* Cleaner */}
-
-                        <Route
-                            element={
-                                <RoleRoute
-                                    allowedRole="ROLE_CLEANER"
-                                />
-                            }
-                        >
-
-                            <Route
-                                path="/cleaner/dashboard"
-                                element={<CleanerDashboard />}
-                            />
-
-                        </Route>
-
-                        {/* Admin */}
-
-                        <Route
-                            element={
-                                <RoleRoute
-                                    allowedRole="ROLE_ADMIN"
-                                />
-                            }
-                        >
-
-                            <Route
-                                path="/admin/dashboard"
-                                element={<AdminDashboard />}
-                            />
-
-                        </Route>
-
+                        {/* Reports created by the logged-in citizen */}
+                        <Route path="/citizen/history" element={<MyReportsPage />} />
                     </Route>
 
+                    {/* Cleaner-only dashboard */}
+                    <Route element={<RoleRoute allowedRole="ROLE_CLEANER" />}>
+                        <Route path="/cleaner/dashboard" element={<CleanerDashboard />} />
+                    </Route>
+
+                    {/* Admin-only dashboard */}
+                    <Route element={<RoleRoute allowedRole="ROLE_ADMIN" />}>
+                        <Route path="/admin/dashboard" element={<AdminDashboard />} />
+                    </Route>
+
+                    {/* Shared report pages - any logged-in role can view them */}
+                    <Route path="/reports" element={<AllReportsPage />} />
+                    <Route path="/reports/:id" element={<ReportDetailPage />} />
                 </Route>
+            </Route>
 
-                {/* 404 */}
-
-                <Route
-                    path="*"
-                    element={<NotFoundPage />}
-                />
-
-            </Routes>
-
-        </BrowserRouter>
-
+            {/* 404 fallback for undefined routes */}
+            <Route path="*" element={<NotFoundPage />} />
+        </Routes>
     );
-
 }

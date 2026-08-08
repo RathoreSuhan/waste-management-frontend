@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Link, useNavigate } from "react-router-dom";
-
+import Alert from "@/components/ui/Alert";
 import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
 
@@ -106,9 +106,13 @@ export default function LoginPage() {
 
                 {serverError && (
 
-                    <div className="mb-5 rounded-lg bg-red-100 px-4 py-3 text-sm text-red-700">
+                    <div className="mb-5">
 
-                        {serverError}
+                        <Alert>
+
+                            {serverError}
+
+                        </Alert>
 
                     </div>
 

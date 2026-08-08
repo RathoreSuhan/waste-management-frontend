@@ -16,4 +16,13 @@ export default defineConfig({
       "@": fileURLToPath(new URL("./src", import.meta.url)),
     },
   },
+
+  server: {
+    // Backend CORS only whitelists http://localhost:5173
+    port: 5173,
+
+    // Fail loudly instead of silently moving to 5174, which would
+    // make every API call fail with a CORS error
+    strictPort: true,
+  },
 });

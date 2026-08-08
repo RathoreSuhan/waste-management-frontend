@@ -1,5 +1,6 @@
 import { Navigate, Outlet } from "react-router-dom";
 import useAuth from "@/hooks/useAuth";
+import { getDashboardPath } from "@/utils/roleRedirect";
 
 /**
  * ============================================================================
@@ -14,7 +15,8 @@ import useAuth from "@/hooks/useAuth";
 
 export default function PublicRoute() {
 
-    const { isAuthenticated, loading } = useAuth();
+    // Session information (user is needed to pick the right dashboard)
+    const { isAuthenticated, user, loading } = useAuth();
 
     if (loading) {
 
@@ -22,10 +24,12 @@ export default function PublicRoute() {
 
     }
 
-    // Already logged in
+    // Already logged in - send them to their own dashboard.
+    // Redirecting to "/" here would loop, because "/" used to be
+    // guarded by this same component.
     if (isAuthenticated) {
 
-        return <Navigate to="/" replace />;
+        return <Navigate to={getDashboardPath(user?.role)} replace />;
 
     }
 

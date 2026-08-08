@@ -1,5 +1,6 @@
 import { Navigate, Outlet } from "react-router-dom";
 import useAuth from "@/hooks/useAuth";
+import { getDashboardPath } from "@/utils/roleRedirect";
 
 /**
  * ============================================================================
@@ -25,10 +26,11 @@ export default function RoleRoute({ allowedRole }) {
 
     }
 
-    // Wrong role
+    // Wrong role - send the user to the dashboard they do have access to,
+    // instead of dropping them on the public landing page.
     if (!user || user.role !== allowedRole) {
 
-        return <Navigate to="/" replace />;
+        return <Navigate to={getDashboardPath(user?.role)} replace />;
 
     }
 

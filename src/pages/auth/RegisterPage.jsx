@@ -1,7 +1,9 @@
+import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Link, useNavigate } from "react-router-dom";
 
+import Alert from "@/components/ui/Alert";
 import Input from "@/components/ui/Input";
 import Button from "@/components/ui/Button";
 import Select from "@/components/ui/Select";
@@ -11,12 +13,11 @@ import * as authService from "@/services/authService";
 
 export default function RegisterPage() {
 
-    // Navigation
     const navigate = useNavigate();
 
-    /**
-     * React Hook Form
-     */
+    const [serverError, setServerError] = useState("");
+    const [successMessage, setSuccessMessage] = useState("");
+
     const {
 
         register,
@@ -56,19 +57,46 @@ export default function RegisterPage() {
 
     });
 
-    // Watch selected role
     const selectedRole = watch("role");
 
-    /**
-     * Form Submission
-     */
     async function onSubmit(data) {
 
-        // Register API
-        await authService.register(data);
+        setServerError("");
+        setSuccessMessage("");
 
-        // Move to login page
-        navigate("/login");
+        try {
+
+            // Clean data before sending to backend
+            // Remove cleaner-specific fields for Citizens
+            const cleanData = { ...data };
+
+            if (cleanData.role === "ROLE_CITIZEN") {
+                // Citizens don't need cleaner type or organization name
+                delete cleanData.cleanerType;
+                delete cleanData.organizationName;
+            }
+
+            const response = await authService.register(cleanData);
+
+            setSuccessMessage(response);
+
+            setTimeout(() => {
+
+                navigate("/login");
+
+            }, 1500);
+
+        } catch (error) {
+
+            setServerError(
+
+                error?.response?.data?.message ||
+
+                "Something went wrong. Please try again."
+
+            );
+
+        }
 
     }
 
@@ -90,193 +118,136 @@ export default function RegisterPage() {
 
                 </p>
 
+                {successMessage && (
+
+                    <div className="mb-5">
+
+                        <Alert type="success">
+
+                            {successMessage}
+
+                        </Alert>
+
+                    </div>
+
+                )}
+
+                {serverError && (
+
+                    <div className="mb-5">
+
+                        <Alert>
+
+                            {serverError}
+
+                        </Alert>
+
+                    </div>
+
+                )}
+
                 <form
-
                     onSubmit={handleSubmit(onSubmit)}
-
                     className="space-y-5"
                 >
 
                     <Input
-
                         label="Full Name"
-
                         placeholder="Enter your name"
-
                         {...register("name")}
-
                         error={errors.name}
-
                     />
 
                     <Input
-
                         label="Email"
-
                         type="email"
-
                         placeholder="Enter email"
-
                         {...register("email")}
-
                         error={errors.email}
-
                     />
 
                     <Input
-
                         label="Password"
-
                         type="password"
-
                         placeholder="Minimum 6 characters"
-
                         {...register("password")}
-
                         error={errors.password}
-
                     />
 
                     <Select
-
                         label="Role"
-
                         {...register("role")}
-
                         error={errors.role}
-
                         options={[
-
                             {
-
                                 label: "Citizen",
-
                                 value: "ROLE_CITIZEN",
-
                             },
-
                             {
-
                                 label: "Cleaner",
-
                                 value: "ROLE_CLEANER",
-
                             },
-
                         ]}
-
                     />
 
-                    {/* Cleaner fields */}
-
                     {selectedRole === "ROLE_CLEANER" && (
-
                         <>
-
                             <Select
-
                                 label="Cleaner Type"
-
                                 {...register("cleanerType")}
-
                                 error={errors.cleanerType}
-
                                 options={[
-
                                     {
-
                                         label: "Select Cleaner Type",
-
                                         value: "",
-
                                     },
-
                                     {
-
                                         label: "Individual",
-
                                         value: "INDIVIDUAL",
-
                                     },
-
                                     {
-
                                         label: "NGO",
-
                                         value: "NGO",
-
                                     },
-
                                     {
-
                                         label: "Private Company",
-
                                         value: "PRIVATE",
-
                                     },
-
                                     {
-
                                         label: "Municipal Corporation",
-
                                         value: "MUNICIPAL",
-
                                     },
-
                                 ]}
-
                             />
 
                             <Input
-
                                 label="Organization Name"
-
                                 placeholder="Optional"
-
                                 {...register("organizationName")}
-
                                 error={errors.organizationName}
-
                             />
-
                         </>
-
                     )}
 
                     <Input
-
                         label="State"
-
                         placeholder="Enter state"
-
                         {...register("state")}
-
                         error={errors.state}
-
                     />
 
                     <Input
-
                         label="City"
-
                         placeholder="Enter city"
-
                         {...register("city")}
-
                         error={errors.city}
-
                     />
 
                     <Button
-
                         type="submit"
-
                         loading={isSubmitting}
-
                     >
-
                         Register
-
                     </Button>
 
                 </form>
@@ -286,15 +257,10 @@ export default function RegisterPage() {
                     Already have an account?
 
                     <Link
-
                         to="/login"
-
                         className="ml-1 font-semibold text-blue-600 hover:underline"
-
                     >
-
                         Login
-
                     </Link>
 
                 </p>
