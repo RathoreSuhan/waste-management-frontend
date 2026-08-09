@@ -68,6 +68,7 @@ export const UI = {
         trending: { en: "Trending", hi: "चर्चित" },
         successStories: { en: "Success Stories", hi: "सफलता" },
         leaderboard: { en: "Leaderboard", hi: "अग्रणी सूची" },
+        environment: { en: "Environment", hi: "पर्यावरण" },
         fileReport: { en: "File a Report", hi: "रिपोर्ट दर्ज करें" },
     },
 

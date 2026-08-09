@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Home, Flame, Sparkles, Trophy, FilePlus2 } from "lucide-react";
+import { Home, Flame, Sparkles, Trophy, Leaf, FilePlus2 } from "lucide-react";
 
 import LoginRequiredDialog from "@/components/auth/LoginRequiredDialog";
 import BiText from "@/components/common/BiText";
@@ -16,7 +16,7 @@ import { UI } from "@/i18n/strings";
  *
  * Primary site navigation, present on every page - public and private.
  *
- * Left:  the four pages anyone can reach.
+ * Left:  the five pages anyone can reach.
  * Right: File a Report, then either login controls or the user's dashboard.
  *
  * The bar is sticky. Only this strip is pinned, not the masthead above it:
@@ -104,6 +104,18 @@ export default function PublicNav() {
                             to="/leaderboard"
                             icon={Trophy}
                             {...UI.nav.leaderboard}
+                        />
+
+                        {/*
+                          Last of the five: the reference material. It sits
+                          after the live pages because someone arriving at
+                          the site is looking for reports first, and the
+                          guidance second.
+                        */}
+                        <NavLink
+                            to="/environment"
+                            icon={Leaf}
+                            {...UI.nav.environment}
                         />
                     </div>
 
@@ -194,7 +206,7 @@ export default function PublicNav() {
  *
  * Takes en / hi so a UI.nav entry can be spread straight in. Below the sm
  * breakpoint both labels are dropped and the icon carries the link on its
- * own - four entries in two languages will not fit a phone width.
+ * own - five entries in two languages will not fit a phone width.
  */
 function NavLink({ to, icon: Icon, en, hi }) {
     return (

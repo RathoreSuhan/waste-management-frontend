@@ -25,6 +25,7 @@ import SuccessStoryDetailPage from "@/pages/public/SuccessStoryDetailPage";
 
 // Leaderboard Page (Phase 11)
 import LeaderboardPage from "@/pages/public/LeaderboardPage";
+import EnvironmentPage from "@/pages/public/EnvironmentPage";
 
 // Dashboards
 import CitizenDashboard from "@/pages/citizen/CitizenDashboard";
@@ -111,6 +112,13 @@ export default function AppRoutes() {
                   their own standing, which the page requests separately.
                 */}
                 <Route path="/leaderboard" element={<LeaderboardPage />} />
+
+                {/*
+                  Waste guidance - segregation, the three R's, the pledge.
+                  Editorial rather than data-driven, so it makes no API
+                  calls and is readable signed out.
+                */}
+                <Route path="/environment" element={<EnvironmentPage />} />
             </Route>
 
 
@@ -221,6 +229,12 @@ export default function AppRoutes() {
                     />
 
                     <Route path="/app/leaderboard" element={<LeaderboardPage />} />
+
+                    {/*
+                      Same page inside the signed-in shell, so a reader who
+                      arrives from the sidebar keeps the sidebar.
+                    */}
+                    <Route path="/app/environment" element={<EnvironmentPage />} />
                 </Route>
 
             </Route>
