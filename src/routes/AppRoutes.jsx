@@ -47,6 +47,16 @@ import MyRewardsPage from "@/pages/cleaner/MyRewardsPage";
 // Engagement Analytics Pages (Phase 8)
 import TrendingReportsPage from "@/pages/reports/TrendingReportsPage";
 
+// Admin Portal Pages (Phase 12)
+import UserManagementPage from "@/pages/admin/UserManagementPage";
+import UserDetailsPage from "@/pages/admin/UserDetailsPage";
+import ReportManagementPage from "@/pages/admin/ReportManagementPage";
+
+// Municipal Corporation Pages (Phase 5)
+import MunicipalCorporationsPage from "@/pages/admin/MunicipalCorporationsPage";
+import CreateMunicipalCorporationPage from "@/pages/admin/CreateMunicipalCorporationPage";
+import EditMunicipalCorporationPage from "@/pages/admin/EditMunicipalCorporationPage";
+
 /**
  * Defines all routes for the application.
  * BrowserRouter is wrapped in main.jsx, only Routes should be here.
@@ -139,9 +149,42 @@ export default function AppRoutes() {
                         <Route path="/cleaner/rewards" element={<MyRewardsPage />} />
                     </Route>
 
-                    {/* Admin-only dashboard */}
+                    {/*
+                      Admin-only pages.
+
+                      Every page here maps to a backend endpoint restricted
+                      to ROLE_ADMIN, so the whole block sits behind a single
+                      guard rather than repeating it per route.
+                    */}
                     <Route element={<RoleRoute allowedRole="ROLE_ADMIN" />}>
+
                         <Route path="/admin/dashboard" element={<AdminDashboard />} />
+
+                        {/* User administration (Phase 12) */}
+                        <Route path="/admin/users" element={<UserManagementPage />} />
+                        <Route path="/admin/users/:id" element={<UserDetailsPage />} />
+
+                        {/* Report administration (Phase 12) */}
+                        <Route path="/admin/reports" element={<ReportManagementPage />} />
+
+                        {/*
+                          Municipal corporations (Phase 5).
+                          "new" is declared before the edit route for the
+                          same reason as /reports/trending above - so the
+                          intent is readable rather than left to ranking.
+                        */}
+                        <Route
+                            path="/admin/municipal-corporations"
+                            element={<MunicipalCorporationsPage />}
+                        />
+                        <Route
+                            path="/admin/municipal-corporations/new"
+                            element={<CreateMunicipalCorporationPage />}
+                        />
+                        <Route
+                            path="/admin/municipal-corporations/edit/:id"
+                            element={<EditMunicipalCorporationPage />}
+                        />
                     </Route>
 
                     {/*

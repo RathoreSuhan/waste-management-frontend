@@ -123,6 +123,57 @@ export const ANALYTICS_API = "/api/analytics";
 export const LEADERBOARD_API = "/api/leaderboard";
 
 /**
+ * Municipal Corporation APIs (Phase 5)
+ *
+ * City-wise municipal contact details, maintained by administrators
+ * instead of being hardcoded in the application.
+ *
+ * The whole path is restricted to hasRole("ADMIN") in the backend
+ * SecurityConfig - GET included - so none of these calls can be made
+ * from a citizen or cleaner screen, nor while logged out.
+ *
+ * Backend endpoints:
+ *   POST   /api/municipal-corporations
+ *   GET    /api/municipal-corporations
+ *   GET    /api/municipal-corporations/{id}
+ *   GET    /api/municipal-corporations/city/{city}
+ *   PUT    /api/municipal-corporations/{id}
+ *   DELETE /api/municipal-corporations/{id}
+ *
+ * Note: DELETE returns a plain string, not the usual JSON envelope,
+ * so its body must not be read as { message }.
+ */
+export const MUNICIPAL_CORPORATIONS_API = "/api/municipal-corporations";
+
+/**
+ * Admin Portal APIs (Phase 12)
+ *
+ * Platform statistics, user administration and report administration.
+ *
+ * /api/admin/** is restricted to hasRole("ADMIN") in the backend
+ * SecurityConfig, so every call here belongs behind the ROLE_ADMIN
+ * route guard.
+ *
+ * Backend endpoints:
+ *   GET    /api/admin/dashboard
+ *   GET    /api/admin/users?role=
+ *   GET    /api/admin/users/search?keyword=&role=
+ *   GET    /api/admin/users/{id}
+ *   PUT    /api/admin/users/{id}/promote
+ *   DELETE /api/admin/users/{id}
+ *   GET    /api/admin/reports/search?keyword=
+ *   GET    /api/admin/reports/filter?status=&city=&state=
+ *   DELETE /api/admin/reports/{id}
+ *
+ * Deleting a report is not a soft delete: the backend also removes the
+ * Cloudinary image, votes, comments, the cleanup assignment, reward
+ * history and feed analytics, and rolls back the cleaner's points.
+ * Nothing about it can be undone from the UI, which is why both delete
+ * actions are placed behind an explicit confirmation step.
+ */
+export const ADMIN_API = "/api/admin";
+
+/**
  * Longer timeout for report creation.
  * Creating a report uploads an image and waits for AI image
  * validation on the backend, so it needs more than the default 10s.

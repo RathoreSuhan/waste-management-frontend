@@ -6,6 +6,7 @@ import {
     Globe2,
     ClipboardList,
     Users,
+    Building2,
     Trophy,
     CheckSquare,
     Brush,
@@ -53,8 +54,23 @@ export default function MainLayout() {
         user?.role === "ROLE_ADMIN"
             ? [
                 { to: "/admin/dashboard", label: "Overview", labelHi: "अवलोकन", icon: LayoutDashboard },
-                { to: "/admin/requests", label: "Requests", labelHi: "अनुरोध", icon: ClipboardList },
-                { to: "/admin/users", label: "Users", labelHi: "उपयोगकर्ता", icon: Users },
+
+                /*
+                  Points at the report administration screen. The earlier
+                  /admin/requests entry had no route behind it, so it fell
+                  through to the 404 page.
+                */
+                { to: "/admin/reports", label: "Manage Reports", labelHi: "शिकायत प्रबंधन", icon: ClipboardList },
+
+                { to: "/admin/users", label: "Manage Users", labelHi: "उपयोगकर्ता", icon: Users },
+
+                {
+                    to: "/admin/municipal-corporations",
+                    label: "Municipal Bodies",
+                    labelHi: "नगर निगम",
+                    icon: Building2,
+                    // "new" and "edit" are children, so exact matching is not wanted here
+                },
                 /*
                   end: true is required now that /reports has a child nav
                   item. NavLink matches by prefix by default, so without it
@@ -97,6 +113,28 @@ export default function MainLayout() {
     // Breadcrumb trail per route. Only the trail lives here, not the page title.
     const breadcrumbMap = {
         "/admin/dashboard": [{ label: "Admin Dashboard" }],
+
+        /* Admin portal (Phase 12) */
+        "/admin/users": [
+            { label: "Admin Dashboard", to: "/admin/dashboard" },
+            { label: "User Administration" },
+        ],
+        "/admin/reports": [
+            { label: "Admin Dashboard", to: "/admin/dashboard" },
+            { label: "Report Administration" },
+        ],
+
+        /* Municipal corporations (Phase 5) */
+        "/admin/municipal-corporations": [
+            { label: "Admin Dashboard", to: "/admin/dashboard" },
+            { label: "Municipal Corporations" },
+        ],
+        "/admin/municipal-corporations/new": [
+            { label: "Admin Dashboard", to: "/admin/dashboard" },
+            { label: "Municipal Corporations", to: "/admin/municipal-corporations" },
+            { label: "Register Corporation" },
+        ],
+
         "/cleaner/dashboard": [{ label: "Cleaner Dashboard" }],
         "/cleaner/available": [
             { label: "Cleaner Dashboard", to: "/cleaner/dashboard" },
@@ -131,15 +169,43 @@ export default function MainLayout() {
         ],
     };
 
-    // Detail routes such as /reports/12 are matched by prefix
-    const trail =
-        breadcrumbMap[location.pathname] ||
-        (location.pathname.startsWith("/reports/")
-            ? [
+    /*
+      Detail routes carry an id in the path, so they cannot be listed
+      above and are matched by prefix instead. Ordered most specific
+      first, since /admin/users/5 also starts with /admin.
+    */
+    const prefixTrails = [
+        {
+            prefix: "/admin/municipal-corporations/edit/",
+            trail: [
+                { label: "Admin Dashboard", to: "/admin/dashboard" },
+                { label: "Municipal Corporations", to: "/admin/municipal-corporations" },
+                { label: "Amend Corporation" },
+            ],
+        },
+        {
+            prefix: "/admin/users/",
+            trail: [
+                { label: "Admin Dashboard", to: "/admin/dashboard" },
+                { label: "User Administration", to: "/admin/users" },
+                { label: "Account Record" },
+            ],
+        },
+        {
+            prefix: "/reports/",
+            trail: [
                 { label: "Public Reports", to: "/reports" },
                 { label: "Report Details" },
-            ]
-            : [{ label: "Dashboard" }]);
+            ],
+        },
+    ];
+
+    const trail =
+        breadcrumbMap[location.pathname] ||
+        prefixTrails.find((entry) =>
+            location.pathname.startsWith(entry.prefix)
+        )?.trail ||
+        [{ label: "Dashboard" }];
 
     return (
         <div className="flex min-h-screen flex-col bg-paper">
