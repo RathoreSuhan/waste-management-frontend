@@ -64,6 +64,7 @@ export default function MainLayout() {
                 { to: "/reports", label: "All Reports", icon: Globe2, end: true },
                 { to: "/reports/trending", label: "Engagement", labelHi: "सहभागिता", icon: TrendingUp },
                 { to: "/success-stories", label: "Success Stories", labelHi: "सफलता", icon: Sparkles },
+                { to: "/leaderboard", label: "Leaderboard", labelHi: "अग्रणी सूची", icon: Trophy },
             ]
             : user?.role === "ROLE_CLEANER"
                 ? [
@@ -72,9 +73,14 @@ export default function MainLayout() {
                     { to: "/cleaner/tasks", label: "My Tasks", labelHi: "मेरे कार्य", icon: CheckSquare },
                     { to: "/cleaner/rewards", label: "My Rewards", labelHi: "मेरे पुरस्कार", icon: Award },
                     { to: "/reports", label: "All Reports", icon: Globe2, end: true },
-                    { to: "/cleaner/leaderboard", label: "Leaderboard", icon: Trophy },
                     { to: "/reports/trending", label: "Engagement", labelHi: "सहभागिता", icon: TrendingUp },
                     { to: "/success-stories", label: "Success Stories", labelHi: "सफलता", icon: Sparkles },
+                    /*
+                      Points at /leaderboard, not /cleaner/leaderboard.
+                      The rankings are public and there is one page for
+                      everyone; the earlier path had no route behind it.
+                    */
+                    { to: "/leaderboard", label: "Leaderboard", labelHi: "अग्रणी सूची", icon: Trophy },
                 ]
                 : [
                     { to: "/citizen/dashboard", label: "Overview", labelHi: "अवलोकन", icon: LayoutDashboard },
@@ -83,6 +89,7 @@ export default function MainLayout() {
                     { to: "/reports", label: "Public Reports", labelHi: "सार्वजनिक", icon: Globe2, end: true },
                     { to: "/reports/trending", label: "Engagement", labelHi: "सहभागिता", icon: TrendingUp },
                     { to: "/success-stories", label: "Success Stories", labelHi: "सफलता", icon: Sparkles },
+                    { to: "/leaderboard", label: "Leaderboard", labelHi: "अग्रणी सूची", icon: Trophy },
                 ];
 
     // Breadcrumb trail per route. Only the trail lives here, not the page title.

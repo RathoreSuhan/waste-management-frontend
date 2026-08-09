@@ -78,7 +78,7 @@ export default function SuccessStoriesPage() {
                     {!loading && !error && stories.length === 0 && (
                         <ReportListEmpty
                             title="No cleanups published yet"
-                            message="Verified cleanups will appear here as reports are resolved."
+                            description="Verified cleanups will appear here as reports are resolved."
                         />
                     )}
 

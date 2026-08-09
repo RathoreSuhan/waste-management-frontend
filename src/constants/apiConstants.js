@@ -100,6 +100,29 @@ export const PUBLIC_FEED_API = "/api/public-feed";
 export const ANALYTICS_API = "/api/analytics";
 
 /**
+ * Leaderboard APIs (Phase 11)
+ *
+ * Live cleaner rankings, computed on demand from users, cleanup
+ * assignments and reward history. There is no leaderboard table, so
+ * the numbers are always current and nothing needs refreshing.
+ *
+ * The three ranking endpoints ARE listed under permitAll() in the
+ * backend SecurityConfig:
+ *   GET /api/leaderboard              -> national top 10
+ *   GET /api/leaderboard/state/{state} -> state top 10
+ *   GET /api/leaderboard/city/{city}   -> city top 10
+ *
+ * /api/leaderboard/me is the exception: it falls through to
+ * anyRequest().authenticated(), and LeaderboardServiceImpl further
+ * rejects any role other than ROLE_CLEANER, so it must only be called
+ * from a signed-in cleaner's screen.
+ *
+ * Ranking is competition style - equal points share a rank and the
+ * next rank skips - so duplicate rank numbers are correct, not a bug.
+ */
+export const LEADERBOARD_API = "/api/leaderboard";
+
+/**
  * Longer timeout for report creation.
  * Creating a report uploads an image and waits for AI image
  * validation on the backend, so it needs more than the default 10s.

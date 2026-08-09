@@ -21,6 +21,9 @@ import NotFoundPage from "@/pages/common/NotFoundPage";
 import SuccessStoriesPage from "@/pages/public/SuccessStoriesPage";
 import SuccessStoryDetailPage from "@/pages/public/SuccessStoryDetailPage";
 
+// Leaderboard Page (Phase 11)
+import LeaderboardPage from "@/pages/public/LeaderboardPage";
+
 // Dashboards
 import CitizenDashboard from "@/pages/citizen/CitizenDashboard";
 import CleanerDashboard from "@/pages/cleaner/CleanerDashboard";
@@ -64,6 +67,15 @@ export default function AppRoutes() {
                 path="/success-stories/:reportId"
                 element={<SuccessStoryDetailPage />}
             />
+
+            {/*
+              Cleaner rankings - also outside the guard.
+              The three ranking endpoints are permitAll in the backend, and
+              public recognition of this work is the point of the module.
+              A signed-in cleaner additionally sees their own standing,
+              which the page requests separately.
+            */}
+            <Route path="/leaderboard" element={<LeaderboardPage />} />
 
 
             {/* Guest-only pages - logged-in users are sent to their dashboard */}
