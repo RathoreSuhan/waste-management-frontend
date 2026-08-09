@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { Search } from "lucide-react";
 
 import PageHeading from "@/components/common/PageHeading";
+import PageContainer from "@/components/layout/PageContainer";
 import ReportCard from "@/components/reports/ReportCard";
 import {
     ReportListSkeleton,
@@ -72,7 +73,7 @@ export default function AllReportsPage() {
     }, [reports, search, statusFilter]);
 
     return (
-        <div className="space-y-6">
+        <PageContainer className="space-y-6">
 
             {/* Page heading */}
             <PageHeading
@@ -167,6 +168,6 @@ export default function AllReportsPage() {
                     />
                 )
             )}
-        </div>
+        </PageContainer>
     );
 }

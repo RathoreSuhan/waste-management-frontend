@@ -3,6 +3,7 @@ import { Link, useLocation, useParams } from "react-router-dom";
 import { ArrowLeft, ExternalLink, MapPin, FileText, Star } from "lucide-react";
 
 import Alert from "@/components/ui/Alert";
+import PageContainer from "@/components/layout/PageContainer";
 import StatusBadge from "@/components/reports/StatusBadge";
 import UrgencyRating from "@/components/reports/UrgencyRating";
 import BeforeAfterImage from "@/components/reports/BeforeAfterImage";
@@ -124,7 +125,7 @@ export default function ReportDetailPage() {
 
 
     return (
-        <div className="mx-auto max-w-4xl space-y-5">
+        <PageContainer maxWidth="max-w-4xl" className="space-y-5">
 
             {/* Back navigation */}
             <Link
@@ -307,7 +308,7 @@ export default function ReportDetailPage() {
                     </div>
                 </article>
             )}
-        </div>
+        </PageContainer>
     );
 }
 

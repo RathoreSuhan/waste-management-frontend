@@ -21,6 +21,15 @@ import { formatRelativeTime } from "@/utils/formatters";
  * sits behind a login, and sending a visitor from public content to a
  * sign-in form would be a poor greeting for the one page meant to show
  * outsiders the programme works.
+ *
+ * The whole card opens the story, using the stretched-link pattern: the
+ * title anchor is given an invisible overlay covering the card rather than
+ * the card being wrapped in a link. The footer holds real like and share
+ * buttons, and nesting those inside an anchor would be invalid markup and
+ * would navigate away when someone only meant to tap the heart. This way
+ * there is still exactly one link per card, named by the story title, and
+ * keyboard focus continues to land on the title rather than on a large
+ * anonymous region.
  * ============================================================================
  */
 
@@ -33,7 +42,13 @@ export default function SuccessStoryCard({ story }) {
         "Location not recorded";
 
     return (
-        <article className="overflow-hidden rounded-gov border border-rule bg-white transition-shadow hover:shadow-sm">
+        /*
+          relative anchors the title's overlay to the card.
+          focus-within mirrors the hover treatment so keyboard users get the
+          same "this is one clickable unit" cue that pointer users do.
+        */
+        <article className="group relative overflow-hidden rounded-gov border border-rule bg-white transition-colors hover:border-gov-blue/60 hover:bg-gov-blue/[0.02] focus-within:border-gov-blue/60">
+
 
             {/* Photographic evidence, shared with the report detail page */}
             <div className="px-4 pt-4">
@@ -51,15 +66,19 @@ export default function SuccessStoryCard({ story }) {
 
             <div className="p-4">
 
-                {/* Title links through to the full story */}
+                {/*
+                  Title link, stretched over the card by the after: overlay so
+                  a click anywhere outside the footer opens the story.
+                */}
                 <h3 className="font-serif text-lg leading-snug font-bold text-gov-navy">
                     <Link
                         to={`/success-stories/${story.reportId}`}
-                        className="hover:text-gov-blue hover:underline"
+                        className="after:absolute after:inset-0 after:content-[''] group-hover:text-gov-blue hover:underline"
                     >
                         {story.reportTitle}
                     </Link>
                 </h3>
+
 
                 {/* Where the cleanup happened */}
                 <p className="mt-1 inline-flex items-center gap-1 text-sm text-ink-muted">
@@ -92,8 +111,13 @@ export default function SuccessStoryCard({ story }) {
                     )}
                 </dl>
 
-                {/* Verification and appreciation */}
-                <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-rule pt-3">
+                {/*
+                  Lifted above the title's overlay, otherwise the invisible
+                  link would sit over the like and share buttons and swallow
+                  their clicks.
+                */}
+                <div className="relative z-10 mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-rule pt-3">
+
                     <AiVerifiedBadge
                         verified={story.aiVerified}
                         confidence={story.aiConfidence}

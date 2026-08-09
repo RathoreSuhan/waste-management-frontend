@@ -18,7 +18,22 @@
 | e.g. --color-gov-navy becomes bg-gov-navy / text-gov-navy / border-gov-navy
 */
 @theme {
-  /* Masthead and sidebar - deep institutional navy */
+  /*
+  | Brand palette
+  |
+  | The portal leads with institutional blue, the register Indian civic
+  | portals have long used for their mastheads and primary actions. Green
+  | is kept, but reserved for meaning rather than identity: it marks a
+  | report as resolved or a cleanup as verified, and it reads as a status
+  | precisely because it is not also the site's furniture.
+  |
+  | Every value below is chosen for contrast, not only for appearance:
+  |   gov-navy  white text ~13:1   (surfaces: masthead, sidebar, bands)
+  |   gov-blue  white text ~7.7:1  (buttons) and ~7.7:1 on paper (links)
+  |   brand-bright decorative only - too light to carry text either way
+  */
+
+  /* Dark surface - masthead, sidebar, header bands */
   --color-gov-navy: #0b2b4e;
 
   /* Primary actions and links */
@@ -26,6 +41,27 @@
 
   /* Hover state for primary actions */
   --color-gov-blue-dark: #0a3a63;
+
+  /*
+  | Brand aliases.
+  |
+  | Phase 10 introduced brand-deep / brand / brand-dark, and the hero
+  | bands and newer components refer to them by those names. They are
+  | aliases of the tokens above rather than separate colours, so the
+  | palette keeps a single source of truth and no page can drift out of
+  | step with the rest of the portal.
+  */
+  --color-brand-deep: var(--color-gov-navy);
+  --color-brand: var(--color-gov-blue);
+  --color-brand-dark: var(--color-gov-blue-dark);
+
+  /*
+  | Vibrancy for gradients and decorative fills.
+  | Never place text on this, and never use it as text: at 3.0:1 on
+  | white it fails the contrast requirement in both directions.
+  */
+  --color-brand-bright: #3b82f6;
+
 
   /* Tricolour saffron - accents and active markers */
   --color-saffron: #ff9933;
@@ -63,11 +99,12 @@
   /* Ashoka Chakra navy - used in the tricolour rule */
   --color-chakra: #000080;
 
-  /* Page background - a paper-like off white */
+  /* Page background - a paper-like off white, cooled towards the blue */
   --color-paper: #f4f6f8;
 
   /* Hairline rules and card borders */
   --color-rule: #d5dbe1;
+
 
   /* Body copy */
   --color-ink: #1f2937;
@@ -160,15 +197,20 @@ html.text-lg-scale {
 
 /*
 | Hero band
-| Navy through to a deeper teal, so the large banners carry some depth
-| instead of reading as one flat rectangle of navy.
+| Deep navy opening into the primary blue, so the large banners carry
+| some depth instead of reading as one flat rectangle.
+|
+| The gradient stops short of --color-brand-bright: the lightest point
+| here still holds white text at roughly 7.7:1, and going brighter would
+| push the headings towards the contrast limit.
 */
 .hero-band {
   background: linear-gradient(
     135deg,
     var(--color-gov-navy) 0%,
-    #103a63 55%,
-    #0d4f63 100%
+    #123f6b 55%,
+    var(--color-gov-blue) 100%
   );
 }
+
 

@@ -2,9 +2,39 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <!--
+      Site marks.
+
+      favicon.svg is a small hand-drawn rendition of the platform logo,
+      because public/logo.svg is a 1.4 MB traced raster that would be
+      fetched on every page load and would be illegible at 16px. The full
+      logo is still used where there is room for it: the masthead, the
+      home screen icon, and link previews.
+    -->
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="apple-touch-icon" href="/logo.svg" />
+
     <title>Clean Bharat | Community Waste Reporting</title>
+
+    <meta
+      name="description"
+      content="Report waste in your neighbourhood, follow the cleanup, and see the before and after. A community run waste reporting platform."
+    />
+
+    <!-- Carries the platform mark into shared links -->
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Clean Bharat | Community Waste Reporting" />
+    <meta
+      property="og:description"
+      content="Report waste in your neighbourhood, follow the cleanup, and see the before and after."
+    />
+    <meta property="og:image" content="/logo.svg" />
+    <meta name="twitter:card" content="summary" />
+
+    <!-- Tints the browser chrome on mobile to match the masthead -->
+    <meta name="theme-color" content="#0b2b4e" />
   </head>
   <body>
     <div id="root"></div>

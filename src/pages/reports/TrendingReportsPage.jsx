@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { TrendingUp } from "lucide-react";
 
-import PageHeading from "@/components/common/PageHeading";
 import ReportCard from "@/components/reports/ReportCard";
 import EngagementBar from "@/components/reports/EngagementBar";
 import SortControl from "@/components/reports/SortControl";
@@ -147,72 +147,98 @@ export default function TrendingReportsPage() {
     const showRank = sortMode === SORT_ENGAGEMENT_DESC;
 
     return (
-        <div>
-            <PageHeading
-                title="Trending Reports"
-                titleHi="चर्चित रिपोर्ट"
+        <>
+            {/*
+              Heading band, matching the other public pages. It is placed
+              outside the content container so the colour runs the full
+              width of the viewport, as PublicLayout does not constrain
+              its main element.
+            */}
+            <section className="hero-band border-b border-rule text-white">
 
-                subtitle="Reports ranked by citizen urgency votes and discussion activity. A report scores its average urgency rating, two points for every comment and one for every reply."
-            />
+                <div className="mx-auto max-w-7xl px-4 py-10">
 
-            {loading ? (
-                <ReportListSkeleton count={4} />
+                    <p className="inline-flex items-center gap-1.5 text-[11px] font-semibold tracking-[0.2em] text-white/70 uppercase">
+                        <TrendingUp size={12} aria-hidden="true" />
+                        Community Engagement Register
+                    </p>
 
-            ) : error ? (
-                <ReportListError message={error} onRetry={reload} />
+                    <h1 className="mt-1 font-serif text-3xl leading-tight font-bold">
+                        Trending Reports
+                        {" "}
+                        <span className="text-white/70">चर्चित रिपोर्ट</span>
+                    </h1>
 
-            ) : (
-                <>
-                    <SortControl
-                        sortMode={sortMode}
-                        onSortChange={setSortMode}
-                        statusFilter={statusFilter}
-                        onStatusChange={setStatusFilter}
-                        resultCount={visibleReports.length}
-                    />
+                    <p className="mt-2 max-w-2xl text-sm leading-relaxed text-white/80">
+                        Reports ranked by citizen urgency votes and discussion
+                        activity. A report scores its average urgency rating, two
+                        points for every comment and one for every reply.
+                    </p>
+                </div>
+            </section>
 
-                    {/*
-                      Named separately from the error state: the ranking is
-                      correct, only the comment counts are missing, and
-                      saying so is better than silently dropping them.
-                    */}
-                    {analyticsFailed && (
-                        <p className="mb-3 rounded-gov border border-rule bg-paper px-3 py-2 text-xs text-ink-muted">
-                            Discussion counts are unavailable right now. Engagement scores below are still accurate.
-                        </p>
-                    )}
+            {/* Ranked list */}
+            <section className="mx-auto max-w-7xl px-4 py-10">
 
-                    {visibleReports.length === 0 ? (
-                        <ReportListEmpty
-                            title={
-                                reports.length === 0
-                                    ? "No reports on record"
-                                    : "No reports match this filter"
-                            }
-                            description={
-                                reports.length === 0
-                                    ? "Once citizens begin filing reports, the most discussed ones will appear here."
-                                    : "No report currently holds this status. Try another status or view all records."
-                            }
+                {loading ? (
+                    <ReportListSkeleton count={4} />
+
+                ) : error ? (
+                    <ReportListError message={error} onRetry={reload} />
+
+                ) : (
+                    <>
+                        <SortControl
+                            sortMode={sortMode}
+                            onSortChange={setSortMode}
+                            statusFilter={statusFilter}
+                            onStatusChange={setStatusFilter}
+                            resultCount={visibleReports.length}
                         />
-                    ) : (
-                        <ul className="space-y-3">
-                            {visibleReports.map((report, index) => (
-                                <li key={report.id}>
-                                    {/* The card is the link; the bar sits outside it */}
-                                    <ReportCard report={report} />
 
-                                    <EngagementBar
-                                        report={report}
-                                        analytics={analyticsMap.get(report.id)}
-                                        rank={showRank ? index + 1 : null}
-                                    />
-                                </li>
-                            ))}
-                        </ul>
-                    )}
-                </>
-            )}
-        </div>
+                        {/*
+                          Named separately from the error state: the ranking is
+                          correct, only the comment counts are missing, and
+                          saying so is better than silently dropping them.
+                        */}
+                        {analyticsFailed && (
+                            <p className="mb-3 rounded-gov border border-rule bg-paper px-3 py-2 text-xs text-ink-muted">
+                                Discussion counts are unavailable right now. Engagement scores below are still accurate.
+                            </p>
+                        )}
+
+                        {visibleReports.length === 0 ? (
+                            <ReportListEmpty
+                                title={
+                                    reports.length === 0
+                                        ? "No reports on record"
+                                        : "No reports match this filter"
+                                }
+                                description={
+                                    reports.length === 0
+                                        ? "Once citizens begin filing reports, the most discussed ones will appear here."
+                                        : "No report currently holds this status. Try another status or view all records."
+                                }
+                            />
+                        ) : (
+                            <ul className="space-y-3">
+                                {visibleReports.map((report, index) => (
+                                    <li key={report.id}>
+                                        {/* The card is the link; the bar sits outside it */}
+                                        <ReportCard report={report} />
+
+                                        <EngagementBar
+                                            report={report}
+                                            analytics={analyticsMap.get(report.id)}
+                                            rank={showRank ? index + 1 : null}
+                                        />
+                                    </li>
+                                ))}
+                            </ul>
+                        )}
+                    </>
+                )}
+            </section>
+        </>
     );
 }

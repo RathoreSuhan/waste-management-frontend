@@ -114,9 +114,10 @@ export default function SiteHeader() {
             <div className="border-b border-rule bg-white">
                 <div className="mx-auto flex max-w-7xl items-center gap-4 px-4 py-4">
 
-                    {/* Emblem - drawn inline so there is no external image dependency */}
+                    {/* Platform mark */}
                     <Link to="/" className="flex items-center gap-4">
-                        <CivicMark />
+                        <PlatformMark />
+
 
                         <div>
                             {/* Devanagari gloss of the platform name sits above the English */}
@@ -155,42 +156,34 @@ export default function SiteHeader() {
 /**
  * Platform mark.
  *
- * A leaf with a sweeping stroke beneath it - growth plus cleaning. Deliberately
- * not an emblem, chakra or seal, since those imply state authority this project
- * does not have. Inline SVG stays crisp at any text size.
+ * The project logo from public/logo.svg, cropped to a circle.
+ *
+ * Served from public/ rather than imported, so the 1.4 MB file is fetched
+ * once by the browser and cached instead of being inlined into the bundle.
+ *
+ * The circular crop is doing real work here: the artwork carries a square
+ * off-white plate and its viewBox is offset from the origin, so dropping
+ * it in unframed would sit off-centre against the white masthead. The
+ * fixed-size wrapper with overflow-hidden and object-cover trims the plate
+ * and centres the mark.
+ *
+ * Sized in px rather than rem: the A- / A / A+ controls scale the root
+ * font size, and a mark that grew with the text would start to crowd the
+ * platform name beside it.
  */
-function CivicMark() {
+function PlatformMark() {
 
     return (
-        <svg
-            width="44"
-            height="44"
-            viewBox="0 0 44 44"
-            role="img"
-            aria-label="Clean Bharat logo"
-            className="shrink-0"
-        >
-            {/* Navy disc with a white field inside */}
-            <circle cx="22" cy="22" r="20" fill="#0B2B4E" />
-            <circle cx="22" cy="22" r="16" fill="#fff" />
-
-            {/* Leaf - the environmental half of the idea */}
-            <path
-                d="M22 10 C29.5 14.5 30.5 23 22 31 C13.5 23 14.5 14.5 22 10 Z"
-                fill="#138808"
+        <span className="block h-11 w-11 shrink-0 overflow-hidden rounded-full border border-rule bg-white">
+            <img
+                src="/logo.svg"
+                alt="Clean Bharat logo"
+                width="44"
+                height="44"
+                className="h-full w-full object-cover"
             />
-
-            {/* Midrib, so the shape reads as a leaf rather than a droplet */}
-            <path d="M22 13 V29" stroke="#fff" strokeWidth="1.2" />
-
-            {/* Saffron sweep - the cleaning half */}
-            <path
-                d="M10 28 Q22 37 34 28"
-                fill="none"
-                stroke="#FF9933"
-                strokeWidth="2.6"
-                strokeLinecap="round"
-            />
-        </svg>
+        </span>
     );
 }
+
+
