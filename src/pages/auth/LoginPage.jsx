@@ -2,15 +2,31 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Link, useLocation, useNavigate } from "react-router-dom";
+import { LogIn } from "lucide-react";
 
 import Alert from "@/components/ui/Alert";
 import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
+import AuthShell from "@/components/auth/AuthShell";
 
 import useAuth from "@/hooks/useAuth";
 
 import { loginSchema } from "@/schemas/authSchema";
 import { getDashboardPath } from "@/utils/roleRedirect";
+
+import background from "@/assets/background2.jpg";
+
+/**
+ * ============================================================================
+ * Login Page
+ * ============================================================================
+ *
+ * Sign-in form, framed by AuthShell over background2.
+ *
+ * Calls POST /api/auth/login through the auth context, which stores the
+ * token and role for the rest of the session.
+ * ============================================================================
+ */
 
 export default function LoginPage() {
 
@@ -109,109 +125,119 @@ export default function LoginPage() {
 
     return (
 
-        <div className="min-h-screen flex items-center justify-center bg-gray-100">
+        <AuthShell
+            image={background}
+            titleHindi="पोर्टल में प्रवेश"
+            title="Sign In"
+            subtitle="Access your Clean Bharat account"
+            footer={
+                <>
+                    Don't have an account?
+                    <Link
+                        to="/register"
+                        className="ml-1 font-semibold text-gov-blue hover:underline"
+                    >
+                        Register here
+                    </Link>
+                </>
+            }
+        >
 
-            <div className="w-full max-w-md rounded-xl bg-white p-8 shadow-lg">
+            {/*
+              Explains why the form appeared, for a reader who was pushed
+              here mid-task by LoginRequiredDialog rather than choosing
+              to sign in.
+            */}
+            {redirectTo && !serverError && (
+                <div className="mb-5">
+                    <Alert type="info" title="Sign In to Continue">
+                        You will be returned to the page you were reading once you
+                        have signed in.
+                    </Alert>
+                </div>
+            )}
 
-                <h1 className="mb-2 text-center text-3xl font-bold text-blue-700">
+            {/* Backend Error */}
 
-                    Welcome Back
+            {serverError && (
 
-                </h1>
+                <div className="mb-5">
 
-                <p className="mb-6 text-center text-gray-500">
+                    <Alert>
 
-                    Login to Clean Bharat
+                        {serverError}
 
-                </p>
+                    </Alert>
 
-                {/* Backend Error */}
+                </div>
 
-                {serverError && (
+            )}
 
-                    <div className="mb-5">
+            <form
 
-                        <Alert>
+                onSubmit={handleSubmit(onSubmit)}
 
-                            {serverError}
+                className="space-y-5"
 
-                        </Alert>
+            >
 
-                    </div>
+                <Input
 
-                )}
+                    label="Email"
 
-                <form
+                    type="email"
 
-                    onSubmit={handleSubmit(onSubmit)}
+                    placeholder="Enter your email"
 
-                    className="space-y-5"
+                    autoComplete="email"
+
+                    {...register("email")}
+
+                    error={errors.email}
+
+                />
+
+                <Input
+
+                    label="Password"
+
+                    type="password"
+
+                    placeholder="Enter your password"
+
+                    autoComplete="current-password"
+
+                    {...register("password")}
+
+                    error={errors.password}
+
+                />
+
+                <Button
+
+                    type="submit"
+
+                    loading={isSubmitting}
+
+                    className="w-full"
 
                 >
 
-                    <Input
+                    <LogIn size={15} aria-hidden="true" />
 
-                        label="Email"
+                    Sign In
 
-                        type="email"
+                </Button>
 
-                        placeholder="Enter your email"
+            </form>
 
-                        {...register("email")}
+            {/* Reading needs no account, so say so instead of implying it does */}
+            <p className="mt-5 border-t border-rule pt-4 text-center text-xs leading-relaxed text-ink-muted">
+                Reports, cleanups and rankings can be read without an account.
+                An account is needed to file a report or join a discussion.
+            </p>
 
-                        error={errors.email}
-
-                    />
-
-                    <Input
-
-                        label="Password"
-
-                        type="password"
-
-                        placeholder="Enter your password"
-
-                        {...register("password")}
-
-                        error={errors.password}
-
-                    />
-
-                    <Button
-
-                        type="submit"
-
-                        loading={isSubmitting}
-
-                    >
-
-                        Login
-
-                    </Button>
-
-                </form>
-
-                <p className="mt-6 text-center text-sm text-gray-600">
-
-                    Don't have an account?
-
-                    <Link
-
-                        to="/register"
-
-                        className="ml-1 font-semibold text-blue-700 hover:underline"
-
-                    >
-
-                        Register
-
-                    </Link>
-
-                </p>
-
-            </div>
-
-        </div>
+        </AuthShell>
 
     );
 

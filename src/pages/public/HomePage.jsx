@@ -7,12 +7,18 @@ import {
     UserPlus,
     LayoutDashboard,
     Users,
+    ArrowRight,
 } from "lucide-react";
 
 import HomeSuccessSection from "@/components/feed/HomeSuccessSection";
+import HomeImpactBand from "@/components/home/HomeImpactBand";
+import HomeRolesSection from "@/components/home/HomeRolesSection";
+import HomeTopCleaners from "@/components/home/HomeTopCleaners";
 
 import useAuth from "@/hooks/useAuth";
 import { getDashboardPath } from "@/utils/roleRedirect";
+
+import heroImage from "@/assets/homepage-hero.webp";
 
 /**
  * ============================================================================
@@ -27,7 +33,10 @@ import { getDashboardPath } from "@/utils/roleRedirect";
  *
  * The call to action changes with the session, so a logged-in visitor is
  * never stranded here without a route back into the app.
-
+ *
+ * Reading order is deliberate: what the platform is, what it has done,
+ * how it works, who it is for, what it has produced, who is leading, and
+ * only then the invitation to join. Each section earns the next.
  * ============================================================================
  */
 
@@ -61,9 +70,35 @@ export default function HomePage() {
     return (
         <>
                 {/* ---------------- Hero band ---------------- */}
-                <section className="hero-band border-b border-rule text-white">
+                {/*
+                  A photograph rather than the flat gradient band used on
+                  interior pages. This is the one screen where a visitor
+                  decides whether the platform is real, and a picture of
+                  the problem argues that faster than a paragraph.
+                */}
+                <section className="relative border-b border-rule text-white">
 
-                    <div className="mx-auto max-w-7xl px-4 py-12 lg:py-16">
+                    {/* Decorative, so it carries no alternative text */}
+                    <img
+                        src={heroImage}
+                        alt=""
+                        aria-hidden="true"
+                        fetchPriority="high"
+                        className="absolute inset-0 h-full w-full object-cover"
+                    />
+
+                    {/*
+                      Navy scrim, weighted to the left where the text sits.
+                      Solid at that edge and thinning across, so the
+                      headings hold their contrast while the photograph
+                      stays visible on the right.
+                    */}
+                    <div
+                        aria-hidden="true"
+                        className="absolute inset-0 bg-gradient-to-r from-gov-navy via-gov-navy/90 to-gov-navy/60"
+                    />
+
+                    <div className="relative mx-auto max-w-7xl px-4 py-16 lg:py-24">
 
                         <div className="max-w-3xl">
 
@@ -78,7 +113,7 @@ export default function HomePage() {
                                 कचरा रिपोर्टिंग मंच
                             </p>
 
-                            <h1 className="mt-1 font-serif text-3xl leading-tight font-bold lg:text-4xl">
+                            <h1 className="mt-1 font-serif text-3xl leading-tight font-bold lg:text-5xl">
                                 Community Waste Reporting Platform
                             </h1>
 
@@ -124,6 +159,19 @@ export default function HomePage() {
                                         </Link>
                                     </>
                                 )}
+
+                                {/*
+                                  Reading needs no account, and saying so
+                                  keeps a curious visitor from bouncing at
+                                  the sight of two sign-in buttons.
+                                */}
+                                <Link
+                                    to="/reports"
+                                    className="inline-flex items-center gap-2 px-2 py-2.5 text-sm font-semibold text-white/85 underline-offset-4 transition hover:text-white hover:underline"
+                                >
+                                    Browse reports without an account
+                                    <ArrowRight size={15} aria-hidden="true" />
+                                </Link>
                             </div>
                         </div>
                     </div>
@@ -131,6 +179,15 @@ export default function HomePage() {
 
                 {/* Accent rule closes the hero band */}
                 <div className="tricolour-rule" />
+
+                {/* ---------------- Impact ---------------- */}
+                {/*
+                  Placed immediately after the promise so it is answered
+                  with evidence before anything is asked of the reader.
+                  Counted from public endpoints, and removes itself if
+                  there is nothing to count.
+                */}
+                <HomeImpactBand />
 
                 {/* ---------------- Process ---------------- */}
                 <section className="mx-auto max-w-7xl px-4 py-12">
@@ -175,6 +232,13 @@ export default function HomePage() {
                     </ol>
                 </section>
 
+                {/* ---------------- Roles ---------------- */}
+                {/*
+                  Follows the process, because "who does this" only makes
+                  sense once "what happens" has been read.
+                */}
+                <HomeRolesSection />
+
                 {/* ---------------- Community success ---------------- */}
                 {/*
                   Placed after the process so the reader learns how the
@@ -183,9 +247,12 @@ export default function HomePage() {
                 */}
                 <HomeSuccessSection />
 
+                {/* ---------------- Recognition ---------------- */}
+                <HomeTopCleaners />
+
                 {/* ---------------- Public notice ---------------- */}
 
-                <section className="mx-auto max-w-7xl px-4 pb-14">
+                <section className="mx-auto max-w-7xl px-4 py-12">
                     <div className="rounded-gov border border-rule border-l-4 border-l-saffron bg-white p-5">
 
                         <h2 className="text-[11px] font-semibold tracking-[0.15em] text-ink-muted uppercase">
@@ -206,8 +273,48 @@ export default function HomePage() {
                         </p>
                     </div>
                 </section>
+
+                {/* ---------------- Closing call to action ---------------- */}
+                {/*
+                  Shown only to guests. A signed-in visitor has already
+                  acted on this, and repeating the invitation at the foot
+                  of the page would be addressing somebody who is not there.
+                */}
+                {!isAuthenticated && (
+                    <section className="hero-band border-t border-rule text-white">
+                        <div className="mx-auto max-w-7xl px-4 py-12 text-center">
+
+                            <h2 className="font-serif text-2xl font-bold lg:text-3xl">
+                                Seen a waste site that needs clearing?
+                            </h2>
+
+                            <div className="mx-auto mt-3 h-1 w-20 bg-saffron" />
+
+                            <p className="mx-auto mt-4 max-w-2xl leading-relaxed text-white/85">
+                                Registration takes a minute. Reporting a site takes a
+                                photograph and its location.
+                            </p>
+
+                            <div className="mt-6 flex flex-wrap justify-center gap-3">
+                                <Link
+                                    to="/register"
+                                    className="inline-flex items-center gap-2 rounded-gov border border-white bg-white px-6 py-2.5 text-sm font-semibold text-gov-navy transition hover:bg-white/90"
+                                >
+                                    <UserPlus size={15} aria-hidden="true" />
+                                    Create an Account
+                                </Link>
+
+                                <Link
+                                    to="/success-stories"
+                                    className="inline-flex items-center gap-2 rounded-gov border border-white/40 px-6 py-2.5 text-sm font-semibold text-white transition hover:bg-white/10"
+                                >
+                                    See What Has Been Cleaned
+                                    <ArrowRight size={15} aria-hidden="true" />
+                                </Link>
+                            </div>
+                        </div>
+                    </section>
+                )}
         </>
     );
 }
-
-

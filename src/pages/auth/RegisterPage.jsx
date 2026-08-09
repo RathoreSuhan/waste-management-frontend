@@ -2,14 +2,33 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Link, useNavigate } from "react-router-dom";
+import { UserPlus } from "lucide-react";
 
 import Alert from "@/components/ui/Alert";
 import Input from "@/components/ui/Input";
 import Button from "@/components/ui/Button";
 import Select from "@/components/ui/Select";
+import AuthShell from "@/components/auth/AuthShell";
 
 import { registerSchema } from "@/schemas/authSchema";
 import * as authService from "@/services/authService";
+
+import background from "@/assets/background1.jpg";
+
+/**
+ * ============================================================================
+ * Register Page
+ * ============================================================================
+ *
+ * Account creation, framed by AuthShell over background1.
+ *
+ * Calls POST /api/auth/register, then sends the new user to the sign-in
+ * page - the backend issues a token on login, not on registration.
+ *
+ * Citizens and cleaners register here. Admin accounts are not self
+ * service: an existing admin promotes a citizen from the admin portal.
+ * ============================================================================
+ */
 
 export default function RegisterPage() {
 
@@ -102,58 +121,66 @@ export default function RegisterPage() {
 
     return (
 
-        <div className="flex min-h-screen items-center justify-center bg-gray-100">
+        <AuthShell
+            image={background}
+            titleHindi="नया पंजीकरण"
+            title="Create Account"
+            subtitle="Register with the Clean Bharat platform"
+            // The form runs long, so it is given more room than sign-in
+            width="max-w-xl"
+            footer={
+                <>
+                    Already have an account?
+                    <Link
+                        to="/login"
+                        className="ml-1 font-semibold text-gov-blue hover:underline"
+                    >
+                        Sign in here
+                    </Link>
+                </>
+            }
+        >
 
-            <div className="w-full max-w-xl rounded-xl bg-white p-8 shadow-lg">
+            {successMessage && (
 
-                <h1 className="mb-2 text-center text-3xl font-bold text-blue-700">
+                <div className="mb-5">
 
-                    Create Account
+                    <Alert type="success">
 
-                </h1>
+                        {successMessage}
 
-                <p className="mb-8 text-center text-gray-500">
+                    </Alert>
 
-                    Join Clean Bharat Platform
+                </div>
 
-                </p>
+            )}
 
-                {successMessage && (
+            {serverError && (
 
-                    <div className="mb-5">
+                <div className="mb-5">
 
-                        <Alert type="success">
+                    <Alert>
 
-                            {successMessage}
+                        {serverError}
 
-                        </Alert>
+                    </Alert>
 
-                    </div>
+                </div>
 
-                )}
+            )}
 
-                {serverError && (
+            <form
+                onSubmit={handleSubmit(onSubmit)}
+                className="space-y-5"
+            >
 
-                    <div className="mb-5">
-
-                        <Alert>
-
-                            {serverError}
-
-                        </Alert>
-
-                    </div>
-
-                )}
-
-                <form
-                    onSubmit={handleSubmit(onSubmit)}
-                    className="space-y-5"
-                >
+                {/* ---------------- Account details ---------------- */}
+                <FieldGroup title="Account Details">
 
                     <Input
                         label="Full Name"
                         placeholder="Enter your name"
+                        autoComplete="name"
                         {...register("name")}
                         error={errors.name}
                     />
@@ -162,6 +189,7 @@ export default function RegisterPage() {
                         label="Email"
                         type="email"
                         placeholder="Enter email"
+                        autoComplete="email"
                         {...register("email")}
                         error={errors.email}
                     />
@@ -170,12 +198,17 @@ export default function RegisterPage() {
                         label="Password"
                         type="password"
                         placeholder="Minimum 6 characters"
+                        autoComplete="new-password"
                         {...register("password")}
                         error={errors.password}
                     />
+                </FieldGroup>
+
+                {/* ---------------- Role ---------------- */}
+                <FieldGroup title="Role">
 
                     <Select
-                        label="Role"
+                        label="Register As"
                         {...register("role")}
                         error={errors.role}
                         options={[
@@ -189,6 +222,17 @@ export default function RegisterPage() {
                             },
                         ]}
                     />
+
+                    {/*
+                      What the choice actually means, said before it is
+                      made rather than discovered afterwards. The two
+                      roles see entirely different portals.
+                    */}
+                    <p className="rounded-gov border border-rule border-l-4 border-l-saffron bg-paper px-3.5 py-2.5 text-xs leading-relaxed text-ink-muted">
+                        {selectedRole === "ROLE_CLEANER"
+                            ? "Cleaners claim reported sites, upload proof of the cleanup and earn reward points once the work is verified."
+                            : "Citizens file reports of uncollected waste, track them to closure and take part in the discussion on each report."}
+                    </p>
 
                     {selectedRole === "ROLE_CLEANER" && (
                         <>
@@ -228,47 +272,73 @@ export default function RegisterPage() {
                             />
                         </>
                     )}
+                </FieldGroup>
 
-                    <Input
-                        label="State"
-                        placeholder="Enter state"
-                        {...register("state")}
-                        error={errors.state}
-                    />
+                {/* ---------------- Location ---------------- */}
+                <FieldGroup title="Location">
 
-                    <Input
-                        label="City"
-                        placeholder="Enter city"
-                        {...register("city")}
-                        error={errors.city}
-                    />
+                    {/*
+                      Two to a row: state and city are a single thought,
+                      and pairing them keeps a long form from feeling
+                      longer than it is.
+                    */}
+                    <div className="grid gap-5 sm:grid-cols-2">
 
-                    <Button
-                        type="submit"
-                        loading={isSubmitting}
-                    >
-                        Register
-                    </Button>
+                        <Input
+                            label="State"
+                            placeholder="Enter state"
+                            {...register("state")}
+                            error={errors.state}
+                        />
 
-                </form>
+                        <Input
+                            label="City"
+                            placeholder="Enter city"
+                            {...register("city")}
+                            error={errors.city}
+                        />
+                    </div>
 
-                <p className="mt-6 text-center text-sm">
+                    {/* Explains why a form asks for a location at all */}
+                    <p className="text-xs leading-relaxed text-ink-muted">
+                        Used to place you on the state and city leaderboards, and to
+                        route reports to the right municipal corporation.
+                    </p>
+                </FieldGroup>
 
-                    Already have an account?
+                <Button
+                    type="submit"
+                    loading={isSubmitting}
+                >
+                    <UserPlus size={15} aria-hidden="true" />
+                    Create Account
+                </Button>
 
-                    <Link
-                        to="/login"
-                        className="ml-1 font-semibold text-blue-600 hover:underline"
-                    >
-                        Login
-                    </Link>
+            </form>
 
-                </p>
-
-            </div>
-
-        </div>
+        </AuthShell>
 
     );
 
+}
+
+/**
+ * A titled block of fields.
+ *
+ * Nine inputs in one unbroken column is a wall. Grouping them under
+ * quiet headings turns the form into three short tasks, and matches the
+ * sectioned layout used on the report record.
+ */
+function FieldGroup({ title, children }) {
+
+    return (
+        <fieldset className="space-y-4">
+
+            <legend className="mb-3 w-full border-b border-rule pb-1.5 text-[11px] font-semibold tracking-[0.15em] text-ink-muted uppercase">
+                {title}
+            </legend>
+
+            {children}
+        </fieldset>
+    );
 }
