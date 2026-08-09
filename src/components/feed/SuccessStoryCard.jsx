@@ -5,6 +5,7 @@ import BeforeAfterImage from "@/components/reports/BeforeAfterImage";
 import AiVerifiedBadge from "@/components/feed/AiVerifiedBadge";
 import AppreciationBar from "@/components/feed/AppreciationBar";
 
+import useLayoutMode from "@/hooks/useLayoutMode";
 import { formatRelativeTime } from "@/utils/formatters";
 
 /**
@@ -17,10 +18,13 @@ import { formatRelativeTime } from "@/utils/formatters";
  * The photographs lead, because the pair of images is the entire argument
  * the page is making; the text underneath only says who, where and when.
  *
- * Links to /success-stories/:id rather than /reports/:id. The report page
- * sits behind a login, and sending a visitor from public content to a
- * sign-in form would be a poor greeting for the one page meant to show
- * outsiders the programme works.
+ * Links to the story page rather than to /reports/:id. Both are public, but
+ * the story page leads with the before-and-after pair, which is what someone
+ * following a card from this gallery came to see; the report page leads with
+ * the complaint and its discussion.
+ *
+ * The link is prefixed with the current base path, so a card opened from the
+ * sidebar keeps the reader inside the signed-in shell.
  *
  * The whole card opens the story, using the stretched-link pattern: the
  * title anchor is given an invisible overlay covering the card rather than
@@ -34,6 +38,9 @@ import { formatRelativeTime } from "@/utils/formatters";
  */
 
 export default function SuccessStoryCard({ story }) {
+
+    // "" on the public site, "/app" inside the signed-in shell
+    const { basePath } = useLayoutMode();
 
     // Falls back through the location fields the record actually has
     const place =
@@ -72,7 +79,7 @@ export default function SuccessStoryCard({ story }) {
                 */}
                 <h3 className="font-serif text-lg leading-snug font-bold text-gov-navy">
                     <Link
-                        to={`/success-stories/${story.reportId}`}
+                        to={`${basePath}/success-stories/${story.reportId}`}
                         className="after:absolute after:inset-0 after:content-[''] group-hover:text-gov-blue hover:underline"
                     >
                         {story.reportTitle}

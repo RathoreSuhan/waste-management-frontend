@@ -1,7 +1,9 @@
 import { NavLink } from "react-router-dom";
-import { LogOut, LifeBuoy, UserRound } from "lucide-react";
+import { LifeBuoy, UserRound } from "lucide-react";
+import BiText from "@/components/common/BiText";
 import useAuth from "@/hooks/useAuth";
 import { getRoleLabel } from "@/constants/roleLabels";
+import { UI } from "@/i18n/strings";
 
 /**
  * ============================================================================
@@ -15,13 +17,19 @@ import { getRoleLabel } from "@/constants/roleLabels";
  * - The active item is marked with a saffron left border rather than a
  *   coloured pill, which reads as steadier on a dense panel.
  * - Icons are passed in as Lucide components, never emoji.
+ * - Menu entries arrive as { to, en, hi, icon } and are rendered through
+ *   BiText, so the reader's language decides which one reads as primary.
+ *
+ * Signing out is not offered here. It now sits in the masthead, which is on
+ * screen on every page - this panel is hidden below the lg breakpoint and
+ * absent from the public pages, so a button here could not be relied on.
  * ============================================================================
  */
 
 export default function Sidebar({ menuItems = [] }) {
 
-    // Session details and the logout action
-    const { user, logout } = useAuth();
+    // Session details, used for the identity panel at the top
+    const { user } = useAuth();
 
     return (
         <aside className="flex w-72 shrink-0 flex-col bg-gov-navy text-white">
@@ -30,7 +38,7 @@ export default function Sidebar({ menuItems = [] }) {
             <div className="border-b border-white/15 px-5 py-4">
 
                 <p className="text-[10px] font-semibold tracking-[0.2em] text-white/60 uppercase">
-                    Logged in as
+                    <BiText {...UI.account.loggedInAs} primaryOnly />
                 </p>
 
                 <div className="mt-2 flex items-start gap-2.5">
@@ -58,7 +66,7 @@ export default function Sidebar({ menuItems = [] }) {
             <nav className="flex-1 py-4" aria-label="Site sections">
 
                 <p className="px-5 pb-2 text-[10px] font-semibold tracking-[0.2em] text-white/50 uppercase">
-                    Services
+                    <BiText {...UI.sidebar.services} primaryOnly />
                 </p>
 
                 <ul>
@@ -82,14 +90,18 @@ export default function Sidebar({ menuItems = [] }) {
                                 >
                                     {Icon && <Icon size={16} aria-hidden="true" />}
 
-                                    <span>{item.label}</span>
-
-                                    {/* Optional Hindi gloss, kept small and secondary */}
-                                    {item.labelHi && (
-                                        <span className="ml-auto text-[11px] text-white/45">
-                                            {item.labelHi}
-                                        </span>
-                                    )}
+                                    {/*
+                                      The gloss is pushed to the far edge
+                                      rather than sitting beside the label, so
+                                      the entries line up as a column. On this
+                                      navy panel the default muted grey would
+                                      vanish, hence the explicit white/45.
+                                    */}
+                                    <BiText
+                                        en={item.en}
+                                        hi={item.hi}
+                                        glossClassName="ml-auto text-[11px] text-white/45 opacity-100"
+                                    />
                                 </NavLink>
                             </li>
                         );
@@ -103,7 +115,7 @@ export default function Sidebar({ menuItems = [] }) {
                 {/* Email support, since a community project has no call centre */}
                 <p className="flex items-center gap-2 text-[11px] text-white/60">
                     <LifeBuoy size={12} aria-hidden="true" />
-                    Community Helpdesk
+                    <BiText {...UI.sidebar.helpdesk} primaryOnly />
                 </p>
 
                 <p className="mt-1 text-sm font-semibold tracking-wide">
@@ -111,19 +123,8 @@ export default function Sidebar({ menuItems = [] }) {
                 </p>
 
                 <p className="mt-0.5 text-[11px] text-white/50">
-                    Replies usually within two working days
+                    <BiText {...UI.sidebar.replyTime} primaryOnly />
                 </p>
-            </div>
-
-            {/* ---------------- Sign out ---------------- */}
-            <div className="border-t border-white/15 p-4">
-                <button
-                    onClick={logout}
-                    className="flex w-full items-center justify-center gap-2 border border-white/30 px-4 py-2.5 text-sm font-medium transition hover:bg-white/10"
-                >
-                    <LogOut size={15} aria-hidden="true" />
-                    Sign Out
-                </button>
             </div>
         </aside>
     );

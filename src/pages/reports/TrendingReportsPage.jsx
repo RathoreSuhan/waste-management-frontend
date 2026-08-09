@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { TrendingUp } from "lucide-react";
 
+import PageIntro from "@/components/layout/PageIntro";
+import PageSection from "@/components/layout/PageSection";
 import ReportCard from "@/components/reports/ReportCard";
 import EngagementBar from "@/components/reports/EngagementBar";
 import SortControl from "@/components/reports/SortControl";
@@ -149,36 +151,20 @@ export default function TrendingReportsPage() {
     return (
         <>
             {/*
-              Heading band, matching the other public pages. It is placed
-              outside the content container so the colour runs the full
-              width of the viewport, as PublicLayout does not constrain
-              its main element.
+              Opening block. Renders as the full-width navy band on the
+              public site and as a standard page heading inside the
+              signed-in shell - see PageIntro.
             */}
-            <section className="hero-band border-b border-rule text-white">
-
-                <div className="mx-auto max-w-7xl px-4 py-10">
-
-                    <p className="inline-flex items-center gap-1.5 text-[11px] font-semibold tracking-[0.2em] text-white/70 uppercase">
-                        <TrendingUp size={12} aria-hidden="true" />
-                        Community Engagement Register
-                    </p>
-
-                    <h1 className="mt-1 font-serif text-3xl leading-tight font-bold">
-                        Trending Reports
-                        {" "}
-                        <span className="text-white/70">चर्चित रिपोर्ट</span>
-                    </h1>
-
-                    <p className="mt-2 max-w-2xl text-sm leading-relaxed text-white/80">
-                        Reports ranked by citizen urgency votes and discussion
-                        activity. A report scores its average urgency rating, two
-                        points for every comment and one for every reply.
-                    </p>
-                </div>
-            </section>
+            <PageIntro
+                icon={TrendingUp}
+                eyebrow="Community Engagement Register"
+                en="Trending Reports"
+                hi="चर्चित रिपोर्ट"
+                description="Reports ranked by citizen urgency votes and discussion activity. A report scores its average urgency rating, two points for every comment and one for every reply."
+            />
 
             {/* Ranked list */}
-            <section className="mx-auto max-w-7xl px-4 py-10">
+            <PageSection>
 
                 {loading ? (
                     <ReportListSkeleton count={4} />
@@ -238,7 +224,7 @@ export default function TrendingReportsPage() {
                         )}
                     </>
                 )}
-            </section>
+            </PageSection>
         </>
     );
 }

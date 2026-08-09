@@ -188,12 +188,39 @@ export default function AppRoutes() {
                     </Route>
 
                     {/*
-                      The report pages used to be declared here as well.
-                      They now live in the public block above and serve
-                      both audiences from one route, so a signed-in user
-                      and a visitor cannot end up on different versions
-                      of the same report.
+                      The four community pages, reached from the sidebar.
+
+                      Same components as the public block above, mounted a
+                      second time under /app. A signed-in user following
+                      "Trending" from the sidebar stays inside the shell,
+                      with their navigation still beside them, instead of
+                      being dropped onto the public site mid-task.
+
+                      Not a duplicate implementation: one component each,
+                      rendered in two surroundings. MainLayout marks these
+                      as in-app, and the pages adjust their heading and
+                      internal links accordingly.
+
+                      No RoleRoute here - this is the material every role
+                      can read, so it sits directly under the login guard.
                     */}
+                    <Route path="/app/reports" element={<AllReportsPage />} />
+                    <Route
+                        path="/app/reports/trending"
+                        element={<TrendingReportsPage />}
+                    />
+                    <Route path="/app/reports/:id" element={<ReportDetailPage />} />
+
+                    <Route
+                        path="/app/success-stories"
+                        element={<SuccessStoriesPage />}
+                    />
+                    <Route
+                        path="/app/success-stories/:reportId"
+                        element={<SuccessStoryDetailPage />}
+                    />
+
+                    <Route path="/app/leaderboard" element={<LeaderboardPage />} />
                 </Route>
 
             </Route>

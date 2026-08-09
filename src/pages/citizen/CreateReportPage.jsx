@@ -1,8 +1,7 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Link, useNavigate } from "react-router-dom";
-import { Crosshair } from "lucide-react";
 
 import PageHeading from "@/components/common/PageHeading";
 import Alert from "@/components/ui/Alert";
@@ -10,6 +9,7 @@ import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
 import Textarea from "@/components/ui/Textarea";
 import ImageUploadField from "@/components/reports/ImageUploadField";
+import LocationVerificationPanel from "@/components/reports/LocationVerificationPanel";
 
 import useGeoLocation from "@/hooks/useGeoLocation";
 
@@ -27,6 +27,12 @@ import {
     IMAGE_REJECTION_META,
     DEFAULT_IMAGE_REJECTION_META,
 } from "@/constants/reportConstants";
+import { formatDistance } from "@/utils/geo";
+import {
+    evaluateLocation,
+    canSubmitLocation,
+    LOCATION_STATUS,
+} from "@/utils/locationVerification";
 import {
     saveDraftValues,
     loadDraftValues,
@@ -74,7 +80,29 @@ export default function CreateReportPage() {
     const navigate = useNavigate();
 
     // Browser GPS helper
-    const { detecting, locationError, detectLocation } = useGeoLocation();
+    const {
+        detecting,
+        locationError,
+        detectLocation,
+        clearLocationError,
+    } = useGeoLocation();
+
+    /**
+     * Position read from the device, used to confirm the citizen is at the
+     * site. Held on the page rather than in the draft store, because a
+     * position restored from an earlier visit would prove nothing about
+     * where the citizen is now.
+     */
+    const [position, setPosition] = useState(null);
+
+    /**
+     * Whether the citizen has declared the location themselves, which is
+     * what allows a report through when GPS cannot confirm it.
+     */
+    const [locationDeclared, setLocationDeclared] = useState(false);
+
+    // Raised when submission is attempted with neither confirmation
+    const [locationBlocked, setLocationBlocked] = useState("");
 
     // Selected garbage photo - recovered from the draft if one is held
     const [imageFile, setImageFile] = useState(() => getDraftFile());
@@ -118,6 +146,7 @@ export default function CreateReportPage() {
         handleSubmit,
         setValue,
         getValues,
+        watch,
         formState: { errors, isSubmitting },
     } = useForm({
         resolver: zodResolver(createReportSchema),
@@ -125,6 +154,27 @@ export default function CreateReportPage() {
         // Continue from the saved draft when there is one
         defaultValues: restoredValues || EMPTY_FORM,
     });
+
+    /**
+     * Coordinates are watched rather than read on demand, because the
+     * verification panel has to respond the moment they are edited. Typing
+     * a different latitude should visibly withdraw the confirmation, not
+     * leave a stale "Location Confirmed" on screen.
+     */
+    const latitude = watch("latitude");
+    const longitude = watch("longitude");
+
+    /**
+     * Current verification outcome, recalculated whenever the captured
+     * position or the coordinates change.
+     */
+    const { status: locationStatus, distanceMetres } = useMemo(
+        () => evaluateLocation(position, latitude, longitude),
+        [position, latitude, longitude]
+    );
+
+    // Whether the report is allowed through in its present state
+    const locationAllowed = canSubmitLocation(locationStatus, locationDeclared);
 
     /**
      * Mirror the current values into the draft store.
@@ -193,23 +243,49 @@ export default function CreateReportPage() {
     }
 
     /**
-     * Fill the coordinate fields using the device GPS.
+     * Capture the device position and pin the report to it.
+     *
+     * The reading is kept as well as copied into the fields, because the
+     * coordinates alone cannot show whether they came from the device or
+     * were typed in from somewhere else entirely.
      */
-    async function handleDetectLocation() {
+    async function handleCapturePosition() {
 
-        const coords = await detectLocation();
+        const reading = await detectLocation();
 
         // User denied permission or detection failed
-        if (!coords) {
+        if (!reading) {
             return;
         }
 
+        setPosition(reading);
+
+        // A fresh reading supersedes any earlier complaint about the location
+        setLocationBlocked("");
+
         // Values are stored as strings because the schema validates strings
-        setValue("latitude", String(coords.latitude), { shouldValidate: true });
-        setValue("longitude", String(coords.longitude), { shouldValidate: true });
+        setValue("latitude", String(reading.latitude), { shouldValidate: true });
+        setValue("longitude", String(reading.longitude), { shouldValidate: true });
 
         // setValue does not raise a change event, so the draft is saved here
         saveDraft();
+    }
+
+    /**
+     * Record the citizen's own confirmation of the location.
+     *
+     * Ticking it clears both the block and any detection error, since the
+     * citizen has taken responsibility for the coordinates and the failed
+     * reading is no longer something they need to act on.
+     */
+    function handleDeclaredChange(checked) {
+
+        setLocationDeclared(checked);
+
+        if (checked) {
+            setLocationBlocked("");
+            clearLocationError();
+        }
     }
 
     /**
@@ -230,6 +306,20 @@ export default function CreateReportPage() {
 
         // Stop if the photo failed the format/size checks
         if (imageError) {
+            return;
+        }
+
+        /**
+         * Reports are meant to be filed at the site, so an unconfirmed
+         * location is stopped here rather than sent on to the backend, which
+         * has no way to tell where the citizen actually was.
+         */
+        if (!locationAllowed) {
+            setLocationBlocked(
+                locationStatus === LOCATION_STATUS.TOO_FAR
+                    ? "The location entered is away from where you are. Capture your position at the site, or confirm the location yourself in section 3."
+                    : "Please confirm the location in section 3 before submitting."
+            );
             return;
         }
 
@@ -337,18 +427,7 @@ export default function CreateReportPage() {
 
                         {/* Duplicate report warning with a link to the existing record */}
                         {duplicateInfo && (
-                            <Alert type="warning" title="Possible Duplicate Report">
-                                <p>{duplicateInfo.message}</p>
-
-                                {duplicateInfo.existingReportId && (
-                                    <Link
-                                        to={`/reports/${duplicateInfo.existingReportId}`}
-                                        className="mt-2 inline-block font-semibold underline"
-                                    >
-                                        View the existing report
-                                    </Link>
-                                )}
-                            </Alert>
+                            <DuplicateReportNotice duplicate={duplicateInfo} />
                         )}
 
                         {/* Photograph refused by the AI check */}
@@ -424,24 +503,43 @@ export default function CreateReportPage() {
                         <FormSection
                             step="3"
                             title="Location Details"
-                            action={
-                                // Auto fill coordinates from the device GPS
-                                <button
-                                    type="button"
-                                    onClick={handleDetectLocation}
-                                    disabled={detecting}
-                                    className="inline-flex items-center gap-1.5 rounded-gov border border-gov-blue bg-white px-3 py-1.5 text-xs font-semibold text-gov-blue transition hover:bg-gov-blue/5 disabled:cursor-not-allowed disabled:opacity-60"
-                                >
-                                    <Crosshair size={12} aria-hidden="true" />
-                                    {detecting ? "Detecting..." : "Use My Location"}
-                                </button>
-                            }
                         >
                             <div className="space-y-4">
 
+                                {/*
+                                  Confirms the citizen is at the site. Placed
+                                  above the coordinates because it is what
+                                  fills them in for most reports.
+                                */}
+                                <LocationVerificationPanel
+                                    status={locationStatus}
+                                    distanceMetres={distanceMetres}
+                                    position={position}
+                                    detecting={detecting}
+                                    locationError={locationError}
+                                    declared={locationDeclared}
+                                    onDeclaredChange={handleDeclaredChange}
+                                    onCapture={handleCapturePosition}
+                                />
+
+                                {/* Raised when submission was attempted unconfirmed */}
+                                {locationBlocked && (
+                                    <p
+                                        role="alert"
+                                        className="text-xs font-semibold text-red-700"
+                                    >
+                                        {locationBlocked}
+                                    </p>
+                                )}
+
                                 <div className="grid gap-4 sm:grid-cols-2">
 
-                                    {/* GPS latitude */}
+                                    {/*
+                                      Coordinates stay editable so the pin can
+                                      be moved onto the waste across the road,
+                                      but the panel withdraws its confirmation
+                                      once they leave the site radius.
+                                    */}
                                     <Input
                                         label="Latitude"
                                         required
@@ -554,6 +652,64 @@ export default function CreateReportPage() {
                 </div>
             </div>
         </div>
+    );
+}
+
+/**
+ * Notice shown when the backend finds an existing report at the same place.
+ *
+ * The bare message alone reads like a refusal. The distance and the category
+ * are what let the citizen recognise the pile as the one already logged, so
+ * both are quoted alongside a link to that record - which is where an urgency
+ * rating or a comment will do more good than a second report.
+ */
+function DuplicateReportNotice({ duplicate }) {
+
+    // Sent by the backend as metres between the two reports
+    const distance =
+        typeof duplicate.distanceMeters === "number"
+            ? formatDistance(duplicate.distanceMeters)
+            : null;
+
+    return (
+        <Alert type="warning" title="Possible Duplicate Report">
+
+            <p>{duplicate.message}</p>
+
+            {/* What the backend matched on, in plain terms */}
+            {(distance || duplicate.garbageCategory) && (
+                <dl className="mt-2 space-y-0.5 text-[13px]">
+
+                    {distance && (
+                        <div className="flex gap-1.5">
+                            <dt className="font-semibold">Distance:</dt>
+                            <dd>{distance} from the location you entered</dd>
+                        </div>
+                    )}
+
+                    {/* AI's reading of the waste, which the report list does not show */}
+                    {duplicate.garbageCategory && (
+                        <div className="flex gap-1.5">
+                            <dt className="font-semibold">Waste identified as:</dt>
+                            <dd>{duplicate.garbageCategory}</dd>
+                        </div>
+                    )}
+                </dl>
+            )}
+
+            {/*
+              Supporting the existing report is the useful action here, so the
+              link is framed as that rather than as a dead end.
+            */}
+            {duplicate.existingReportId && (
+                <Link
+                    to={`/reports/${duplicate.existingReportId}`}
+                    className="mt-2 inline-block font-semibold underline"
+                >
+                    View the existing report and add your support
+                </Link>
+            )}
+        </Alert>
     );
 }
 

@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { Trophy, MapPin, Info } from "lucide-react";
 
+import PageIntro from "@/components/layout/PageIntro";
+import PageSection from "@/components/layout/PageSection";
 import ScopeSelector from "@/components/leaderboard/ScopeSelector";
 
 import LeaderboardTable from "@/components/leaderboard/LeaderboardTable";
@@ -39,11 +41,10 @@ import {
  * /api/leaderboard/city/{city} - all three are permitAll in the backend
  * SecurityConfig.
  *
- * The page sits inside PublicLayout, which supplies the masthead,
- * navigation and footer. MainLayout would not do: it lives behind the
- * login guard, and recognising this work publicly is the entire point of
- * the module.
-
+ * The rankings are public, since recognising this work openly is the point
+ * of the module. The same component is also mounted at /app/leaderboard,
+ * where it renders inside the signed-in shell for anyone following the
+ * sidebar - PageIntro adjusts the opening block to suit.
  *
  * A signed-in cleaner additionally sees their own standing from
  * /api/leaderboard/me. That endpoint is authenticated and rejects every
@@ -156,31 +157,16 @@ export default function LeaderboardPage() {
 
     return (
         <>
-                {/* Heading band */}
-                <section className="hero-band border-b border-rule text-white">
+            {/* Band on the public site, page heading inside the shell */}
+            <PageIntro
+                icon={Trophy}
+                eyebrow="Cleaner Recognition"
+                en="Leaderboard"
+                hi="अग्रणी सूची"
+                description="Cleaners ranked by the reward points earned for cleanups confirmed by AI. Positions are calculated live, so the table reflects work verified moments ago."
+            />
 
-                    <div className="mx-auto max-w-7xl px-4 py-10">
-
-                        <p className="inline-flex items-center gap-1.5 text-[11px] font-semibold tracking-[0.2em] text-white/70 uppercase">
-                            <Trophy size={12} aria-hidden="true" />
-                            Cleaner Recognition
-                        </p>
-
-                        <h1 className="mt-1 font-serif text-3xl leading-tight font-bold">
-                            Leaderboard
-                        </h1>
-
-                        <p className="mt-2 max-w-2xl text-sm leading-relaxed text-white/80">
-                            Cleaners ranked by the reward points earned for cleanups
-                            confirmed by AI. Positions are calculated live, so the
-                            table reflects work verified moments ago.
-                        </p>
-                    </div>
-                </section>
-
-                <div className="tricolour-rule" />
-
-                <section className="mx-auto max-w-7xl px-4 py-8">
+            <PageSection>
 
                     {/* Personal standing, shown to signed-in cleaners */}
                     {showMyRank && (
@@ -300,7 +286,7 @@ export default function LeaderboardPage() {
                             appear twice and the next one is skipped.
                         </p>
                     </div>
-                </section>
+            </PageSection>
         </>
     );
 }

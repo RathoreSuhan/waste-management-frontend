@@ -1,5 +1,7 @@
 import { Sparkles } from "lucide-react";
 
+import PageIntro from "@/components/layout/PageIntro";
+import PageSection from "@/components/layout/PageSection";
 import SuccessStoryCard from "@/components/feed/SuccessStoryCard";
 
 
@@ -21,11 +23,12 @@ import { getPublicFeed } from "@/services/publicFeedService";
  *
  * Calls GET /api/public-feed
  *
- * Open to everyone, including visitors who have never signed in. It renders
- * inside PublicLayout rather than MainLayout, which sits behind the login
- * guard - the whole purpose of this page is to be readable by people who do
- * not have an account yet.
-
+ * Open to everyone, including visitors who have never signed in - the whole
+ * purpose of the page is to be readable by people without an account.
+ *
+ * Also reachable at /app/success-stories from the sidebar, where the same
+ * component renders inside the signed-in shell. PageIntro handles the
+ * difference between the two openings.
  * ============================================================================
  */
 
@@ -36,71 +39,56 @@ export default function SuccessStoriesPage() {
 
     return (
         <>
-                {/* Heading band */}
-                <section className="hero-band border-b border-rule text-white">
+            {/* Band on the public site, page heading inside the shell */}
+            <PageIntro
+                icon={Sparkles}
+                eyebrow="Community Success"
+                en="Cleanups Completed by the Community"
+                hi="पूर्ण हुई सफाई"
+                description="Every cleanup shown here was reported by a citizen, carried out by a cleaner, and confirmed by comparing the photographs taken before and after the work."
+            />
 
-                    <div className="mx-auto max-w-7xl px-4 py-10">
+            {/* Gallery */}
+            <PageSection>
 
-                        <p className="inline-flex items-center gap-1.5 text-[11px] font-semibold tracking-[0.2em] text-white/70 uppercase">
-                            <Sparkles size={12} aria-hidden="true" />
-                            Community Success
+                {/* Loading */}
+                {loading && <ReportListSkeleton count={3} />}
+
+                {/* Failure, with a retry */}
+                {!loading && error && (
+                    <ReportListError message={error} onRetry={reload} />
+                )}
+
+                {/* Nothing verified yet - a true state, not a fault */}
+                {!loading && !error && stories.length === 0 && (
+                    <ReportListEmpty
+                        title="No cleanups published yet"
+                        description="Verified cleanups will appear here as reports are resolved."
+                    />
+                )}
+
+                {/* Results */}
+                {!loading && !error && stories.length > 0 && (
+                    <>
+                        <p className="mb-4 text-sm text-ink-muted">
+                            Showing{" "}
+                            <span className="font-semibold text-ink">
+                                {stories.length}
+                            </span>{" "}
+                            verified {stories.length === 1 ? "cleanup" : "cleanups"}.
                         </p>
 
-                        <h1 className="mt-1 font-serif text-3xl leading-tight font-bold">
-                            Cleanups Completed by the Community
-                        </h1>
-
-                        <p className="mt-2 max-w-2xl text-sm leading-relaxed text-white/80">
-                            Every cleanup shown here was reported by a citizen, carried
-                            out by a cleaner, and confirmed by comparing the photographs
-                            taken before and after the work.
-                        </p>
-                    </div>
-                </section>
-
-                <div className="tricolour-rule" />
-
-                {/* Gallery */}
-                <section className="mx-auto max-w-7xl px-4 py-10">
-
-                    {/* Loading */}
-                    {loading && <ReportListSkeleton count={3} />}
-
-                    {/* Failure, with a retry */}
-                    {!loading && error && (
-                        <ReportListError message={error} onRetry={reload} />
-                    )}
-
-                    {/* Nothing verified yet - a true state, not a fault */}
-                    {!loading && !error && stories.length === 0 && (
-                        <ReportListEmpty
-                            title="No cleanups published yet"
-                            description="Verified cleanups will appear here as reports are resolved."
-                        />
-                    )}
-
-                    {/* Results */}
-                    {!loading && !error && stories.length > 0 && (
-                        <>
-                            <p className="mb-4 text-sm text-ink-muted">
-                                Showing{" "}
-                                <span className="font-semibold text-ink">
-                                    {stories.length}
-                                </span>{" "}
-                                verified {stories.length === 1 ? "cleanup" : "cleanups"}.
-                            </p>
-
-                            <div className="grid gap-5 lg:grid-cols-2">
-                                {stories.map((story) => (
-                                    <SuccessStoryCard
-                                        key={story.reportId}
-                                        story={story}
-                                    />
-                                ))}
-                            </div>
-                        </>
-                    )}
-                </section>
+                        <div className="grid gap-5 lg:grid-cols-2">
+                            {stories.map((story) => (
+                                <SuccessStoryCard
+                                    key={story.reportId}
+                                    story={story}
+                                />
+                            ))}
+                        </div>
+                    </>
+                )}
+            </PageSection>
         </>
     );
 }

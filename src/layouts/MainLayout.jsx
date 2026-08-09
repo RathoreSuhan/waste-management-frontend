@@ -21,6 +21,27 @@ import SiteFooter from "@/components/layout/SiteFooter";
 import Breadcrumbs from "@/components/layout/Breadcrumbs";
 import Sidebar from "@/components/layout/Sidebar";
 import useAuth from "@/hooks/useAuth";
+import LayoutModeContext, {
+    APP_LAYOUT,
+} from "@/context/layoutModeContextInstance";
+import { UI } from "@/i18n/strings";
+
+/*
+  The four community pages are addressed under /app in the menus below, so
+  they open inside this shell with the sidebar still beside them instead of
+  throwing the reader out to the public site mid-task. Same page components
+  serve both - see layoutModeContextInstance.
+*/
+const COMMUNITY_ITEMS = [
+    /*
+      end: true because /app/reports/trending also begins with /app/reports.
+      NavLink matches by prefix, so without it both entries highlight at once.
+    */
+    { to: "/app/reports", ...UI.sidebar.allReports, icon: Globe2, end: true },
+    { to: "/app/reports/trending", ...UI.nav.trending, icon: TrendingUp },
+    { to: "/app/success-stories", ...UI.nav.successStories, icon: Sparkles },
+    { to: "/app/leaderboard", ...UI.nav.leaderboard, icon: Trophy },
+];
 
 /**
  * ============================================================================
@@ -49,65 +70,54 @@ export default function MainLayout() {
     // Current path, used to build the breadcrumb trail
     const location = useLocation();
 
-    // Navigation differs per role. Icons are components, not emoji.
+    /*
+      Navigation differs per role. Icons are components, not emoji, and
+      labels are spread in as { en, hi } pairs so the sidebar can render
+      either language as the primary.
+    */
     const menuItems =
         user?.role === "ROLE_ADMIN"
             ? [
-                { to: "/admin/dashboard", label: "Overview", labelHi: "अवलोकन", icon: LayoutDashboard },
+                { to: "/admin/dashboard", ...UI.sidebar.overview, icon: LayoutDashboard },
 
                 /*
                   Points at the report administration screen. The earlier
                   /admin/requests entry had no route behind it, so it fell
                   through to the 404 page.
                 */
-                { to: "/admin/reports", label: "Manage Reports", labelHi: "शिकायत प्रबंधन", icon: ClipboardList },
+                { to: "/admin/reports", ...UI.sidebar.manageReports, icon: ClipboardList },
 
-                { to: "/admin/users", label: "Manage Users", labelHi: "उपयोगकर्ता", icon: Users },
+                { to: "/admin/users", ...UI.sidebar.manageUsers, icon: Users },
 
                 {
                     to: "/admin/municipal-corporations",
-                    label: "Municipal Bodies",
-                    labelHi: "नगर निगम",
+                    ...UI.sidebar.municipalBodies,
                     icon: Building2,
                     // "new" and "edit" are children, so exact matching is not wanted here
                 },
-                /*
-                  end: true is required now that /reports has a child nav
-                  item. NavLink matches by prefix by default, so without it
-                  both "All Reports" and "Trending" light up together on
 
-                  /reports/trending.
-                */
-                { to: "/reports", label: "All Reports", icon: Globe2, end: true },
-                { to: "/reports/trending", label: "Trending", labelHi: "चर्चित", icon: TrendingUp },
-
-                { to: "/success-stories", label: "Success Stories", labelHi: "सफलता", icon: Sparkles },
-                { to: "/leaderboard", label: "Leaderboard", labelHi: "अग्रणी सूची", icon: Trophy },
+                ...COMMUNITY_ITEMS,
             ]
             : user?.role === "ROLE_CLEANER"
                 ? [
-                    { to: "/cleaner/dashboard", label: "Overview", labelHi: "अवलोकन", icon: Brush },
-                    { to: "/cleaner/available", label: "Available Tasks", labelHi: "उपलब्ध कार्य", icon: Search },
-                    { to: "/cleaner/tasks", label: "My Tasks", labelHi: "मेरे कार्य", icon: CheckSquare },
-                    { to: "/cleaner/rewards", label: "My Rewards", labelHi: "मेरे पुरस्कार", icon: Award },
-                    { to: "/reports", label: "All Reports", icon: Globe2, end: true },
-                    { to: "/reports/trending", label: "Trending", labelHi: "चर्चित", icon: TrendingUp },
-                    { to: "/success-stories", label: "Success Stories", labelHi: "सफलता", icon: Sparkles },
+                    { to: "/cleaner/dashboard", ...UI.sidebar.overview, icon: Brush },
+                    { to: "/cleaner/available", ...UI.sidebar.availableTasks, icon: Search },
+                    { to: "/cleaner/tasks", ...UI.sidebar.myTasks, icon: CheckSquare },
+                    { to: "/cleaner/rewards", ...UI.sidebar.myRewards, icon: Award },
+
                     /*
-                      Points at /leaderboard, not /cleaner/leaderboard.
-                      The rankings are public and there is one page for
-                      everyone; the earlier path had no route behind it.
+                      One leaderboard for everyone, shown inside the shell.
+                      There is no separate cleaner ranking; the earlier
+                      /cleaner/leaderboard path had no route at all.
                     */
-                    { to: "/leaderboard", label: "Leaderboard", labelHi: "अग्रणी सूची", icon: Trophy },
+                    ...COMMUNITY_ITEMS,
                 ]
                 : [
-                    { to: "/citizen/dashboard", label: "Overview", labelHi: "अवलोकन", icon: LayoutDashboard },
-                    { to: "/citizen/report", label: "File a Report", labelHi: "रिपोर्ट दर्ज", icon: FilePlus2 },
-                    { to: "/citizen/history", label: "My Reports", labelHi: "मेरी रिपोर्ट", icon: History },
-                    { to: "/reports", label: "Public Reports", labelHi: "सार्वजनिक", icon: Globe2, end: true },
-                    { to: "/reports/trending", label: "Trending", labelHi: "चर्चित", icon: TrendingUp },
-                    { to: "/success-stories", label: "Success Stories", labelHi: "सफलता", icon: Sparkles },
-                    { to: "/leaderboard", label: "Leaderboard", labelHi: "अग्रणी सूची", icon: Trophy },
+                    { to: "/citizen/dashboard", ...UI.sidebar.overview, icon: LayoutDashboard },
+                    { to: "/citizen/report", ...UI.nav.fileReport, icon: FilePlus2 },
+                    { to: "/citizen/history", ...UI.sidebar.myReports, icon: History },
+
+                    ...COMMUNITY_ITEMS,
                 ];
 
     // Breadcrumb trail per route. Only the trail lives here, not the page title.
@@ -157,16 +167,24 @@ export default function MainLayout() {
             { label: "Citizen Dashboard", to: "/citizen/dashboard" },
             { label: "My Reports" },
         ],
-        "/reports": [{ label: "Public Reports" }],
+
+        /*
+          Community pages as reached from inside the shell. Their trails
+          stay within /app so the crumbs lead back to in-shell pages
+          rather than the public site.
+        */
+        "/app/reports": [{ label: "Public Reports" }],
 
         /*
           Needed as an exact entry: the prefix test below would otherwise
-          treat /reports/trending as a report detail page.
+          treat /app/reports/trending as a report detail page.
         */
-        "/reports/trending": [
-            { label: "Public Reports", to: "/reports" },
+        "/app/reports/trending": [
+            { label: "Public Reports", to: "/app/reports" },
             { label: "Trending Reports" },
         ],
+        "/app/success-stories": [{ label: "Success Stories" }],
+        "/app/leaderboard": [{ label: "Cleaner Leaderboard" }],
     };
 
     /*
@@ -192,9 +210,16 @@ export default function MainLayout() {
             ],
         },
         {
-            prefix: "/reports/",
+            prefix: "/app/success-stories/",
             trail: [
-                { label: "Public Reports", to: "/reports" },
+                { label: "Success Stories", to: "/app/success-stories" },
+                { label: "Cleanup Record" },
+            ],
+        },
+        {
+            prefix: "/app/reports/",
+            trail: [
+                { label: "Public Reports", to: "/app/reports" },
                 { label: "Report Details" },
             ],
         },
@@ -226,7 +251,14 @@ export default function MainLayout() {
 
                 {/* Target of the header's skip link */}
                 <main id="main-content" className="min-w-0 flex-1 p-4 lg:p-6">
-                    <Outlet />
+                    {/*
+                      Tells the shared pages they are inside the signed-in
+                      shell, so they render a compact heading instead of a
+                      full-bleed band and keep their links under /app.
+                    */}
+                    <LayoutModeContext.Provider value={APP_LAYOUT}>
+                        <Outlet />
+                    </LayoutModeContext.Provider>
                 </main>
             </div>
 

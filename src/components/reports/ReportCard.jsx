@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { MapPin, Clock, User, ImageOff, ChevronRight } from "lucide-react";
 import StatusBadge from "@/components/reports/StatusBadge";
+import useLayoutMode from "@/hooks/useLayoutMode";
 import { formatRelativeTime } from "@/utils/formatters";
 import { formatReportRef } from "@/constants/reportConstants";
 
@@ -13,14 +14,22 @@ import { formatReportRef } from "@/constants/reportConstants";
  * Styled as an official record rather than a marketing card:
  * square corners, a visible reference number, and metadata
  * laid out in a single scannable line.
+ *
+ * The card appears in both shells, so the destination is
+ * prefixed with the current base path: a row opened from the
+ * sidebar stays inside the shell instead of dropping the
+ * reader out onto the public site.
  * ==========================================================
  */
 
 export default function ReportCard({ report }) {
 
+    // "" on the public site, "/app" inside the signed-in shell
+    const { basePath } = useLayoutMode();
+
     return (
         <Link
-            to={`/reports/${report.id}`}
+            to={`${basePath}/reports/${report.id}`}
             className="group flex gap-4 rounded-gov border border-rule bg-white p-3.5 transition hover:border-gov-blue hover:bg-gov-blue/[0.02]"
         >
             {/* Photograph submitted with the report */}

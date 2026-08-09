@@ -16,6 +16,7 @@ import {
 } from "@/components/reports/ReportListStates";
 
 import useReports from "@/hooks/useReports";
+import useLayoutMode from "@/hooks/useLayoutMode";
 import { getReport } from "@/services/reportService";
 import { findPublicFeedByReportId } from "@/services/publicFeedService";
 
@@ -50,6 +51,10 @@ export default function ReportDetailPage() {
 
     // Navigation state set by the create page
     const location = useLocation();
+
+    // "" on the public site, "/app" inside the signed-in shell, so the
+    // back link returns to the list the reader actually came from
+    const { basePath } = useLayoutMode();
 
     // Stable fetcher so the hook does not refetch on every render
     const fetchReport = useCallback(() => getReport(id), [id]);
@@ -129,7 +134,7 @@ export default function ReportDetailPage() {
 
             {/* Back navigation */}
             <Link
-                to="/reports"
+                to={`${basePath}/reports`}
                 className="inline-flex items-center gap-1.5 text-sm font-semibold text-gov-blue hover:underline"
             >
                 <ArrowLeft size={14} aria-hidden="true" />

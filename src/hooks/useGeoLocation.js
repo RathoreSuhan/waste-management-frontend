@@ -10,6 +10,13 @@ import { useCallback, useState } from "react";
  *
  * This hook reads the device GPS through the browser API so the
  * citizen does not have to type coordinates manually.
+ *
+ * Phase 13 note: the reading also carries `accuracy` and `capturedAt`.
+ * A position is only as meaningful as its accuracy radius - a desktop
+ * browser locating by IP address reports coordinates that look precise but
+ * are kilometres wide - so callers need the accuracy to decide whether a
+ * reading can be trusted, and the timestamp to decide whether it is still
+ * current.
  * ============================================================================
  */
 
@@ -24,7 +31,8 @@ export default function useGeoLocation() {
     /**
      * Ask the browser for the current position.
      *
-     * @returns {Promise<{latitude: number, longitude: number} | null>}
+     * @returns {Promise<{latitude: number, longitude: number,
+     *                    accuracy: number, capturedAt: number} | null>}
      */
     const detectLocation = useCallback(() => {
 
@@ -51,6 +59,16 @@ export default function useGeoLocation() {
                     resolve({
                         latitude: position.coords.latitude,
                         longitude: position.coords.longitude,
+
+                        /**
+                         * Radius of uncertainty in metres, always supplied by
+                         * the browser. Without it a vague fix is
+                         * indistinguishable from a precise one.
+                         */
+                        accuracy: position.coords.accuracy,
+
+                        // When the fix was taken, used to expire stale readings
+                        capturedAt: Date.now(),
                     });
                 },
 
@@ -90,9 +108,21 @@ export default function useGeoLocation() {
         });
     }, []);
 
+    /**
+     * Discard the current error.
+     *
+     * Needed when the user switches to entering coordinates by hand: the
+     * failure has been dealt with, so leaving the message on screen would
+     * just be noise.
+     */
+    const clearLocationError = useCallback(() => {
+        setLocationError("");
+    }, []);
+
     return {
         detecting,
         locationError,
         detectLocation,
+        clearLocationError,
     };
 }

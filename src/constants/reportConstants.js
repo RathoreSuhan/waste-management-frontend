@@ -180,3 +180,43 @@ export const DEFAULT_IMAGE_REJECTION_META = {
     title: "Photograph Not Accepted",
     tips: [],
 };
+
+
+/**
+ * ============================================================================
+ * Location Verification (Phase 13)
+ * ============================================================================
+ *
+ * The backend deliberately left citizen location validation to the frontend,
+ * so these thresholds define what "standing at the site" means in practice.
+ *
+ * The site radius is deliberately wider than the backend's 50m duplicate
+ * radius. A citizen photographs a dump from across the road rather than
+ * standing in it, and phone GPS is rarely better than 10-20m in a built-up
+ * street, so a radius equal to the duplicate distance would reject honest
+ * reports.
+ * ============================================================================
+ */
+
+/**
+ * How far from the captured position the report may be filed, in metres.
+ */
+export const SITE_PROXIMITY_RADIUS_METRES = 150;
+
+/**
+ * Readings vaguer than this are treated as unusable.
+ *
+ * A desktop browser positions by IP address and can report accuracy in
+ * kilometres, which would otherwise "verify" an entire city as the site.
+ */
+export const MIN_ACCEPTABLE_ACCURACY_METRES = 100;
+
+/**
+ * How long a captured position stays trustworthy, in milliseconds.
+ *
+ * A long form filled in on the walk over would otherwise submit against
+ * a pin from several streets back.
+ */
+export const LOCATION_FRESHNESS_MS = 10 * 60 * 1000;
+
+

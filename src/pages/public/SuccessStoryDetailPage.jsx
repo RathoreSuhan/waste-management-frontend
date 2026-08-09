@@ -13,6 +13,7 @@ import {
 } from "@/components/reports/ReportListStates";
 
 import useReports from "@/hooks/useReports";
+import useLayoutMode from "@/hooks/useLayoutMode";
 import {
     getPublicFeedByReportId,
     incrementView,
@@ -29,8 +30,8 @@ import { formatDateTime } from "@/utils/formatters";
  *
  * Calls GET /api/public-feed/{reportId} and records a view on arrival.
  *
- * Public, like the gallery it belongs to. It deliberately does not link to
- * /reports/:id, which requires a login.
+ * Public, like the gallery it belongs to, and also mounted under /app for
+ * readers who arrive from the sidebar.
  * ============================================================================
  */
 
@@ -38,6 +39,10 @@ export default function SuccessStoryDetailPage() {
 
     // Report id from the URL
     const { reportId } = useParams();
+
+    // "" on the public site, "/app" inside the signed-in shell, so the
+    // back link returns to the gallery the reader came from
+    const { basePath } = useLayoutMode();
 
     // Stable fetcher so the hook does not refetch on every render
     const fetchStory = useCallback(
@@ -88,7 +93,7 @@ export default function SuccessStoryDetailPage() {
 
                 {/* Back to the gallery, not to the protected report list */}
                 <Link
-                    to="/success-stories"
+                    to={`${basePath}/success-stories`}
                     className="inline-flex items-center gap-1.5 text-sm font-semibold text-gov-blue hover:underline"
                 >
                     <ArrowLeft size={14} aria-hidden="true" />

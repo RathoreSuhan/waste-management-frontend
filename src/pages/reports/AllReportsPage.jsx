@@ -1,8 +1,8 @@
 import { useMemo, useState } from "react";
-import { Search } from "lucide-react";
+import { Search, Globe2 } from "lucide-react";
 
-import PageHeading from "@/components/common/PageHeading";
-import PageContainer from "@/components/layout/PageContainer";
+import PageIntro from "@/components/layout/PageIntro";
+import PageSection from "@/components/layout/PageSection";
 import ReportCard from "@/components/reports/ReportCard";
 import {
     ReportListSkeleton,
@@ -20,9 +20,13 @@ import { REPORT_STATUS_FILTERS } from "@/constants/reportConstants";
  * ============================================================================
  *
  * Community view of every garbage report in the system.
- * Calls GET /api/reports (JWT protected, available to all logged-in roles).
+ * Calls GET /api/reports, which is open to everyone for reads.
  *
  * Supports a text search and a status filter on the client side.
+ *
+ * Serves both shells: the public site, where it opens with the navy band,
+ * and the signed-in shell reached from the sidebar, where it opens with the
+ * ordinary page heading. PageIntro decides which.
  * ============================================================================
  */
 
@@ -73,101 +77,105 @@ export default function AllReportsPage() {
     }, [reports, search, statusFilter]);
 
     return (
-        <PageContainer className="space-y-6">
-
-            {/* Page heading */}
-            <PageHeading
-                title="Public Reports"
-                titleHi="सार्वजनिक रिपोर्ट"
-                subtitle="Every waste report filed on the platform, visible to all users."
+        <>
+            {/* Opening block - band on the public site, heading in-app */}
+            <PageIntro
+                icon={Globe2}
+                eyebrow="Public Register"
+                en="Public Reports"
+                hi="सार्वजनिक रिपोर्ट"
+                description="Every waste report filed on the platform, open for anyone to read."
             />
 
-            {/* Search and filter controls, framed as a record search panel */}
-            <div className="rounded-gov border border-rule bg-white">
+            <PageSection className="space-y-6">
 
-                <div className="border-b border-rule bg-paper px-4 py-2">
-                    <h2 className="text-[11px] font-semibold tracking-[0.15em] text-ink-muted uppercase">
-                        Search Records
-                    </h2>
+                {/* Search and filter controls, framed as a record search panel */}
+                <div className="rounded-gov border border-rule bg-white">
+
+                    <div className="border-b border-rule bg-paper px-4 py-2">
+                        <h2 className="text-[11px] font-semibold tracking-[0.15em] text-ink-muted uppercase">
+                            Search Records
+                        </h2>
+                    </div>
+
+                    <div className="p-4">
+
+                        {/* Search box with a leading icon */}
+                        <div className="relative">
+                            <Search
+                                size={15}
+                                className="absolute top-1/2 left-3 -translate-y-1/2 text-ink-muted"
+                                aria-hidden="true"
+                            />
+
+                            <input
+                                type="text"
+                                value={search}
+                                onChange={(event) => setSearch(event.target.value)}
+                                placeholder="Search by title, city, state or address"
+                                aria-label="Search reports"
+                                className="w-full rounded-gov border border-rule py-2 pr-3 pl-9 text-sm outline-none transition placeholder:text-ink-muted/60 focus:border-gov-blue"
+                            />
+                        </div>
+
+                        {/* Status filter buttons */}
+                        <div className="mt-3 flex flex-wrap items-center gap-2">
+
+                            <span className="mr-1 text-xs font-semibold tracking-wide text-ink-muted uppercase">
+                                Status
+                            </span>
+
+                            {REPORT_STATUS_FILTERS.map((filter) => (
+                                <button
+                                    key={filter.value}
+                                    onClick={() => setStatusFilter(filter.value)}
+                                    // Selected filter is filled navy, the rest outlined
+                                    className={`rounded-gov border px-3 py-1.5 text-xs font-semibold transition ${statusFilter === filter.value
+                                        ? "border-gov-navy bg-gov-navy text-white"
+                                        : "border-rule bg-white text-ink-muted hover:border-gov-blue hover:text-gov-blue"
+                                        }`}
+                                >
+                                    {filter.label}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
                 </div>
 
-                <div className="p-4">
+                {/* Loading state */}
+                {loading && <ReportListSkeleton count={4} />}
 
-                    {/* Search box with a leading icon */}
-                    <div className="relative">
-                        <Search
-                            size={15}
-                            className="absolute top-1/2 left-3 -translate-y-1/2 text-ink-muted"
-                            aria-hidden="true"
+                {/* Error state with retry */}
+                {!loading && error && (
+                    <ReportListError message={error} onRetry={reload} />
+                )}
+
+                {/* Data state */}
+                {!loading && !error && (
+                    visibleReports.length > 0 ? (
+                        <div className="space-y-3">
+
+                            {/* Result counter, worded as an official record count */}
+                            <p className="border-b border-rule pb-2 text-xs text-ink-muted">
+                                Displaying{" "}
+                                <span className="font-semibold text-ink">
+                                    {visibleReports.length}
+                                </span>{" "}
+                                record{visibleReports.length > 1 ? "s" : ""}
+                            </p>
+
+                            {visibleReports.map((report) => (
+                                <ReportCard key={report.id} report={report} />
+                            ))}
+                        </div>
+                    ) : (
+                        <ReportListEmpty
+                            title="No records found"
+                            description="Revise the search terms or select a different status filter."
                         />
-
-                        <input
-                            type="text"
-                            value={search}
-                            onChange={(event) => setSearch(event.target.value)}
-                            placeholder="Search by title, city, state or address"
-                            aria-label="Search reports"
-                            className="w-full rounded-gov border border-rule py-2 pr-3 pl-9 text-sm outline-none transition placeholder:text-ink-muted/60 focus:border-gov-blue"
-                        />
-                    </div>
-
-                    {/* Status filter buttons */}
-                    <div className="mt-3 flex flex-wrap items-center gap-2">
-
-                        <span className="mr-1 text-xs font-semibold tracking-wide text-ink-muted uppercase">
-                            Status
-                        </span>
-
-                        {REPORT_STATUS_FILTERS.map((filter) => (
-                            <button
-                                key={filter.value}
-                                onClick={() => setStatusFilter(filter.value)}
-                                // Selected filter is filled navy, the rest outlined
-                                className={`rounded-gov border px-3 py-1.5 text-xs font-semibold transition ${statusFilter === filter.value
-                                    ? "border-gov-navy bg-gov-navy text-white"
-                                    : "border-rule bg-white text-ink-muted hover:border-gov-blue hover:text-gov-blue"
-                                    }`}
-                            >
-                                {filter.label}
-                            </button>
-                        ))}
-                    </div>
-                </div>
-            </div>
-
-            {/* Loading state */}
-            {loading && <ReportListSkeleton count={4} />}
-
-            {/* Error state with retry */}
-            {!loading && error && (
-                <ReportListError message={error} onRetry={reload} />
-            )}
-
-            {/* Data state */}
-            {!loading && !error && (
-                visibleReports.length > 0 ? (
-                    <div className="space-y-3">
-
-                        {/* Result counter, worded as an official record count */}
-                        <p className="border-b border-rule pb-2 text-xs text-ink-muted">
-                            Displaying{" "}
-                            <span className="font-semibold text-ink">
-                                {visibleReports.length}
-                            </span>{" "}
-                            record{visibleReports.length > 1 ? "s" : ""}
-                        </p>
-
-                        {visibleReports.map((report) => (
-                            <ReportCard key={report.id} report={report} />
-                        ))}
-                    </div>
-                ) : (
-                    <ReportListEmpty
-                        title="No records found"
-                        description="Revise the search terms or select a different status filter."
-                    />
-                )
-            )}
-        </PageContainer>
+                    )
+                )}
+            </PageSection>
+        </>
     );
 }

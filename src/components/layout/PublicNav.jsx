@@ -3,9 +3,11 @@ import { Link, useNavigate } from "react-router-dom";
 import { Home, Flame, Sparkles, Trophy, FilePlus2 } from "lucide-react";
 
 import LoginRequiredDialog from "@/components/auth/LoginRequiredDialog";
+import BiText from "@/components/common/BiText";
 import { useAuthContext } from "@/hooks/useAuthContext";
 
 import { ROLE_LABELS } from "@/constants/roleLabels";
+import { UI } from "@/i18n/strings";
 
 /**
  * ============================================================================
@@ -79,7 +81,7 @@ export default function PublicNav() {
 
                     {/* Primary links - always visible */}
                     <div className="flex items-center gap-1">
-                        <NavLink to="/" icon={Home} label="Home" labelHi="मुख्य" />
+                        <NavLink to="/" icon={Home} {...UI.nav.home} />
 
                         {/*
                           Labelled Trending rather than Engagement. The page
@@ -89,22 +91,19 @@ export default function PublicNav() {
                         <NavLink
                             to="/reports/trending"
                             icon={Flame}
-                            label="Trending"
-                            labelHi="चर्चित"
+                            {...UI.nav.trending}
                         />
 
                         <NavLink
                             to="/success-stories"
                             icon={Sparkles}
-                            label="Success Stories"
-                            labelHi="सफलता"
+                            {...UI.nav.successStories}
                         />
 
                         <NavLink
                             to="/leaderboard"
                             icon={Trophy}
-                            label="Leaderboard"
-                            labelHi="अग्रणी सूची"
+                            {...UI.nav.leaderboard}
                         />
                     </div>
 
@@ -120,7 +119,7 @@ export default function PublicNav() {
                             className="flex items-center gap-1.5 rounded-gov border border-saffron bg-saffron px-3 py-1.5 text-xs font-semibold text-gov-navy transition hover:bg-saffron/85"
                         >
                             <FilePlus2 size={14} aria-hidden="true" />
-                            File a Report
+                            <BiText {...UI.nav.fileReport} primaryOnly />
                         </button>
 
                         {user ? (
@@ -145,7 +144,7 @@ export default function PublicNav() {
                                     to={dashboardPath}
                                     className="rounded-gov border border-gov-blue bg-gov-blue px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-gov-blue-dark"
                                 >
-                                    My Dashboard
+                                    <BiText {...UI.account.myDashboard} primaryOnly />
                                 </Link>
                             </>
                         ) : (
@@ -156,7 +155,7 @@ export default function PublicNav() {
                                     onClick={() => navigate("/login")}
                                     className="rounded-gov border border-gov-blue bg-white px-3 py-1.5 text-xs font-semibold text-gov-blue transition hover:bg-gov-blue/5"
                                 >
-                                    Login
+                                    <BiText {...UI.account.login} primaryOnly />
                                 </button>
 
                                 <button
@@ -164,7 +163,7 @@ export default function PublicNav() {
                                     onClick={() => navigate("/register")}
                                     className="rounded-gov border border-gov-blue bg-gov-blue px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-gov-blue-dark"
                                 >
-                                    Register
+                                    <BiText {...UI.account.register} primaryOnly />
                                 </button>
                             </>
                         )}
@@ -192,20 +191,28 @@ export default function PublicNav() {
 
 /**
  * A single nav link with icon and bilingual label.
+ *
+ * Takes en / hi so a UI.nav entry can be spread straight in. Below the sm
+ * breakpoint both labels are dropped and the icon carries the link on its
+ * own - four entries in two languages will not fit a phone width.
  */
-function NavLink({ to, icon: Icon, label, labelHi }) {
+function NavLink({ to, icon: Icon, en, hi }) {
     return (
         <Link
             to={to}
             className="flex items-center gap-1.5 rounded-gov px-3 py-1.5 text-xs font-medium text-ink transition hover:bg-paper hover:text-gov-blue"
+            // Icon alone is not a name, so the link keeps one for narrow screens
+            aria-label={en}
         >
             <Icon size={14} aria-hidden="true" />
-            <span className="hidden sm:inline">{label}</span>
-            {labelHi && (
-                <span className="hidden text-[10px] text-ink-muted sm:inline">
-                    {labelHi}
-                </span>
-            )}
+
+            <span className="hidden items-center sm:inline-flex">
+                <BiText
+                    en={en}
+                    hi={hi}
+                    glossClassName="text-[10px] text-ink-muted opacity-100"
+                />
+            </span>
         </Link>
     );
 }
