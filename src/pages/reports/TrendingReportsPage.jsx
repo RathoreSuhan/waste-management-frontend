@@ -149,8 +149,9 @@ export default function TrendingReportsPage() {
     return (
         <div>
             <PageHeading
-                title="Community Engagement"
-                titleHi="सामुदायिक सहभागिता"
+                title="Trending Reports"
+                titleHi="चर्चित रिपोर्ट"
+
                 subtitle="Reports ranked by citizen urgency votes and discussion activity. A report scores its average urgency rating, two points for every comment and one for every reply."
             />
 

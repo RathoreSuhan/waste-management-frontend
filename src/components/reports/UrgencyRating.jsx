@@ -1,10 +1,14 @@
 import { useState } from "react";
 import { Star } from "lucide-react";
 
+import LoginRequiredDialog from "@/components/auth/LoginRequiredDialog";
+
 import { submitVote } from "@/services/voteService";
 import { getMyVote, rememberMyVote } from "@/utils/myVotes";
 import { getErrorMessage } from "@/utils/errorMessage";
-import { useAuthContext } from "@/context/AuthContext";
+import { useAuthContext } from "@/hooks/useAuthContext";
+
+
 
 /**
  * ============================================================================
@@ -47,7 +51,21 @@ export default function UrgencyRating({
     // Only citizens can vote, and only while the report is open
     const isCitizen = user?.role === "ROLE_CITIZEN";
 
-    const canVote = isCitizen && !resolved;
+    /*
+      Anonymous visitors read this page too, since reports are public.
+
+      They are shown the same stars rather than a bare average: hiding the
+      control would leave no hint that rating exists, and the invitation to
+      take part is the reason the page is open to them in the first place.
+      Clicking asks them to sign in.
+    */
+    const isGuest = !user;
+
+    const canVote = (isCitizen || isGuest) && !resolved;
+
+    // Raised when a guest clicks a star
+    const [loginPromptOpen, setLoginPromptOpen] = useState(false);
+
 
     // Rating this citizen last submitted from this browser
     const [myRating, setMyRating] = useState(() =>
@@ -70,10 +88,21 @@ export default function UrgencyRating({
     const highlighted = preview || myRating || 0;
 
     async function handleVote(rating) {
+        /*
+          A guest has nothing to send the vote with, so the request is
+          not attempted - POST /api/votes requires ROLE_CITIZEN and would
+          come back 401. They are invited to sign in instead.
+        */
+        if (isGuest) {
+            setLoginPromptOpen(true);
+            return;
+        }
+
         // Ignore repeat clicks while a request is in flight
         if (submitting) {
             return;
         }
+
 
         setSubmitting(true);
         setError("");
@@ -192,25 +221,31 @@ export default function UrgencyRating({
                     </div>
 
                     <p className="mt-2 text-[11px] text-ink-muted">
-                        Ratings from citizens decide which reports are attended to first.
-                        You can change yours at any time.
+                        {isGuest
+                            ? "Ratings from citizens decide which reports are attended to first. Sign in to add yours."
+                            : "Ratings from citizens decide which reports are attended to first. You can change yours at any time."}
                     </p>
                 </fieldset>
             )}
 
             {/* Voting is closed once the garbage has been cleared */}
-            {isCitizen && resolved && (
+            {(isCitizen || isGuest) && resolved && (
                 <p className="text-xs text-ink-muted">
                     This report has been resolved, so rating is now closed.
                 </p>
             )}
 
-            {/* Cleaners and admins read the score but cannot influence it */}
-            {!isCitizen && (
+            {/*
+              Cleaners and admins read the score but cannot influence it.
+              Guests are excluded here - they are shown the stars above,
+              so telling them rating is for citizens would contradict it.
+            */}
+            {!isCitizen && !isGuest && (
                 <p className="text-xs text-ink-muted">
                     Urgency is rated by citizens.
                 </p>
             )}
+
 
             {confirmation && (
                 <p role="status" className="text-xs font-medium text-india-green">
@@ -223,6 +258,15 @@ export default function UrgencyRating({
                     {error}
                 </p>
             )}
+
+            {/* Shown when a guest tries to rate */}
+            <LoginRequiredDialog
+                open={loginPromptOpen}
+                onClose={() => setLoginPromptOpen(false)}
+                action="rate how urgent this report is"
+            />
         </div>
     );
 }
+
+

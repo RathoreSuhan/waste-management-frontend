@@ -3,8 +3,10 @@ import {
     Route,
 } from "react-router-dom";
 
-// Layout
+// Layouts
 import MainLayout from "@/layouts/MainLayout";
+import PublicLayout from "@/layouts/PublicLayout";
+
 
 // Route Guards
 import PublicRoute from "@/routes/PublicRoute";
@@ -54,28 +56,53 @@ export default function AppRoutes() {
     return (
 
         <Routes>
-            {/* Landing page - open to everyone, logged in or not */}
-            <Route path="/" element={<HomePage />} />
-
             {/*
-              Completed cleanups - deliberately outside the login guard.
-              The feed endpoints are public, and these pages exist to show
-              the programme's results to people without an account.
-            */}
-            <Route path="/success-stories" element={<SuccessStoriesPage />} />
-            <Route
-                path="/success-stories/:reportId"
-                element={<SuccessStoryDetailPage />}
-            />
+              ================================================================
+              Public pages - no login required
+              ================================================================
 
-            {/*
-              Cleaner rankings - also outside the guard.
-              The three ranking endpoints are permitAll in the backend, and
-              public recognition of this work is the point of the module.
-              A signed-in cleaner additionally sees their own standing,
-              which the page requests separately.
+              Everything the community produces is readable without an
+              account: the reports themselves, the engagement ranking, the
+              completed cleanups and the cleaner rankings. The matching
+              backend endpoints are permitAll for GET.
+
+              Taking part - filing a report, commenting, replying, rating
+              urgency - still needs an account. Those controls prompt for
+              login at the point of use rather than hiding the page.
             */}
-            <Route path="/leaderboard" element={<LeaderboardPage />} />
+            <Route element={<PublicLayout />}>
+
+                {/* Landing page */}
+                <Route path="/" element={<HomePage />} />
+
+                {/* Reports, newest first */}
+                <Route path="/reports" element={<AllReportsPage />} />
+
+                {/*
+                  Declared before /reports/:id so the intent is obvious.
+                  Router v6 ranks a static segment above a dynamic one
+                  regardless of order, but relying on that silently
+                  would make "trending" look like a report id.
+                */}
+                <Route path="/reports/trending" element={<TrendingReportsPage />} />
+
+                {/* A single report, with its discussion */}
+                <Route path="/reports/:id" element={<ReportDetailPage />} />
+
+                {/* Completed cleanups, before and after */}
+                <Route path="/success-stories" element={<SuccessStoriesPage />} />
+                <Route
+                    path="/success-stories/:reportId"
+                    element={<SuccessStoryDetailPage />}
+                />
+
+                {/*
+                  Cleaner rankings. A signed-in cleaner additionally sees
+                  their own standing, which the page requests separately.
+                */}
+                <Route path="/leaderboard" element={<LeaderboardPage />} />
+            </Route>
+
 
 
             {/* Guest-only pages - logged-in users are sent to their dashboard */}
@@ -117,19 +144,15 @@ export default function AppRoutes() {
                         <Route path="/admin/dashboard" element={<AdminDashboard />} />
                     </Route>
 
-                    {/* Shared report pages - any logged-in role can view them */}
-                    <Route path="/reports" element={<AllReportsPage />} />
-
                     {/*
-                      Declared before /reports/:id so the intent is obvious.
-                      Router v6 ranks a static segment above a dynamic one
-                      regardless of order, but relying on that silently
-                      would make "trending" look like a report id.
+                      The report pages used to be declared here as well.
+                      They now live in the public block above and serve
+                      both audiences from one route, so a signed-in user
+                      and a visitor cannot end up on different versions
+                      of the same report.
                     */}
-                    <Route path="/reports/trending" element={<TrendingReportsPage />} />
-
-                    <Route path="/reports/:id" element={<ReportDetailPage />} />
                 </Route>
+
             </Route>
 
             {/* 404 fallback for undefined routes */}

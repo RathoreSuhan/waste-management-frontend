@@ -1,8 +1,7 @@
 import { Sparkles } from "lucide-react";
 
-import SiteHeader from "@/components/layout/SiteHeader";
-import SiteFooter from "@/components/layout/SiteFooter";
 import SuccessStoryCard from "@/components/feed/SuccessStoryCard";
+
 
 import {
     ReportListSkeleton,
@@ -22,10 +21,11 @@ import { getPublicFeed } from "@/services/publicFeedService";
  *
  * Calls GET /api/public-feed
  *
- * Open to everyone, including visitors who have never signed in. It carries
- * its own header and footer instead of using MainLayout, which sits behind
- * the login guard - the whole purpose of this page is to be readable by
- * people who do not have an account yet.
+ * Open to everyone, including visitors who have never signed in. It renders
+ * inside PublicLayout rather than MainLayout, which sits behind the login
+ * guard - the whole purpose of this page is to be readable by people who do
+ * not have an account yet.
+
  * ============================================================================
  */
 
@@ -35,13 +35,10 @@ export default function SuccessStoriesPage() {
     const { data: stories, loading, error, reload } = useReports(getPublicFeed, []);
 
     return (
-        <div className="flex min-h-screen flex-col bg-paper">
-            <SiteHeader />
-
-            <main className="flex-1">
-
+        <>
                 {/* Heading band */}
-                <section className="border-b border-rule bg-gov-navy text-white">
+                <section className="hero-band border-b border-rule text-white">
+
                     <div className="mx-auto max-w-7xl px-4 py-10">
 
                         <p className="inline-flex items-center gap-1.5 text-[11px] font-semibold tracking-[0.2em] text-white/70 uppercase">
@@ -104,9 +101,8 @@ export default function SuccessStoriesPage() {
                         </>
                     )}
                 </section>
-            </main>
-
-            <SiteFooter />
-        </div>
+        </>
     );
 }
+
+

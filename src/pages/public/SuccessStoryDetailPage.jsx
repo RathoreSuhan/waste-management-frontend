@@ -2,9 +2,8 @@ import { useCallback, useEffect, useRef } from "react";
 import { Link, useParams } from "react-router-dom";
 import { ArrowLeft, MapPin, User, Building2, CalendarCheck } from "lucide-react";
 
-import SiteHeader from "@/components/layout/SiteHeader";
-import SiteFooter from "@/components/layout/SiteFooter";
 import BeforeAfterImage from "@/components/reports/BeforeAfterImage";
+
 import AiVerifiedBadge from "@/components/feed/AiVerifiedBadge";
 import AppreciationBar from "@/components/feed/AppreciationBar";
 
@@ -84,10 +83,8 @@ export default function SuccessStoryDetailPage() {
             .join(", ");
 
     return (
-        <div className="flex min-h-screen flex-col bg-paper">
-            <SiteHeader />
+        <div className="mx-auto w-full max-w-4xl px-4 py-8">
 
-            <main className="mx-auto w-full max-w-4xl flex-1 px-4 py-8">
 
                 {/* Back to the gallery, not to the protected report list */}
                 <Link
@@ -209,12 +206,10 @@ export default function SuccessStoryDetailPage() {
                         </div>
                     </article>
                 )}
-            </main>
-
-            <SiteFooter />
         </div>
     );
 }
+
 
 /**
  * One labelled fact with a leading icon.

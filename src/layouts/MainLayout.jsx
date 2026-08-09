@@ -58,11 +58,13 @@ export default function MainLayout() {
                 /*
                   end: true is required now that /reports has a child nav
                   item. NavLink matches by prefix by default, so without it
-                  both "All Reports" and "Engagement" light up together on
+                  both "All Reports" and "Trending" light up together on
+
                   /reports/trending.
                 */
                 { to: "/reports", label: "All Reports", icon: Globe2, end: true },
-                { to: "/reports/trending", label: "Engagement", labelHi: "सहभागिता", icon: TrendingUp },
+                { to: "/reports/trending", label: "Trending", labelHi: "चर्चित", icon: TrendingUp },
+
                 { to: "/success-stories", label: "Success Stories", labelHi: "सफलता", icon: Sparkles },
                 { to: "/leaderboard", label: "Leaderboard", labelHi: "अग्रणी सूची", icon: Trophy },
             ]
@@ -73,7 +75,7 @@ export default function MainLayout() {
                     { to: "/cleaner/tasks", label: "My Tasks", labelHi: "मेरे कार्य", icon: CheckSquare },
                     { to: "/cleaner/rewards", label: "My Rewards", labelHi: "मेरे पुरस्कार", icon: Award },
                     { to: "/reports", label: "All Reports", icon: Globe2, end: true },
-                    { to: "/reports/trending", label: "Engagement", labelHi: "सहभागिता", icon: TrendingUp },
+                    { to: "/reports/trending", label: "Trending", labelHi: "चर्चित", icon: TrendingUp },
                     { to: "/success-stories", label: "Success Stories", labelHi: "सफलता", icon: Sparkles },
                     /*
                       Points at /leaderboard, not /cleaner/leaderboard.
@@ -87,7 +89,7 @@ export default function MainLayout() {
                     { to: "/citizen/report", label: "File a Report", labelHi: "रिपोर्ट दर्ज", icon: FilePlus2 },
                     { to: "/citizen/history", label: "My Reports", labelHi: "मेरी रिपोर्ट", icon: History },
                     { to: "/reports", label: "Public Reports", labelHi: "सार्वजनिक", icon: Globe2, end: true },
-                    { to: "/reports/trending", label: "Engagement", labelHi: "सहभागिता", icon: TrendingUp },
+                    { to: "/reports/trending", label: "Trending", labelHi: "चर्चित", icon: TrendingUp },
                     { to: "/success-stories", label: "Success Stories", labelHi: "सफलता", icon: Sparkles },
                     { to: "/leaderboard", label: "Leaderboard", labelHi: "अग्रणी सूची", icon: Trophy },
                 ];
@@ -125,7 +127,7 @@ export default function MainLayout() {
         */
         "/reports/trending": [
             { label: "Public Reports", to: "/reports" },
-            { label: "Community Engagement" },
+            { label: "Trending Reports" },
         ],
     };
 

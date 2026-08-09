@@ -33,6 +33,33 @@
   /* Tricolour green - success and resolved states */
   --color-india-green: #138808;
 
+  /*
+  | Accent palette
+  |
+  | Navy and white alone left every page looking the same. These give each
+  | kind of information its own colour so a page can be read at a glance,
+  | without abandoning the institutional feel: they are all deep, muted
+  | tones rather than bright ones.
+  */
+
+  /* Data and analytics - trending, engagement, counts */
+  --color-civic-teal: #0e7490;
+
+  /* Lighter teal for tinted panels */
+  --color-civic-teal-soft: #e0f2f7;
+
+  /* Attention without alarm - pending states, notices */
+  --color-civic-amber: #b45309;
+
+  /* Recognition - leaderboards, badges, rewards */
+  --color-civic-plum: #6d28d9;
+
+  /* Tinted panel backgrounds */
+  --color-saffron-soft: #fff4e6;
+  --color-green-soft: #e8f5e9;
+  --color-plum-soft: #f3edff;
+
+
   /* Ashoka Chakra navy - used in the tricolour rule */
   --color-chakra: #000080;
 
@@ -130,3 +157,18 @@ html.text-lg-scale {
     var(--color-india-green) 100%
   );
 }
+
+/*
+| Hero band
+| Navy through to a deeper teal, so the large banners carry some depth
+| instead of reading as one flat rectangle of navy.
+*/
+.hero-band {
+  background: linear-gradient(
+    135deg,
+    var(--color-gov-navy) 0%,
+    #103a63 55%,
+    #0d4f63 100%
+  );
+}
+

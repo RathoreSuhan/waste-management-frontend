@@ -1,4 +1,6 @@
-import { createContext, useContext, useEffect, useState } from "react";
+import { useState } from "react";
+
+import AuthContext from "@/context/authContextInstance";
 import * as authService from "@/services/authService";
 
 /**
@@ -16,43 +18,50 @@ import * as authService from "@/services/authService";
  * logout()
  * isAuthenticated
  *
+ * The session is restored from localStorage while state is first created,
+ * not afterwards in an effect. Reading storage is synchronous, so there is
+ * nothing to wait for - and restoring it in an effect meant the very first
+ * render always claimed the visitor was signed out, which flashed the login
+ * page at people who were already signed in.
  * ============================================================================
  */
 
-const AuthContext = createContext(null);
+/**
+ * Read the saved session, if there is one.
+ *
+ * Anything unreadable is treated as no session at all: a half-written or
+ * hand-edited entry should send someone to the login page, not break the
+ * application on startup.
+ */
+function readStoredSession() {
+    try {
+        const storedToken = localStorage.getItem("token");
+
+        const storedUser = localStorage.getItem("user");
+
+        if (!storedToken || !storedUser) {
+            return { token: null, user: null };
+        }
+
+        return {
+            token: storedToken,
+            user: JSON.parse(storedUser),
+        };
+    } catch {
+        // Corrupt JSON, or storage blocked entirely (private browsing)
+        return { token: null, user: null };
+    }
+}
 
 export function AuthProvider({ children }) {
 
-    // Logged-in user information
-    const [user, setUser] = useState(null);
+    /*
+      Read storage once, on the first render only. Passing a function to
+      useState means it is not repeated on every later render.
+    */
+    const [session, setSession] = useState(readStoredSession);
 
-    // JWT Token
-    const [token, setToken] = useState(null);
-
-    // Loading while restoring session
-    const [loading, setLoading] = useState(true);
-
-    /**
-     * Restore login after page refresh.
-     */
-    useEffect(() => {
-
-        // Read token from browser storage
-        const storedToken = localStorage.getItem("token");
-
-        // Read user from browser storage
-        const storedUser = localStorage.getItem("user");
-
-        if (storedToken && storedUser) {
-
-            setToken(storedToken);
-
-            setUser(JSON.parse(storedUser));
-        }
-
-        setLoading(false);
-
-    }, []);
+    const { user, token } = session;
 
     /**
      * Login User
@@ -62,24 +71,21 @@ export function AuthProvider({ children }) {
         // Call backend login API
         const response = await authService.login(loginData);
 
+        const nextUser = {
+            email: response.email,
+            role: response.role,
+        };
+
         // Save JWT token
         localStorage.setItem("token", response.token);
 
         // Save user information
-        localStorage.setItem(
-            "user",
-            JSON.stringify({
-                email: response.email,
-                role: response.role,
-            })
-        );
+        localStorage.setItem("user", JSON.stringify(nextUser));
 
-        // Update React state
-        setToken(response.token);
-
-        setUser({
-            email: response.email,
-            role: response.role,
+        // Update React state - one write, so the two can never disagree
+        setSession({
+            token: response.token,
+            user: nextUser,
         });
 
         return response;
@@ -96,9 +102,7 @@ export function AuthProvider({ children }) {
         localStorage.removeItem("user");
 
         // Clear React state
-        setToken(null);
-
-        setUser(null);
+        setSession({ token: null, user: null });
     }
 
     const value = {
@@ -107,7 +111,12 @@ export function AuthProvider({ children }) {
 
         token,
 
-        loading,
+        /*
+          Kept for consumers that wait on it, such as ProtectedRoute.
+          Restoring the session no longer happens after the first render,
+          so there is never a moment where the answer is unknown.
+        */
+        loading: false,
 
         login,
 
@@ -126,13 +135,4 @@ export function AuthProvider({ children }) {
         </AuthContext.Provider>
 
     );
-}
-
-/**
- * Custom Hook
- */
-export function useAuthContext() {
-
-    return useContext(AuthContext);
-
 }

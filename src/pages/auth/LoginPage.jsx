@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+
 import Alert from "@/components/ui/Alert";
 import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
@@ -15,6 +16,19 @@ export default function LoginPage() {
 
     // Navigation
     const navigate = useNavigate();
+
+    /*
+      Where the visitor was before being asked to sign in.
+
+      LoginRequiredDialog sets this when an anonymous reader tries to
+      comment, reply or rate urgency on a public report. Sending them to
+      their dashboard afterwards would lose the report they were reading,
+      and with it whatever they were about to write.
+    */
+    const location = useLocation();
+
+    const redirectTo = location.state?.from;
+
 
     // Authentication
     const { login } = useAuth();
@@ -66,8 +80,17 @@ export default function LoginPage() {
             // Login API
             const response = await login(data);
 
-            // Redirect according to role
-            navigate(getDashboardPath(response.role));
+            /*
+              Return to the page they were on, falling back to the
+              dashboard for a normal login that started at /login.
+
+              replace: true keeps /login out of the history stack, so
+              Back from the report does not bounce through the form.
+            */
+            navigate(redirectTo || getDashboardPath(response.role), {
+                replace: true,
+            });
+
 
         } catch (error) {
 

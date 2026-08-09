@@ -3,9 +3,12 @@ import { MessageSquare } from "lucide-react";
 
 import CommentForm from "@/components/comments/CommentForm";
 import CommentItem from "@/components/comments/CommentItem";
+import LoginRequiredDialog from "@/components/auth/LoginRequiredDialog";
+
 
 import useReports from "@/hooks/useReports";
-import { useAuthContext } from "@/context/AuthContext";
+import { useAuthContext } from "@/hooks/useAuthContext";
+
 import {
     addComment,
     addReply,
@@ -49,6 +52,22 @@ export default function CommentSection({ reportId, onChanged }) {
 
     const isAdmin = user?.role === "ROLE_ADMIN";
 
+    /*
+      Reports are public, so the thread is read by people without an
+      account. They see the composer and the Reply buttons, and are asked
+      to sign in when they try to submit - the alternative, hiding the
+      composer, gives no clue that taking part is possible at all.
+    */
+    const isGuest = !user;
+
+    /*
+      What the guest was trying to do, or null when the dialog is closed.
+      One piece of state covers both the composer and every Reply button,
+      so the wording stays specific without a flag per control.
+    */
+    const [loginPromptAction, setLoginPromptAction] = useState(null);
+
+
     // Stable fetcher so the hook does not refetch on every render
     const fetchComments = useCallback(() => getComments(reportId), [reportId]);
 
@@ -89,7 +108,17 @@ export default function CommentSection({ reportId, onChanged }) {
     async function handleAddComment(message) {
         setActionError("");
 
+        /*
+          Returning false leaves the typed message in the composer, so it
+          is still there when they come back from signing in.
+        */
+        if (isGuest) {
+            setLoginPromptAction("post a comment on this report");
+            return false;
+        }
+
         try {
+
             const created = await addComment(reportId, message);
 
             // Remember it so this user can delete it later
@@ -111,7 +140,14 @@ export default function CommentSection({ reportId, onChanged }) {
     async function handleAddReply(commentId, message) {
         setActionError("");
 
+        // Same treatment as a new comment - the reply text is preserved
+        if (isGuest) {
+            setLoginPromptAction("reply to this discussion");
+            return false;
+        }
+
         try {
+
             const created = await addReply(commentId, message);
 
             rememberMyComment(user?.email, created.id);
@@ -232,6 +268,15 @@ export default function CommentSection({ reportId, onChanged }) {
                     </ul>
                 )}
             </div>
+
+            {/* Shown when a guest tries to comment or reply */}
+            <LoginRequiredDialog
+                open={Boolean(loginPromptAction)}
+                onClose={() => setLoginPromptAction(null)}
+                action={loginPromptAction}
+            />
         </section>
     );
 }
+
+

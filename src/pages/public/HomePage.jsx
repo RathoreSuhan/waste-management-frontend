@@ -9,9 +9,8 @@ import {
     Users,
 } from "lucide-react";
 
-import SiteHeader from "@/components/layout/SiteHeader";
-import SiteFooter from "@/components/layout/SiteFooter";
 import HomeSuccessSection from "@/components/feed/HomeSuccessSection";
+
 import useAuth from "@/hooks/useAuth";
 import { getDashboardPath } from "@/utils/roleRedirect";
 
@@ -22,11 +21,13 @@ import { getDashboardPath } from "@/utils/roleRedirect";
  *
  * Public landing page - visible to everyone.
  *
- * Uses the same masthead and footer as the signed-in area, so the site reads
- * as one continuous product rather than a marketing page bolted onto an app.
+ * The masthead, navigation and footer come from PublicLayout, so this file
+ * contains only the page content. Rendering them here as well would put a
+ * second copy of each on the screen.
  *
  * The call to action changes with the session, so a logged-in visitor is
  * never stranded here without a route back into the app.
+
  * ============================================================================
  */
 
@@ -58,15 +59,10 @@ export default function HomePage() {
     const { isAuthenticated, user } = useAuth();
 
     return (
-        <div className="flex min-h-screen flex-col bg-paper">
-
-            {/* Same masthead as the rest of the site */}
-            <SiteHeader />
-
-            <main id="main-content" className="flex-1">
-
+        <>
                 {/* ---------------- Hero band ---------------- */}
-                <section className="border-b border-rule bg-gov-navy text-white">
+                <section className="hero-band border-b border-rule text-white">
+
                     <div className="mx-auto max-w-7xl px-4 py-12 lg:py-16">
 
                         <div className="max-w-3xl">
@@ -210,10 +206,8 @@ export default function HomePage() {
                         </p>
                     </div>
                 </section>
-            </main>
-
-            {/* Footer with the ownership disclaimer */}
-            <SiteFooter />
-        </div>
+        </>
     );
 }
+
+

@@ -23,18 +23,23 @@ import { AUTH_API } from "@/constants/apiConstants";
  * @throws Error with message from backend or generic message
  */
 export async function login(loginData) {
-    try {
-        const response = await axiosClient.post(
-            `${AUTH_API}/login`,
-            loginData
-        );
-        // Backend returns { token, email, role }
-        return response.data;
-    } catch (error) {
-        // Re-throw with backend message if available
-        throw error;
-    }
+
+    /*
+      Errors are deliberately not caught here.
+
+      Callers turn an Axios error into wording for the screen through
+      getErrorMessage, which needs the original error and its response
+      body. Catching it here only to rethrow it unchanged added nothing.
+    */
+    const response = await axiosClient.post(
+        `${AUTH_API}/login`,
+        loginData
+    );
+
+    // Backend returns { token, email, role }
+    return response.data;
 }
+
 
 /**
  * Register User
@@ -44,15 +49,15 @@ export async function login(loginData) {
  * @throws Error with message from backend or generic message
  */
 export async function register(registerData) {
-    try {
-        const response = await axiosClient.post(
-            `${AUTH_API}/register`,
-            registerData
-        );
-        // Backend returns simple string message
-        return response.data;
-    } catch (error) {
-        // Re-throw with backend message if available
-        throw error;
-    }
+
+    // Errors propagate untouched, as in login above
+    const response = await axiosClient.post(
+        `${AUTH_API}/register`,
+        registerData
+    );
+
+    // Backend returns simple string message
+    return response.data;
 }
+
+

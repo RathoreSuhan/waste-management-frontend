@@ -1,4 +1,5 @@
-import { useAuthContext } from "@/context/AuthContext";
+import { useAuthContext } from "@/hooks/useAuthContext";
+
 
 /**
  * ============================================================================

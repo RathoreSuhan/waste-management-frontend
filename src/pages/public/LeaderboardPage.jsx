@@ -1,10 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { Trophy, MapPin, Info } from "lucide-react";
 
-import SiteHeader from "@/components/layout/SiteHeader";
-import SiteFooter from "@/components/layout/SiteFooter";
-
 import ScopeSelector from "@/components/leaderboard/ScopeSelector";
+
 import LeaderboardTable from "@/components/leaderboard/LeaderboardTable";
 import MyRankCard from "@/components/leaderboard/MyRankCard";
 import BadgePill from "@/components/leaderboard/BadgePill";
@@ -41,10 +39,11 @@ import {
  * /api/leaderboard/city/{city} - all three are permitAll in the backend
  * SecurityConfig.
  *
- * Like the success stories pages, this carries its own header and footer
- * rather than sitting inside MainLayout, because MainLayout lives behind
- * the login guard and recognising this work publicly is the entire point
- * of the module.
+ * The page sits inside PublicLayout, which supplies the masthead,
+ * navigation and footer. MainLayout would not do: it lives behind the
+ * login guard, and recognising this work publicly is the entire point of
+ * the module.
+
  *
  * A signed-in cleaner additionally sees their own standing from
  * /api/leaderboard/me. That endpoint is authenticated and rejects every
@@ -156,13 +155,10 @@ export default function LeaderboardPage() {
     const showMyRank = user?.role === "ROLE_CLEANER" && myRanking;
 
     return (
-        <div className="flex min-h-screen flex-col bg-paper">
-            <SiteHeader />
-
-            <main className="flex-1">
-
+        <>
                 {/* Heading band */}
-                <section className="border-b border-rule bg-gov-navy text-white">
+                <section className="hero-band border-b border-rule text-white">
+
                     <div className="mx-auto max-w-7xl px-4 py-10">
 
                         <p className="inline-flex items-center gap-1.5 text-[11px] font-semibold tracking-[0.2em] text-white/70 uppercase">
@@ -305,9 +301,8 @@ export default function LeaderboardPage() {
                         </p>
                     </div>
                 </section>
-            </main>
-
-            <SiteFooter />
-        </div>
+        </>
     );
 }
+
+
