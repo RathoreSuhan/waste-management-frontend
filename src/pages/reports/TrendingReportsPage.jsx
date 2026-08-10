@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { TrendingUp } from "lucide-react";
 
 import PageIntro from "@/components/layout/PageIntro";
@@ -6,11 +6,15 @@ import PageSection from "@/components/layout/PageSection";
 import ReportCard from "@/components/reports/ReportCard";
 import EngagementBar from "@/components/reports/EngagementBar";
 import SortControl from "@/components/reports/SortControl";
+import Pagination from "@/components/common/Pagination";
 import {
     ReportListSkeleton,
     ReportListError,
     ReportListEmpty,
 } from "@/components/reports/ReportListStates";
+
+import usePagination from "@/hooks/usePagination";
+
 
 import { getAllReports } from "@/services/reportService";
 import {
@@ -148,6 +152,21 @@ export default function TrendingReportsPage() {
     // A position is only meaningful while the list is ranked by engagement
     const showRank = sortMode === SORT_ENGAGEMENT_DESC;
 
+    // Ten to a page, taken from the filtered and sorted list
+    const {
+        page,
+        pageItems,
+        totalPages,
+        total,
+        rangeStart,
+        rangeEnd,
+        goToPage,
+    } = usePagination(visibleReports);
+
+    // Anchor for the jump back up when the page changes
+    const listTopRef = useRef(null);
+
+
     return (
         <>
             {/*
@@ -207,20 +226,40 @@ export default function TrendingReportsPage() {
                                 }
                             />
                         ) : (
-                            <ul className="space-y-3">
-                                {visibleReports.map((report, index) => (
-                                    <li key={report.id}>
-                                        {/* The card is the link; the bar sits outside it */}
-                                        <ReportCard report={report} />
+                            <div ref={listTopRef}>
+                                <ul className="space-y-3">
+                                    {pageItems.map((report, index) => (
+                                        <li key={report.id}>
+                                            {/* The card is the link; the bar sits outside it */}
+                                            <ReportCard report={report} />
 
-                                        <EngagementBar
-                                            report={report}
-                                            analytics={analyticsMap.get(report.id)}
-                                            rank={showRank ? index + 1 : null}
-                                        />
-                                    </li>
-                                ))}
-                            </ul>
+                                            <EngagementBar
+                                                report={report}
+                                                analytics={analyticsMap.get(report.id)}
+                                                /*
+                                                  Rank counts across the whole
+                                                  register, not the page: the
+                                                  first entry on page two is
+                                                  eleventh, not first.
+                                                */
+                                                rank={showRank ? rangeStart + index : null}
+                                            />
+                                        </li>
+                                    ))}
+                                </ul>
+
+                                <Pagination
+                                    page={page}
+                                    totalPages={totalPages}
+                                    total={total}
+                                    rangeStart={rangeStart}
+                                    rangeEnd={rangeEnd}
+                                    onPageChange={goToPage}
+                                    itemLabel="reports"
+                                    scrollTargetRef={listTopRef}
+                                />
+                            </div>
+
                         )}
                     </>
                 )}

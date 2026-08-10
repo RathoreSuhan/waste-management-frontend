@@ -6,8 +6,8 @@ import LoginRequiredDialog from "@/components/auth/LoginRequiredDialog";
 import BiText from "@/components/common/BiText";
 import { useAuthContext } from "@/hooks/useAuthContext";
 
-import { ROLE_LABELS } from "@/constants/roleLabels";
 import { UI } from "@/i18n/strings";
+
 
 /**
  * ============================================================================
@@ -135,31 +135,27 @@ export default function PublicNav() {
                         </button>
 
                         {user ? (
-                            <>
-                                {/* User summary */}
-                                <div className="hidden text-right sm:block">
-                                    <p className="text-[10px] tracking-wide text-ink-muted uppercase">
-                                        {ROLE_LABELS[user.role] || "User"}
-                                    </p>
+                            /*
+                              Dashboard shortcut, and nothing else.
 
-                                    {/*
-                                      Email, not name: the login response
-                                      carries only token, email and role.
-                                    */}
-                                    <p className="text-xs font-medium text-ink">
-                                        {user.email}
-                                    </p>
-                                </div>
-
-                                {/* Dashboard shortcut */}
-                                <Link
-                                    to={dashboardPath}
-                                    className="rounded-gov border border-gov-blue bg-gov-blue px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-gov-blue-dark"
-                                >
-                                    <BiText {...UI.account.myDashboard} primaryOnly />
-                                </Link>
-                            </>
+                              A block naming the role and email used to sit
+                              to the left of this button. It has been
+                              removed: the same two facts are already in the
+                              utility strip directly above, and a raw email
+                              address wedged between two buttons is the
+                              least attractive place on the page to repeat
+                              them. Identity belongs in the strip, where it
+                              sits beside the control it qualifies - the
+                              sign-out button.
+                            */
+                            <Link
+                                to={dashboardPath}
+                                className="rounded-gov border border-gov-blue bg-gov-blue px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-gov-blue-dark"
+                            >
+                                <BiText {...UI.account.myDashboard} primaryOnly />
+                            </Link>
                         ) : (
+
                             <>
                                 {/* Guest: login + register */}
                                 <button

@@ -1,10 +1,13 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import PageHeading from "@/components/common/PageHeading";
 import Alert from "@/components/ui/Alert";
 import TaskCard from "@/components/cleanup/TaskCard";
+import Pagination from "@/components/common/Pagination";
 import useAssignments from "@/hooks/useAssignments";
+import usePagination from "@/hooks/usePagination";
+
 import { getPendingAssignments, claimAssignment } from "@/services/cleanupService";
 import { getErrorMessage } from "@/utils/errorMessage";
 import {
@@ -42,9 +45,24 @@ export default function AvailableTasksPage() {
     const [actionError, setActionError] = useState("");
     const [actionMessage, setActionMessage] = useState("");
 
+    // Ten tasks to a page
+    const {
+        page,
+        pageItems,
+        totalPages,
+        total,
+        rangeStart,
+        rangeEnd,
+        goToPage,
+    } = usePagination(assignments);
+
+    // Anchor for the jump back up when the page changes
+    const listTopRef = useRef(null);
+
     /**
      * Take ownership of a pending assignment.
      */
+
     async function handleClaim(assignment) {
 
         setClaimingId(assignment.assignmentId);
@@ -125,8 +143,8 @@ export default function AvailableTasksPage() {
 
             {/* Claimable work */}
             {!loading && !error && assignments.length > 0 && (
-                <div className="space-y-3">
-                    {assignments.map((assignment) => (
+                <div ref={listTopRef} className="space-y-3">
+                    {pageItems.map((assignment) => (
                         <TaskCard
                             key={assignment.assignmentId}
                             assignment={assignment}
@@ -134,7 +152,19 @@ export default function AvailableTasksPage() {
                             busyId={claimingId}
                         />
                     ))}
+
+                    <Pagination
+                        page={page}
+                        totalPages={totalPages}
+                        total={total}
+                        rangeStart={rangeStart}
+                        rangeEnd={rangeEnd}
+                        onPageChange={goToPage}
+                        itemLabel="tasks"
+                        scrollTargetRef={listTopRef}
+                    />
                 </div>
+
             )}
 
             {/* Route to the claimed work, shown once something was claimed */}

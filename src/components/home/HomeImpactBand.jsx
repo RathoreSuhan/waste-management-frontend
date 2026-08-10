@@ -23,8 +23,14 @@ import { getNationalLeaderboard } from "@/services/leaderboardService";
  * Like HomeSuccessSection, the band removes itself while loading, on
  * failure, or before there is anything to count. A row of zeroes under
  * the heading "Platform Impact" would be worse than no row at all.
+ *
+ * Set on white, immediately below the hero. The section carries the first
+ * real information on the page, and it reads best as clean paper with the
+ * colour held back for the accents on each card.
  * ============================================================================
  */
+
+
 
 export default function HomeImpactBand() {
 
@@ -106,43 +112,68 @@ export default function HomeImpactBand() {
         return null;
     }
 
+    /*
+      Each figure keeps its own accent, carried by the rule across the top
+      of the card and the tinted chip behind its icon.
+
+      The band sits on white. It was tried on the navy hero gradient to
+      break up a run of pale sections, but a full-width dark block that
+      close to the hero read as a second masthead rather than as a
+      continuation of the page, so the surface went back to white and the
+      separation is now doing its work through the accents alone.
+
+      Those accents are the soft tints from index.css with the saturated
+      colour on the icon, which is the pairing every other light card on
+      the site uses.
+    */
     const ITEMS = [
         {
             icon: FileText,
             value: figures.reports,
             label: "Reports Filed",
             hint: "Waste sites reported by citizens",
-            accent: "text-gov-blue",
+            rule: "bg-gov-blue",
+            chip: "bg-civic-teal-soft text-gov-blue",
         },
         {
             icon: Sparkles,
             value: figures.cleanups,
             label: "Sites Cleared",
             hint: "Cleanups completed and published",
-            accent: "text-india-green",
+            rule: "bg-india-green",
+            chip: "bg-green-soft text-india-green",
         },
         {
             icon: Users,
             value: figures.cleaners,
             label: "Cleaners Ranked",
             hint: "Teams and individuals on the leaderboard",
-            accent: "text-civic-teal",
+            rule: "bg-civic-teal",
+            chip: "bg-civic-teal-soft text-civic-teal",
         },
         {
             icon: ShieldCheck,
             value: figures.verified,
             label: "Verified Cleanups",
             hint: "Confirmed from before and after photographs",
-            accent: "text-civic-plum",
+            rule: "bg-saffron",
+            chip: "bg-saffron-soft text-civic-amber",
         },
     ];
 
+
+
     return (
         <section className="border-b border-rule bg-white">
-            <div className="mx-auto max-w-7xl px-4 py-10">
+            <div className="mx-auto max-w-7xl px-4 py-12">
 
                 <div className="border-b border-rule pb-3">
-                    <h2 className="font-serif text-2xl font-bold text-gov-navy">
+
+                    <p className="text-[11px] font-semibold tracking-[0.2em] text-ink-muted uppercase">
+                        By the Numbers
+                    </p>
+
+                    <h2 className="mt-1 font-serif text-2xl font-bold text-gov-navy md:text-3xl">
                         Platform Impact
                     </h2>
 
@@ -153,34 +184,46 @@ export default function HomeImpactBand() {
                     </p>
                 </div>
 
-                <dl className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+
+                <dl className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                     {ITEMS.map((item) => (
                         <div
                             key={item.label}
-                            className="rounded-gov border border-rule bg-paper p-5"
+                            className="overflow-hidden rounded-gov border border-rule bg-paper transition hover:border-gov-blue/40"
                         >
-                            <item.icon
-                                size={20}
-                                className={item.accent}
+                            {/* The card's accent, and the only saturated colour on it */}
+
+                            <div
                                 aria-hidden="true"
+                                className={`h-1 w-full ${item.rule}`}
                             />
 
-                            {/*
-                              tabular-nums keeps the digits on a shared
-                              grid, so four cards side by side line up
-                              instead of drifting.
-                            */}
-                            <dd className="mt-3 font-serif text-3xl font-bold text-gov-navy tabular-nums">
-                                {item.value.toLocaleString("en-IN")}
-                            </dd>
+                            <div className="p-5">
 
-                            <dt className="mt-0.5 text-sm font-semibold text-ink">
-                                {item.label}
-                            </dt>
+                                <span
+                                    className={`inline-flex h-9 w-9 items-center justify-center rounded-gov ${item.chip}`}
+                                >
+                                    <item.icon size={18} aria-hidden="true" />
+                                </span>
 
-                            <p className="mt-1 text-xs leading-relaxed text-ink-muted">
-                                {item.hint}
-                            </p>
+                                {/*
+                                  tabular-nums keeps the digits on a shared
+                                  grid, so four cards side by side line up
+                                  instead of drifting.
+                                */}
+                                <dd className="mt-3 font-serif text-4xl font-bold text-gov-navy tabular-nums">
+                                    {item.value.toLocaleString("en-IN")}
+                                </dd>
+
+                                <dt className="mt-1 text-sm font-semibold text-gov-navy">
+                                    {item.label}
+                                </dt>
+
+                                <p className="mt-1 text-xs leading-relaxed text-ink-muted">
+                                    {item.hint}
+                                </p>
+
+                            </div>
                         </div>
                     ))}
                 </dl>
@@ -188,3 +231,5 @@ export default function HomeImpactBand() {
         </section>
     );
 }
+
+

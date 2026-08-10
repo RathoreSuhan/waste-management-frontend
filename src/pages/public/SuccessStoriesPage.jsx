@@ -1,8 +1,11 @@
+import { useRef } from "react";
 import { Sparkles } from "lucide-react";
 
 import PageIntro from "@/components/layout/PageIntro";
 import PageSection from "@/components/layout/PageSection";
 import SuccessStoryCard from "@/components/feed/SuccessStoryCard";
+import Pagination from "@/components/common/Pagination";
+
 
 
 import {
@@ -12,7 +15,9 @@ import {
 } from "@/components/reports/ReportListStates";
 
 import useReports from "@/hooks/useReports";
+import usePagination from "@/hooks/usePagination";
 import { getPublicFeed } from "@/services/publicFeedService";
+
 
 /**
  * ============================================================================
@@ -37,7 +42,22 @@ export default function SuccessStoriesPage() {
     // getPublicFeed is defined at module level, so it is already stable
     const { data: stories, loading, error, reload } = useReports(getPublicFeed, []);
 
+    // Ten cleanups to a page
+    const {
+        page,
+        pageItems,
+        totalPages,
+        total,
+        rangeStart,
+        rangeEnd,
+        goToPage,
+    } = usePagination(stories);
+
+    // Anchor for the jump back up when the page changes
+    const galleryTopRef = useRef(null);
+
     return (
+
         <>
             {/* Band on the public site, page heading inside the shell */}
             <PageIntro
@@ -70,23 +90,40 @@ export default function SuccessStoriesPage() {
                 {/* Results */}
                 {!loading && !error && stories.length > 0 && (
                     <>
+                        {/*
+                          The size of the whole collection. The pager below
+                          says which of them are currently on screen.
+                        */}
                         <p className="mb-4 text-sm text-ink-muted">
-                            Showing{" "}
                             <span className="font-semibold text-ink">
-                                {stories.length}
+                                {total}
                             </span>{" "}
-                            verified {stories.length === 1 ? "cleanup" : "cleanups"}.
+                            verified {total === 1 ? "cleanup" : "cleanups"} published.
                         </p>
 
-                        <div className="grid gap-5 lg:grid-cols-2">
-                            {stories.map((story) => (
-                                <SuccessStoryCard
-                                    key={story.reportId}
-                                    story={story}
-                                />
-                            ))}
+                        <div ref={galleryTopRef}>
+                            <div className="grid gap-5 lg:grid-cols-2">
+                                {pageItems.map((story) => (
+                                    <SuccessStoryCard
+                                        key={story.reportId}
+                                        story={story}
+                                    />
+                                ))}
+                            </div>
+
+                            <Pagination
+                                page={page}
+                                totalPages={totalPages}
+                                total={total}
+                                rangeStart={rangeStart}
+                                rangeEnd={rangeEnd}
+                                onPageChange={goToPage}
+                                itemLabel="cleanups"
+                                scrollTargetRef={galleryTopRef}
+                            />
                         </div>
                     </>
+
                 )}
             </PageSection>
         </>

@@ -1,9 +1,12 @@
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { MessageSquare } from "lucide-react";
 
 import CommentForm from "@/components/comments/CommentForm";
 import CommentItem from "@/components/comments/CommentItem";
 import LoginRequiredDialog from "@/components/auth/LoginRequiredDialog";
+import Pagination from "@/components/common/Pagination";
+import usePagination from "@/hooks/usePagination";
+
 
 
 import useReports from "@/hooks/useReports";
@@ -191,7 +194,26 @@ export default function CommentSection({ reportId, onChanged }) {
         }
     }
 
+    // Every message in the thread, replies included
     const total = countComments(comments || []);
+
+    /*
+      Only top-level comments are paged. Replies stay with their parent,
+      so a thread never has its answers stranded on another page.
+    */
+    const {
+        page,
+        pageItems: pageComments,
+        totalPages,
+        total: topLevelTotal,
+        rangeStart,
+        rangeEnd,
+        goToPage,
+    } = usePagination(comments || []);
+
+    // Anchor for the jump back to the top of the thread
+    const threadTopRef = useRef(null);
+
 
     return (
         <section className="mt-6 rounded-gov border border-rule">
@@ -253,20 +275,34 @@ export default function CommentSection({ reportId, onChanged }) {
 
                 {/* The thread */}
                 {!loading && !error && total > 0 && (
-                    <ul className="mt-2 divide-y divide-rule">
-                        {comments.map((comment) => (
-                            <CommentItem
-                                key={comment.id}
-                                comment={comment}
-                                myCommentIds={myCommentIds}
-                                isAdmin={isAdmin}
-                                onReply={handleAddReply}
-                                onDelete={handleDelete}
-                                deletingId={deletingId}
-                            />
-                        ))}
-                    </ul>
+                    <>
+                        <ul ref={threadTopRef} className="mt-2 divide-y divide-rule">
+                            {pageComments.map((comment) => (
+                                <CommentItem
+                                    key={comment.id}
+                                    comment={comment}
+                                    myCommentIds={myCommentIds}
+                                    isAdmin={isAdmin}
+                                    onReply={handleAddReply}
+                                    onDelete={handleDelete}
+                                    deletingId={deletingId}
+                                />
+                            ))}
+                        </ul>
+
+                        <Pagination
+                            page={page}
+                            totalPages={totalPages}
+                            total={topLevelTotal}
+                            rangeStart={rangeStart}
+                            rangeEnd={rangeEnd}
+                            onPageChange={goToPage}
+                            itemLabel="comments"
+                            scrollTargetRef={threadTopRef}
+                        />
+                    </>
                 )}
+
             </div>
 
             {/* Shown when a guest tries to comment or reply */}

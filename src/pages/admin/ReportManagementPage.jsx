@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+
 import { Link } from "react-router-dom";
 import { Search, X, FileSearch, Trash2, Eye, SlidersHorizontal } from "lucide-react";
 
@@ -6,8 +7,12 @@ import PageHeading from "@/components/common/PageHeading";
 import Alert from "@/components/ui/Alert";
 import StatusBadge from "@/components/reports/StatusBadge";
 import ConfirmDialog from "@/components/admin/ConfirmDialog";
+import Pagination from "@/components/common/Pagination";
+import usePagination from "@/hooks/usePagination";
+
 import {
     searchReports,
+
     filterReports,
     deleteReport,
 } from "@/services/adminService";
@@ -70,6 +75,21 @@ export default function ReportManagementPage() {
 
     // Outcome of the last deletion
     const [notice, setNotice] = useState("");
+
+    // Ten reports to a page
+    const {
+        page,
+        pageItems,
+        totalPages,
+        total,
+        rangeStart,
+        rangeEnd,
+        goToPage,
+    } = usePagination(reports);
+
+    // Anchor for the jump back up when the page changes
+    const tableTopRef = useRef(null);
+
 
     /**
      * Load the register for whichever mode is active.
@@ -414,13 +434,14 @@ export default function ReportManagementPage() {
 
                 {/* Register */}
                 {!loading && reports.length > 0 && (
-                    <div className="rounded-gov border border-rule bg-white">
+                    <div ref={tableTopRef} className="rounded-gov border border-rule bg-white">
 
                         <div className="border-b border-rule bg-paper px-5 py-3">
                             <h2 className="text-[11px] font-semibold tracking-[0.15em] text-ink-muted uppercase">
-                                Reports ({reports.length})
+                                Reports ({total})
                             </h2>
                         </div>
+
 
                         <div className="overflow-x-auto">
                             <table className="w-full">
@@ -436,7 +457,8 @@ export default function ReportManagementPage() {
                                 </thead>
 
                                 <tbody className="divide-y divide-rule text-sm">
-                                    {reports.map((report) => (
+                                    {pageItems.map((report) => (
+
                                         <tr key={report.id} className="transition hover:bg-paper">
 
                                             <td className="px-5 py-3 font-mono text-[11px] whitespace-nowrap text-ink-muted">
@@ -490,9 +512,24 @@ export default function ReportManagementPage() {
                                 </tbody>
                             </table>
                         </div>
+
+                        {/* Inset so the pager sits inside the panel */}
+                        <div className="px-5 pb-4">
+                            <Pagination
+                                page={page}
+                                totalPages={totalPages}
+                                total={total}
+                                rangeStart={rangeStart}
+                                rangeEnd={rangeEnd}
+                                onPageChange={goToPage}
+                                itemLabel="reports"
+                                scrollTargetRef={tableTopRef}
+                            />
+                        </div>
                     </div>
                 )}
             </div>
+
 
             {/*
               The consequences are spelled out because report deletion

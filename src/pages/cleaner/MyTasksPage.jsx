@@ -1,10 +1,13 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 import PageHeading from "@/components/common/PageHeading";
 import Alert from "@/components/ui/Alert";
 import TaskCard from "@/components/cleanup/TaskCard";
 import CleanupUploadDialog from "@/components/cleanup/CleanupUploadDialog";
+import Pagination from "@/components/common/Pagination";
 import useAssignments from "@/hooks/useAssignments";
+import usePagination from "@/hooks/usePagination";
+
 import { getMyTasks, startCleanup } from "@/services/cleanupService";
 import { getErrorMessage } from "@/utils/errorMessage";
 import { ASSIGNMENT_STATUS } from "@/constants/assignmentConstants";
@@ -48,7 +51,74 @@ const GROUPS = [
     },
 ];
 
+/**
+ * One lifecycle group, with its own pager.
+ *
+ * This is a component rather than inline JSX because each group needs its
+ * own page counter, and a hook cannot be called from inside a map callback.
+ */
+function TaskGroup({ group, onStart, onUpload, busyId }) {
+
+    // Ten tasks to a page, counted separately for each group
+    const {
+        page,
+        pageItems,
+        totalPages,
+        total,
+        rangeStart,
+        rangeEnd,
+        goToPage,
+    } = usePagination(group.items);
+
+    // Anchor for the jump back up when the page changes
+    const groupTopRef = useRef(null);
+
+    return (
+        <section ref={groupTopRef}>
+
+            <div className="mb-3 border-b border-rule pb-2">
+                <h2 className="font-serif text-lg font-bold text-gov-navy">
+                    {group.title}
+
+                    {/* Count, so the workload is obvious at a glance */}
+                    <span className="ml-2 text-sm font-normal text-ink-muted">
+                        ({total})
+                    </span>
+                </h2>
+
+                <p className="mt-0.5 text-sm text-ink-muted">
+                    {group.description}
+                </p>
+            </div>
+
+            <div className="space-y-3">
+                {pageItems.map((assignment) => (
+                    <TaskCard
+                        key={assignment.assignmentId}
+                        assignment={assignment}
+                        onStart={onStart}
+                        onUpload={onUpload}
+                        busyId={busyId}
+                    />
+                ))}
+            </div>
+
+            <Pagination
+                page={page}
+                totalPages={totalPages}
+                total={total}
+                rangeStart={rangeStart}
+                rangeEnd={rangeEnd}
+                onPageChange={goToPage}
+                itemLabel="tasks"
+                scrollTargetRef={groupTopRef}
+            />
+        </section>
+    );
+}
+
 export default function MyTasksPage() {
+
 
     // Every task of this cleaner, in all states
     const { assignments, loading, error, reload, refresh } =
@@ -171,37 +241,16 @@ export default function MyTasksPage() {
                         }
 
                         return (
-                            <section key={group.status}>
-
-                                <div className="mb-3 border-b border-rule pb-2">
-                                    <h2 className="font-serif text-lg font-bold text-gov-navy">
-                                        {group.title}
-
-                                        {/* Count, so the workload is obvious at a glance */}
-                                        <span className="ml-2 text-sm font-normal text-ink-muted">
-                                            ({group.items.length})
-                                        </span>
-                                    </h2>
-
-                                    <p className="mt-0.5 text-sm text-ink-muted">
-                                        {group.description}
-                                    </p>
-                                </div>
-
-                                <div className="space-y-3">
-                                    {group.items.map((assignment) => (
-                                        <TaskCard
-                                            key={assignment.assignmentId}
-                                            assignment={assignment}
-                                            onStart={handleStart}
-                                            onUpload={setUploadTarget}
-                                            busyId={startingId}
-                                        />
-                                    ))}
-                                </div>
-                            </section>
+                            <TaskGroup
+                                key={group.status}
+                                group={group}
+                                onStart={handleStart}
+                                onUpload={setUploadTarget}
+                                busyId={startingId}
+                            />
                         );
                     })}
+
                 </div>
             )}
 

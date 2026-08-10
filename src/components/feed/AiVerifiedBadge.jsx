@@ -1,5 +1,7 @@
 import { BadgeCheck } from "lucide-react";
 
+import { formatConfidence } from "@/constants/assignmentConstants";
+
 /**
  * ============================================================================
  * AI Verified Badge
@@ -24,9 +26,19 @@ export default function AiVerifiedBadge({ verified, confidence, className = "" }
         return null;
     }
 
-    // Confidence arrives as a percentage from the backend
-    const percentage =
-        typeof confidence === "number" ? Math.round(confidence) : null;
+    /*
+      Confidence arrives as a FRACTION between 0 and 1, not as a percentage.
+
+      This previously read Math.round(confidence), which turned a genuine
+      0.96 into "1%" - advertising the platform's most trustworthy evidence
+      as its least. The scaling is delegated to formatConfidence, which the
+      cleaner task cards and the upload dialog already use, so there is one
+      definition of how a confidence score is written rather than three
+      that can drift apart.
+
+      It returns "" for a missing score and handles 0 as a real value.
+    */
+    const percentage = formatConfidence(confidence);
 
     return (
         <span
@@ -36,8 +48,8 @@ export default function AiVerifiedBadge({ verified, confidence, className = "" }
 
             {/* Reads as a sentence for screen readers, not just an icon */}
             AI Verified
-            {percentage !== null && (
-                <span className="font-normal">({percentage}%)</span>
+            {percentage && (
+                <span className="font-normal">({percentage})</span>
             )}
         </span>
     );

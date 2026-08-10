@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { Search, X, Users, ArrowUpCircle, Trash2, Eye } from "lucide-react";
 
@@ -6,6 +6,9 @@ import PageHeading from "@/components/common/PageHeading";
 import Alert from "@/components/ui/Alert";
 import RoleBadge from "@/components/admin/RoleBadge";
 import ConfirmDialog from "@/components/admin/ConfirmDialog";
+import Pagination from "@/components/common/Pagination";
+import usePagination from "@/hooks/usePagination";
+
 import {
     getUsers,
     searchUsers,
@@ -61,6 +64,21 @@ export default function UserManagementPage() {
 
     // Outcome banner shown above the register after an action succeeds
     const [notice, setNotice] = useState("");
+
+    // Ten accounts to a page
+    const {
+        page,
+        pageItems,
+        totalPages,
+        total,
+        rangeStart,
+        rangeEnd,
+        goToPage,
+    } = usePagination(users);
+
+    // Anchor for the jump back up when the page changes
+    const tableTopRef = useRef(null);
+
 
     /**
      * Load the register whenever the applied filters change.
@@ -360,13 +378,14 @@ export default function UserManagementPage() {
 
                 {/* Register */}
                 {!loading && users.length > 0 && (
-                    <div className="rounded-gov border border-rule bg-white">
+                    <div ref={tableTopRef} className="rounded-gov border border-rule bg-white">
 
                         <div className="border-b border-rule bg-paper px-5 py-3">
                             <h2 className="text-[11px] font-semibold tracking-[0.15em] text-ink-muted uppercase">
-                                Accounts ({users.length})
+                                Accounts ({total})
                             </h2>
                         </div>
+
 
                         <div className="overflow-x-auto">
                             <table className="w-full">
@@ -383,7 +402,8 @@ export default function UserManagementPage() {
                                 </thead>
 
                                 <tbody className="divide-y divide-rule text-sm">
-                                    {users.map((user) => (
+                                    {pageItems.map((user) => (
+
                                         <tr key={user.id} className="transition hover:bg-paper">
 
                                             <td className="px-5 py-3 font-semibold text-gov-navy">
@@ -454,9 +474,24 @@ export default function UserManagementPage() {
                                 </tbody>
                             </table>
                         </div>
+
+                        {/* Inset so the pager sits inside the panel */}
+                        <div className="px-5 pb-4">
+                            <Pagination
+                                page={page}
+                                totalPages={totalPages}
+                                total={total}
+                                rangeStart={rangeStart}
+                                rangeEnd={rangeEnd}
+                                onPageChange={goToPage}
+                                itemLabel="accounts"
+                                scrollTargetRef={tableTopRef}
+                            />
+                        </div>
                     </div>
                 )}
             </div>
+
 
             {/* Shared confirmation for promotion and deletion */}
             <ConfirmDialog

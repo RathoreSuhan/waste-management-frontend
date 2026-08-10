@@ -192,21 +192,50 @@ export default function SiteHeader() {
                         </div>
                     </Link>
 
-                    {/* Ownership, stated plainly to avoid any official impression */}
+                    {/*
+                      Ownership, stated plainly to avoid any official
+                      impression.
+
+                      Three stacked lines rather than two, and the
+                      disclaimer is no longer rendered through BiText.
+                      BiText sets its gloss inline, which put the English
+                      and the Hindi of a fourteen-word sentence side by
+                      side on one line - a run wide enough to crowd the
+                      platform name and read as two competing claims
+                      rather than one statement translated.
+
+                      Stacking them resolves it, and follows the ordering
+                      the platform name a few lines above already uses:
+                      whichever language is selected leads, the other
+                      follows beneath in a smaller, lighter weight. Each
+                      line carries its own lang attribute, so a screen
+                      reader switches voice at the boundary instead of
+                      reading Devanagari with English pronunciation.
+                    */}
                     <div className="ml-auto hidden text-right lg:block">
                         <p className="text-xs tracking-wide text-ink-muted uppercase">
                             <BiText {...UI.site.initiative} primaryOnly />
                         </p>
 
-                        {/*
-                          The disclaimer that matters most, so it is the one
-                          line shown in both languages at once rather than
-                          only in the reader's choice.
-                        */}
-                        <p className="mt-0.5 text-xs font-semibold text-india-green">
-                            <BiText {...UI.site.notGovernment} />
+                        <p
+                            lang={primaryLang}
+                            className="mt-0.5 text-xs font-semibold text-india-green"
+                        >
+                            {isHindi
+                                ? UI.site.notGovernment.hi
+                                : UI.site.notGovernment.en}
+                        </p>
+
+                        <p
+                            lang={secondaryLang}
+                            className="text-[11px] text-india-green/70"
+                        >
+                            {isHindi
+                                ? UI.site.notGovernment.en
+                                : UI.site.notGovernment.hi}
                         </p>
                     </div>
+
                 </div>
             </div>
         </header>

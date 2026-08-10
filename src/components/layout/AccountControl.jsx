@@ -24,8 +24,18 @@ import { UI } from "@/i18n/strings";
  * Renders nothing at all for a visitor. The login and register buttons stay
  * in the primary navigation, where someone looking to join expects them, so
  * duplicating them up here would only crowd the strip.
+ *
+ * The role is named; the email address is not. An address printed across
+ * the top of every page is a piece of personal data on display to whoever
+ * is standing behind you, and it earns nothing - the person reading it
+ * already knows their own address. What they may genuinely need to know
+ * is which role they are currently acting as, since a cleaner and an
+ * admin can both be signed in from the same machine, and signing out of
+ * the wrong one is an easy mistake to make. So the role stays and the
+ * address goes.
  * ============================================================================
  */
+
 
 export default function AccountControl() {
 
@@ -59,28 +69,21 @@ export default function AccountControl() {
               Identity, hidden on narrow screens where the strip has no room
               for it. The sign-out button stays regardless - it is the part
               that has to be reachable.
+
+              The role alone, set small and in caps so it reads as a label
+              on the sign-out control rather than as a name. The email
+              address that used to sit here has been removed; the title
+              attribute keeps it available on hover for anyone who does
+              need to confirm which account is open.
             */}
-            <div className="hidden items-center gap-1.5 sm:flex">
+            <span
+                className="hidden items-center gap-1.5 text-[11px] tracking-[0.1em] text-white/70 uppercase sm:flex"
+                title={user.email}
+            >
+                <UserRound size={12} aria-hidden="true" />
+                {getRoleLabel(user.role)}
+            </span>
 
-                <UserRound size={12} aria-hidden="true" className="text-white/70" />
-
-                {/*
-                  Email rather than name: the login response carries only
-                  token, email and role. Truncated because a long address
-                  would otherwise push the controls off the strip.
-                */}
-                <span
-                    className="max-w-[15rem] truncate text-white/90"
-                    title={user.email}
-                >
-                    {user.email}
-                </span>
-
-                {/* Role, so an admin can tell which account they are acting as */}
-                <span className="text-white/50">
-                    ({getRoleLabel(user.role)})
-                </span>
-            </div>
 
             <button
                 type="button"

@@ -7,6 +7,10 @@ import {
 import MainLayout from "@/layouts/MainLayout";
 import PublicLayout from "@/layouts/PublicLayout";
 
+// Scroll behaviour, applied to every navigation in the project
+import ScrollManager from "@/components/layout/ScrollManager";
+
+
 
 // Route Guards
 import PublicRoute from "@/routes/PublicRoute";
@@ -65,8 +69,18 @@ import EditMunicipalCorporationPage from "@/pages/admin/EditMunicipalCorporation
 export default function AppRoutes() {
 
     return (
+        <>
+            {/*
+              Sits beside the route table rather than inside it, so it is
+              mounted once for the life of the app and survives every
+              navigation. Inside a <Route> it would unmount and remount
+              on each change, losing the record of where each page was
+              left - which is the only thing it exists to remember.
+            */}
+            <ScrollManager />
 
-        <Routes>
+            <Routes>
+
             {/*
               ================================================================
               Public pages - no login required
@@ -239,8 +253,11 @@ export default function AppRoutes() {
 
             </Route>
 
-            {/* 404 fallback for undefined routes */}
-            <Route path="*" element={<NotFoundPage />} />
-        </Routes>
+                {/* 404 fallback for undefined routes */}
+                <Route path="*" element={<NotFoundPage />} />
+            </Routes>
+        </>
     );
 }
+
+

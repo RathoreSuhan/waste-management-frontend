@@ -40,7 +40,7 @@ export const UI = {
         initiative: { en: "Citizen-Led Initiative", hi: "नागरिक-नेतृत्व पहल" },
         notGovernment: {
             en: "Independent • Not a Government Body",
-            hi: "स्वतंत्र • सरकारी संस्था नहीं",
+            hi: "स्वतंत्र • अशासकीय निकाय",
         },
         communityRun: {
             en: "A community run initiative",

@@ -1,10 +1,14 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+
 import { Link, useNavigate } from "react-router-dom";
 import { Building2, Plus, Pencil, Trash2 } from "lucide-react";
 
 import PageHeading from "@/components/common/PageHeading";
 import Alert from "@/components/ui/Alert";
 import ConfirmDialog from "@/components/admin/ConfirmDialog";
+import Pagination from "@/components/common/Pagination";
+import usePagination from "@/hooks/usePagination";
+
 
 import {
     getMunicipalCorporations,
@@ -40,6 +44,21 @@ export default function MunicipalCorporationsPage() {
     const [deleteTarget, setDeleteTarget] = useState(null);
     const [deleteError, setDeleteError] = useState("");
     const [deleting, setDeleting] = useState(false);
+
+    // Ten corporations to a page
+    const {
+        page,
+        pageItems,
+        totalPages,
+        total,
+        rangeStart,
+        rangeEnd,
+        goToPage,
+    } = usePagination(corporations);
+
+    // Anchor for the jump back up when the page changes
+    const tableTopRef = useRef(null);
+
 
     /**
      * Load all corporations on mount and after every deletion.
@@ -190,7 +209,8 @@ export default function MunicipalCorporationsPage() {
 
                         <div className="border-b border-rule bg-paper px-5 py-3">
                             <h2 className="text-[11px] font-semibold tracking-[0.15em] text-ink-muted uppercase">
-                                Registered Corporations ({corporations.length})
+                                Registered Corporations ({total})
+
                             </h2>
                         </div>
 
@@ -207,7 +227,8 @@ export default function MunicipalCorporationsPage() {
                                 </thead>
 
                                 <tbody className="divide-y divide-rule text-sm">
-                                    {corporations.map((corp) => (
+                                    {pageItems.map((corp) => (
+
                                         <tr
                                             key={corp.id}
                                             className="transition hover:bg-paper"
@@ -255,9 +276,24 @@ export default function MunicipalCorporationsPage() {
                                 </tbody>
                             </table>
                         </div>
+
+                        {/* Inset so the pager sits inside the panel */}
+                        <div className="px-5 pb-4">
+                            <Pagination
+                                page={page}
+                                totalPages={totalPages}
+                                total={total}
+                                rangeStart={rangeStart}
+                                rangeEnd={rangeEnd}
+                                onPageChange={goToPage}
+                                itemLabel="corporations"
+                                scrollTargetRef={tableTopRef}
+                            />
+                        </div>
                     </div>
                 )}
             </div>
+
 
             {/* Deletion confirmation */}
             <ConfirmDialog

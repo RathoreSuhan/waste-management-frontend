@@ -1,9 +1,10 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { Search, Globe2 } from "lucide-react";
 
 import PageIntro from "@/components/layout/PageIntro";
 import PageSection from "@/components/layout/PageSection";
 import ReportCard from "@/components/reports/ReportCard";
+import Pagination from "@/components/common/Pagination";
 import {
     ReportListSkeleton,
     ReportListError,
@@ -11,6 +12,8 @@ import {
 } from "@/components/reports/ReportListStates";
 
 import useReports from "@/hooks/useReports";
+import usePagination from "@/hooks/usePagination";
+
 import { getAllReports } from "@/services/reportService";
 import { REPORT_STATUS_FILTERS } from "@/constants/reportConstants";
 
@@ -76,7 +79,29 @@ export default function AllReportsPage() {
 
     }, [reports, search, statusFilter]);
 
+    /*
+      Ten records to a page.
+
+      The backend returns the whole register in one response, so the
+      paging is done here. The reader still gets a short page rather
+      than several hundred cards, and the search and status filters
+      above run across every record, not just the visible ten.
+    */
+    const {
+        page,
+        pageItems,
+        totalPages,
+        total,
+        rangeStart,
+        rangeEnd,
+        goToPage,
+    } = usePagination(visibleReports);
+
+    // Where to scroll back to when the page changes
+    const listTopRef = useRef(null);
+
     return (
+
         <>
             {/* Opening block - band on the public site, heading in-app */}
             <PageIntro
@@ -152,22 +177,38 @@ export default function AllReportsPage() {
 
                 {/* Data state */}
                 {!loading && !error && (
-                    visibleReports.length > 0 ? (
-                        <div className="space-y-3">
+                    total > 0 ? (
+                        <div ref={listTopRef} className="space-y-3">
 
                             {/* Result counter, worded as an official record count */}
                             <p className="border-b border-rule pb-2 text-xs text-ink-muted">
                                 Displaying{" "}
                                 <span className="font-semibold text-ink">
-                                    {visibleReports.length}
+                                    {rangeStart}–{rangeEnd}
                                 </span>{" "}
-                                record{visibleReports.length > 1 ? "s" : ""}
+                                of{" "}
+                                <span className="font-semibold text-ink">
+                                    {total}
+                                </span>{" "}
+                                record{total > 1 ? "s" : ""}
                             </p>
 
-                            {visibleReports.map((report) => (
+                            {pageItems.map((report) => (
                                 <ReportCard key={report.id} report={report} />
                             ))}
+
+                            <Pagination
+                                page={page}
+                                totalPages={totalPages}
+                                total={total}
+                                rangeStart={rangeStart}
+                                rangeEnd={rangeEnd}
+                                onPageChange={goToPage}
+                                itemLabel="reports"
+                                scrollTargetRef={listTopRef}
+                            />
                         </div>
+
                     ) : (
                         <ReportListEmpty
                             title="No records found"

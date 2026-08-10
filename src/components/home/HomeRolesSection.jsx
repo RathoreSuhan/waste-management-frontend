@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { User, Truck, Building2, ArrowRight } from "lucide-react";
+import { User, Truck, ArrowRight } from "lucide-react";
 
 /**
  * ============================================================================
@@ -14,11 +14,21 @@ import { User, Truck, Building2, ArrowRight } from "lucide-react";
  * than an account created under the wrong role, which cannot be changed
  * without an administrator.
  *
- * Only citizens and cleaners can register. The admin card is described
- * but carries no call to action, because admin access is granted by
- * promotion from the admin portal, never by signing up.
+ * Only the two registerable roles are shown. The administrator card was
+ * removed from this section deliberately: nobody can sign up as one, so
+ * on a page whose job is to route a visitor to the right registration it
+ * described a door that does not open. Listing the moderation powers -
+ * removing reports, managing accounts - also told every reader what an
+ * administrator can do to their report, which is not a landing page's
+ * business. The admin portal documents itself to the people who have it.
+ *
+ * The role itself still exists and still works. Nothing here changes
+ * ROLE_ADMIN, its routes, or its permissions - this is presentation only.
+ * The definition is kept below rather than deleted, so restoring the card
+ * is a matter of putting one entry back in the array.
  * ============================================================================
  */
+
 
 const ROLES = [
     {
@@ -60,24 +70,32 @@ const ROLES = [
         tint: "bg-green-soft",
         iconClass: "text-india-green",
     },
-    {
-        icon: Building2,
-        title: "Administrators",
-        titleHindi: "प्रशासक",
-        summary:
-            "The people keeping the record straight.",
-        duties: [
-            "Monitor platform-wide activity",
-            "Manage citizen and cleaner accounts",
-            "Search, filter and remove reports",
-            "Maintain municipal corporation contacts",
-        ],
-        // No action: admin access comes from promotion, not registration
-        note: "Granted by an existing administrator. Not open for registration.",
-        tint: "bg-plum-soft",
-        iconClass: "text-civic-plum",
-    },
+
+    /*
+      The administrator card, withdrawn from the public page.
+
+      Kept here so the decision is visible and reversible: restoring it
+      means uncommenting this entry, adding Building2 back to the lucide
+      import, and returning the grid below to three columns.
+
+          {
+              icon: Building2,
+              title: "Administrators",
+              titleHindi: "प्रशासक",
+              summary: "The people keeping the record straight.",
+              duties: [
+                  "Monitor platform-wide activity",
+                  "Manage citizen and cleaner accounts",
+                  "Search, filter and remove reports",
+                  "Maintain municipal corporation contacts",
+              ],
+              note: "Granted by an existing administrator. Not open for registration.",
+              tint: "bg-plum-soft",
+              iconClass: "text-civic-plum",
+          },
+    */
 ];
+
 
 export default function HomeRolesSection() {
 
@@ -93,24 +111,38 @@ export default function HomeRolesSection() {
                     <div className="mt-1.5 h-0.5 w-12 bg-saffron" />
 
                     <p className="mt-2 max-w-2xl text-sm text-ink-muted">
-                        Three roles, each with its own portal. Choose the one that
+                        Two roles, each with its own portal. Choose the one that
                         describes you before registering.
                     </p>
                 </div>
 
-                <div className="mt-6 grid gap-4 md:grid-cols-3">
+                {/*
+                  Two columns across the page's full measure.
+
+                  These were previously capped at max-w-4xl, on the
+                  argument that two cards stretched wide would each read
+                  as a paragraph floating in space. In place that was the
+                  wrong trade: the pair sat visibly narrower than every
+                  other section and read as an afterthought at the foot of
+                  the page, which is the opposite of what a section asking
+                  people to register should do. The cap is gone and the
+                  extra room is absorbed by larger type and heavier
+                  interior padding rather than left as blank card.
+                */}
+                <div className="mt-8 grid gap-6 md:grid-cols-2">
+
                     {ROLES.map((role) => (
                         <article
                             key={role.title}
-                            className="flex flex-col rounded-gov border border-rule bg-white"
+                            className="flex flex-col overflow-hidden rounded-gov border border-rule bg-white transition hover:border-gov-blue/40"
                         >
 
                             {/* Tinted head, carrying the role's colour */}
                             <header
-                                className={`flex items-center gap-3 border-b border-rule ${role.tint} px-5 py-4`}
+                                className={`flex items-center gap-4 border-b border-rule ${role.tint} px-7 py-5`}
                             >
                                 <role.icon
-                                    size={22}
+                                    size={26}
                                     className={role.iconClass}
                                     aria-hidden="true"
                                 />
@@ -120,20 +152,21 @@ export default function HomeRolesSection() {
                                         {role.titleHindi}
                                     </p>
 
-                                    <h3 className="font-serif text-lg font-bold text-gov-navy">
+                                    <h3 className="font-serif text-xl font-bold text-gov-navy">
                                         {role.title}
                                     </h3>
                                 </div>
                             </header>
 
-                            {/* flex-1 so the actions align across all three cards */}
-                            <div className="flex flex-1 flex-col p-5">
+                            {/* flex-1 so the actions align across both cards */}
+                            <div className="flex flex-1 flex-col p-7">
 
-                                <p className="text-sm leading-relaxed text-ink">
+                                <p className="text-base leading-relaxed text-ink">
                                     {role.summary}
                                 </p>
 
-                                <ul className="mt-4 flex-1 space-y-2">
+                                <ul className="mt-5 flex-1 space-y-2.5">
+
                                     {role.duties.map((duty) => (
                                         <li
                                             key={duty}

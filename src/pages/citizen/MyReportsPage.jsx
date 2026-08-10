@@ -1,4 +1,5 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
+
 import { Link } from "react-router-dom";
 import { FilePlus2 } from "lucide-react";
 
@@ -10,8 +11,12 @@ import {
     ReportListEmpty,
 } from "@/components/reports/ReportListStates";
 
+import Pagination from "@/components/common/Pagination";
+
 import useReports from "@/hooks/useReports";
+import usePagination from "@/hooks/usePagination";
 import { getMyReports } from "@/services/reportService";
+
 import {
     REPORT_STATUS,
     REPORT_STATUS_FILTERS,
@@ -67,8 +72,23 @@ export default function MyReportsPage() {
         };
     }, [reports]);
 
+    // Ten reports to a page, filtered set first
+    const {
+        page,
+        pageItems,
+        totalPages,
+        total,
+        rangeStart,
+        rangeEnd,
+        goToPage,
+    } = usePagination(visibleReports);
+
+    // Anchor for the jump back up when the page changes
+    const listTopRef = useRef(null);
+
     return (
         <div className="space-y-6">
+
 
             {/* Page heading with the primary action */}
             <PageHeading
@@ -140,13 +160,25 @@ export default function MyReportsPage() {
 
             {/* Data state */}
             {!loading && !error && (
-                visibleReports.length > 0 ? (
-                    <div className="space-y-3">
-                        {visibleReports.map((report) => (
+                total > 0 ? (
+                    <div ref={listTopRef} className="space-y-3">
+                        {pageItems.map((report) => (
                             <ReportCard key={report.id} report={report} />
                         ))}
+
+                        <Pagination
+                            page={page}
+                            totalPages={totalPages}
+                            total={total}
+                            rangeStart={rangeStart}
+                            rangeEnd={rangeEnd}
+                            onPageChange={goToPage}
+                            itemLabel="reports"
+                            scrollTargetRef={listTopRef}
+                        />
                     </div>
                 ) : (
+
                     // Empty state changes depending on whether a filter is applied
                     <ReportListEmpty
                         title={

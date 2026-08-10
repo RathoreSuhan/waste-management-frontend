@@ -1,8 +1,5 @@
 import { Link } from "react-router-dom";
 import {
-    FilePlus2,
-    Search,
-    ClipboardCheck,
     LogIn,
     UserPlus,
     LayoutDashboard,
@@ -12,8 +9,13 @@ import {
 
 import HomeSuccessSection from "@/components/feed/HomeSuccessSection";
 import HomeImpactBand from "@/components/home/HomeImpactBand";
+import HomePledgeBand from "@/components/home/HomePledgeBand";
+import HomeProcessSection from "@/components/home/HomeProcessSection";
+import HomeQuoteBand from "@/components/home/HomeQuoteBand";
+
 import HomeRolesSection from "@/components/home/HomeRolesSection";
 import HomeTopCleaners from "@/components/home/HomeTopCleaners";
+
 
 import useAuth from "@/hooks/useAuth";
 import { getDashboardPath } from "@/utils/roleRedirect";
@@ -35,32 +37,21 @@ import heroImage from "@/assets/homepage-hero.webp";
  * never stranded here without a route back into the app.
  *
  * Reading order is deliberate: what the platform is, what it has done,
- * how it works, who it is for, what it has produced, who is leading, and
- * only then the invitation to join. Each section earns the next.
+ * how it works, why it matters, what it has produced, who is leading,
+ * and only then who should register. Each section earns the next.
+ *
+ * The roles section sits at the end rather than the middle. Its cards
+ * finish in Register buttons, so it belongs beside the closing call to
+ * action - asking a visitor to choose a role before they have seen a
+ * single cleared site is asking for a decision they cannot yet make.
+ *
+ * The process steps used to be declared in this file as three cards.
+ * They are now in HomeProcessSection, built from the pipeline recorded
+ * in homeContent.js, because the old summary described a process the
+ * backend does not run.
  * ============================================================================
  */
 
-// How the reporting process works, stated in three plain steps
-const PROCESS_STEPS = [
-    {
-        icon: FilePlus2,
-        title: "File a Report",
-        description:
-            "Submit a photograph of the waste site along with its location. A reference number is issued immediately.",
-    },
-    {
-        icon: ClipboardCheck,
-        title: "Assigned to a Cleaner",
-        description:
-            "The report is verified and passed to a cleanup team working in that locality.",
-    },
-    {
-        icon: Search,
-        title: "Track till Closure",
-        description:
-            "Follow your report from the moment it is filed through to resolution using its reference number.",
-    },
-];
 
 export default function HomePage() {
 
@@ -110,7 +101,7 @@ export default function HomePage() {
 
                             {/* Devanagari sits above the English title */}
                             <p className="mt-5 font-serif text-xl text-white/80">
-                                कचरा रिपोर्टिंग मंच
+                                अपशिष्ट सूचना एवं निवारण मंच
                             </p>
 
                             <h1 className="mt-1 font-serif text-3xl leading-tight font-bold lg:text-5xl">
@@ -190,54 +181,20 @@ export default function HomePage() {
                 <HomeImpactBand />
 
                 {/* ---------------- Process ---------------- */}
-                <section className="mx-auto max-w-7xl px-4 py-12">
-
-                    <div className="border-b border-rule pb-3">
-                        <h2 className="font-serif text-2xl font-bold text-gov-navy">
-                            How the Process Works
-                        </h2>
-
-                        <div className="mt-1.5 h-0.5 w-12 bg-saffron" />
-                    </div>
-
-                    {/* Numbered steps, so the sequence is unambiguous */}
-                    <ol className="mt-6 grid gap-4 md:grid-cols-3">
-                        {PROCESS_STEPS.map((step, index) => (
-                            <li
-                                key={step.title}
-                                className="rounded-gov border border-rule bg-white p-5"
-                            >
-                                <div className="flex items-center gap-3">
-                                    {/* Step number in a solid navy square */}
-                                    <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-gov bg-gov-navy text-sm font-bold text-white">
-                                        {index + 1}
-                                    </span>
-
-                                    <step.icon
-                                        size={18}
-                                        className="text-gov-blue"
-                                        aria-hidden="true"
-                                    />
-                                </div>
-
-                                <h3 className="mt-3 font-serif text-lg font-bold text-gov-navy">
-                                    {step.title}
-                                </h3>
-
-                                <p className="mt-1.5 text-sm leading-relaxed text-ink-muted">
-                                    {step.description}
-                                </p>
-                            </li>
-                        ))}
-                    </ol>
-                </section>
-
-                {/* ---------------- Roles ---------------- */}
                 {/*
-                  Follows the process, because "who does this" only makes
-                  sense once "what happens" has been read.
+                  The full pipeline, in the order the backend runs it.
                 */}
-                <HomeRolesSection />
+                <HomeProcessSection />
+
+                {/* ---------------- Why it matters ---------------- */}
+                {/*
+                  The one section on this page that argues rather than
+                  informs. Set mid-scroll on purpose: it breaks the run of
+                  bordered cards where the page was starting to read as a
+                  single sheet, and it lands while a visitor is still
+                  deciding whether to keep going.
+                */}
+                <HomeQuoteBand />
 
                 {/* ---------------- Community success ---------------- */}
                 {/*
@@ -249,6 +206,29 @@ export default function HomePage() {
 
                 {/* ---------------- Recognition ---------------- */}
                 <HomeTopCleaners />
+
+                {/* ---------------- Closing appeal ---------------- */}
+                {/*
+                  A photographic band between the leaderboard and the role
+                  cards, both of which are white and gridded. Beyond
+                  breaking that run, it turns the page's argument towards
+                  the reader before the next section asks them to pick a
+                  role - a question worth softening the ground for.
+                */}
+                <HomePledgeBand />
+
+                {/* ---------------- Roles ---------------- */}
+
+                {/*
+                  Last of the content sections, after the evidence. By
+                  this point a visitor has seen the numbers, the process
+                  and the cleared sites, so "which of these am I" is a
+                  question they can actually answer - and the Register
+                  buttons here lead straight into the closing invitation
+                  below.
+                */}
+                <HomeRolesSection />
+
 
                 {/* ---------------- Public notice ---------------- */}
 

@@ -1,7 +1,12 @@
+import { useRef } from "react";
+
 import PageHeading from "@/components/common/PageHeading";
 import RewardSummaryCard from "@/components/rewards/RewardSummaryCard";
 import RewardHistoryItem from "@/components/rewards/RewardHistoryItem";
+import Pagination from "@/components/common/Pagination";
 import useRewards from "@/hooks/useRewards";
+import usePagination from "@/hooks/usePagination";
+
 import {
     ReportListSkeleton,
     ReportListError,
@@ -29,6 +34,21 @@ import {
 export default function MyRewardsPage() {
 
     const { summary, history, loading, error, reload } = useRewards();
+
+    // Ten credits to a page
+    const {
+        page,
+        pageItems,
+        totalPages,
+        total,
+        rangeStart,
+        rangeEnd,
+        goToPage,
+    } = usePagination(history);
+
+    // Anchor for the jump back up when the page changes
+    const ledgerTopRef = useRef(null);
+
 
     return (
         <div>
@@ -66,20 +86,37 @@ export default function MyRewardsPage() {
                         </div>
 
                         {history.length > 0 ? (
-                            <ul>
-                                {history.map((entry, index) => (
-                                    /**
-                                     * RewardHistoryResponse carries no id, so the
-                                     * timestamp is combined with the index to stay
-                                     * stable even when two credits share a second.
-                                     */
-                                    <RewardHistoryItem
-                                        key={`${entry.createdAt}-${index}`}
-                                        entry={entry}
+                            <div ref={ledgerTopRef}>
+                                <ul>
+                                    {pageItems.map((entry, index) => (
+                                        /**
+                                         * RewardHistoryResponse carries no id, so the
+                                         * timestamp is combined with the index to stay
+                                         * stable even when two credits share a second.
+                                         */
+                                        <RewardHistoryItem
+                                            key={`${entry.createdAt}-${index}`}
+                                            entry={entry}
+                                        />
+                                    ))}
+                                </ul>
+
+                                {/* Inset so the pager sits inside the panel */}
+                                <div className="px-5 pb-4">
+                                    <Pagination
+                                        page={page}
+                                        totalPages={totalPages}
+                                        total={total}
+                                        rangeStart={rangeStart}
+                                        rangeEnd={rangeEnd}
+                                        onPageChange={goToPage}
+                                        itemLabel="credits"
+                                        scrollTargetRef={ledgerTopRef}
                                     />
-                                ))}
-                            </ul>
+                                </div>
+                            </div>
                         ) : (
+
                             <div className="p-5">
                                 <ReportListEmpty
                                     title="No rewards yet"

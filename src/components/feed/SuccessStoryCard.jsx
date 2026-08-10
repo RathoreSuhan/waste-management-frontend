@@ -34,8 +34,21 @@ import { formatRelativeTime } from "@/utils/formatters";
  * there is still exactly one link per card, named by the story title, and
  * keyboard focus continues to land on the title rather than on a large
  * anonymous region.
+ *
+ * On presentation: the card is a record of something that finished, so it
+ * is dressed as one. A light blue rule across the top ties it to the rest
+ * of the platform's furniture without competing with the photographs, the
+ * verification badge leads the text so the claim is made before the credits
+ * rather than three paragraphs below them, and those credits are set as one
+ * hairline-separated line instead of a stacked list that made two facts
+ * look like a table.
+ *
+ * The same card is used by the full Success Stories gallery. That is
+ * deliberate - a story should not look like a different kind of object
+ * depending on which page found it.
  * ============================================================================
  */
+
 
 export default function SuccessStoryCard({ story }) {
 
@@ -54,11 +67,26 @@ export default function SuccessStoryCard({ story }) {
           focus-within mirrors the hover treatment so keyboard users get the
           same "this is one clickable unit" cue that pointer users do.
         */
-        <article className="group relative overflow-hidden rounded-gov border border-rule bg-white transition-colors hover:border-gov-blue/60 hover:bg-gov-blue/[0.02] focus-within:border-gov-blue/60">
+        <article className="group relative flex flex-col overflow-hidden rounded-gov border border-rule bg-white transition hover:-translate-y-0.5 hover:border-gov-blue/60 hover:shadow-md focus-within:border-gov-blue/60">
+
+            {/* Blue rather than green: green is spent on the AI Verified
+                badge below, where it carries a meaning.
+
+                Kept to the lighter end of the blues. Navy is the colour of
+                the platform's headers and chrome, and at full strength on a
+                small card it read as a title bar - the strip is trim, not
+                furniture, and should not out-weigh the photographs it sits
+                above. */}
+
+            <div
+                aria-hidden="true"
+                className="h-1 w-full bg-gradient-to-r from-brand-bright to-brand-bright/40"
+            />
 
 
             {/* Photographic evidence, shared with the report detail page */}
             <div className="px-4 pt-4">
+
                 <BeforeAfterImage
                     beforeUrl={story.beforeImageUrl}
                     afterUrl={story.afterImageUrl}
@@ -69,9 +97,30 @@ export default function SuccessStoryCard({ story }) {
                             : "Cleanup completed."
                     }
                 />
+
             </div>
 
-            <div className="p-4">
+            <div className="flex flex-1 flex-col p-4">
+
+                {/*
+                  Verification, stated in the card's own text rather than
+                  laid over the photographs.
+
+                  Floating it on the image covered part of the evidence it
+                  was vouching for, and the plate it needed to stay legible
+                  against an arbitrary photograph made it the loudest thing
+                  on the card. Read as a line of type above the title it is
+                  still the first thing after the pictures, which is early
+                  enough for a claim of this kind.
+
+                  Renders nothing when a story was not AI verified, so an
+                  unverified pair cannot borrow the mark.
+                */}
+                <AiVerifiedBadge
+                    verified={story.aiVerified}
+                    confidence={story.aiConfidence}
+                    className="mb-2 self-start"
+                />
 
                 {/*
                   Title link, stretched over the card by the after: overlay so
@@ -93,8 +142,18 @@ export default function SuccessStoryCard({ story }) {
                     {place}
                 </p>
 
-                {/* Credit to the people who did the work */}
-                <dl className="mt-3 space-y-1 text-xs text-ink-muted">
+                {/*
+                  Credit to the people who did the work.
+
+                  Set as one wrapping line rather than a stacked list:
+                  there are at most two facts here, and stacking them gave
+                  a card of two short phrases the weight of a table.
+
+                  flex-1 pushes the footer to the bottom, so cards of
+                  differing title lengths still align along their footers
+                  when they sit side by side in a grid.
+                */}
+                <dl className="mt-3 flex flex-1 flex-wrap items-center gap-x-3 gap-y-1 text-xs text-ink-muted">
 
                     {story.cleanerName && (
                         <div className="inline-flex items-center gap-1">
@@ -109,8 +168,16 @@ export default function SuccessStoryCard({ story }) {
                         </div>
                     )}
 
+                    {/* Hairline divider, only where there are two facts to divide */}
+                    {story.cleanerName && story.municipalCorporationName && (
+                        <span
+                            aria-hidden="true"
+                            className="h-3 w-px bg-rule"
+                        />
+                    )}
+
                     {story.municipalCorporationName && (
-                        <div className="flex items-center gap-1">
+                        <div className="inline-flex items-center gap-1">
                             <Building2 size={12} aria-hidden="true" />
                             <dt className="sr-only">Municipal corporation</dt>
                             <dd>{story.municipalCorporationName}</dd>
@@ -119,19 +186,19 @@ export default function SuccessStoryCard({ story }) {
                 </dl>
 
                 {/*
+                  Tinted strip, so the actions read as a distinct footer
+                  rather than as more of the card's text. Pulled out to the
+                  card's edges with negative margins, which is why the
+                  padding is restated here.
+
                   Lifted above the title's overlay, otherwise the invisible
                   link would sit over the like and share buttons and swallow
                   their clicks.
                 */}
-                <div className="relative z-10 mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-rule pt-3">
-
-                    <AiVerifiedBadge
-                        verified={story.aiVerified}
-                        confidence={story.aiConfidence}
-                    />
-
+                <div className="relative z-10 -mx-4 -mb-4 mt-4 flex flex-wrap items-center justify-end gap-2 border-t border-rule bg-paper px-4 py-2.5">
                     <AppreciationBar story={story} compact />
                 </div>
+
             </div>
         </article>
     );
