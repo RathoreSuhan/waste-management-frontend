@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { MapPin, User, Building2 } from "lucide-react";
+import { MapPin, User, Building2, FileText } from "lucide-react";
 
 import BeforeAfterImage from "@/components/reports/BeforeAfterImage";
 import AiVerifiedBadge from "@/components/feed/AiVerifiedBadge";
@@ -195,7 +195,26 @@ export default function SuccessStoryCard({ story }) {
                   link would sit over the like and share buttons and swallow
                   their clicks.
                 */}
-                <div className="relative z-10 -mx-4 -mb-4 mt-4 flex flex-wrap items-center justify-end gap-2 border-t border-rule bg-paper px-4 py-2.5">
+                <div className="relative z-10 -mx-4 -mb-4 mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-rule bg-paper px-4 py-2.5">
+
+                    {/*
+                      The way through to the complaint this cleanup answered.
+
+                      A second, explicitly named link rather than a change to
+                      the stretched title: the title leads to the story, and
+                      a reader who wants the report, its location details and
+                      its discussion should not have to guess that the story
+                      page is where that route begins.
+                    */}
+                    <Link
+                        to={`${basePath}/reports/${story.reportId}`}
+                        className="inline-flex items-center gap-1 text-xs font-semibold text-gov-blue hover:underline"
+                    >
+                        <FileText size={12} aria-hidden="true" />
+                        View report
+                        <span className="sr-only"> for {story.reportTitle}</span>
+                    </Link>
+
                     <AppreciationBar story={story} compact />
                 </div>
 
