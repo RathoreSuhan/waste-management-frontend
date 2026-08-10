@@ -245,16 +245,12 @@ export default function SiteHeader() {
 /**
  * Platform mark.
  *
- * The project logo from public/logo.svg, cropped to a circle.
+ * The project logo from public/clean-bharat-logo-preview.png, cropped
+ * to a circle.  PNG as recommended; the .ico and .svg variants sit in
+ * the same directory.
  *
- * Served from public/ rather than imported, so the 1.4 MB file is fetched
- * once by the browser and cached instead of being inlined into the bundle.
- *
- * The circular crop is doing real work here: the artwork carries a square
- * off-white plate and its viewBox is offset from the origin, so dropping
- * it in unframed would sit off-centre against the white masthead. The
- * fixed-size wrapper with overflow-hidden and object-cover trims the plate
- * and centres the mark.
+ * Served from public/ rather than imported, so the file is fetched once
+ * by the browser and cached instead of being inlined into the bundle.
  *
  * Sized in px rather than rem: the A- / A / A+ controls scale the root
  * font size, and a mark that grew with the text would start to crowd the
@@ -265,7 +261,7 @@ function PlatformMark() {
     return (
         <span className="block h-11 w-11 shrink-0 overflow-hidden rounded-full border border-rule bg-white">
             <img
-                src="/logo.svg"
+                src="/clean-bharat-logo-preview.png"
                 alt="Clean Bharat logo"
                 width="44"
                 height="44"

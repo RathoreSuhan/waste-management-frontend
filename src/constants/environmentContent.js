@@ -18,11 +18,17 @@
  *    Where a line is popularly assigned to someone but not verifiably
  *    theirs, it says "attributed to" rather than asserting it.
  *
- * The bin colours follow the Solid Waste Management Rules, 2016, which set
- * the three-stream standard for India. Individual corporations vary, and
- * the page says so rather than presenting one city's scheme as national law.
+ * The bin colours shown are the three-stream scheme used by a number of
+ * Indian municipal corporations - green for wet, red for sanitary and
+ * domestic hazardous, yellow for dry recyclable. This is a common local
+ * variant rather than the national default: the Solid Waste Management
+ * Rules, 2016 name green, dry and domestic hazardous streams, and many
+ * corporations render the latter two as blue and black. The page says so
+ * plainly rather than presenting one scheme as national law, and tells the
+ * reader to follow their own corporation where it publishes one.
  * ============================================================================
  */
+
 
 /**
  * Why waste management is worth the trouble - the wm0 section.
@@ -70,18 +76,26 @@ export const ENV_BENEFITS = [
 ];
 
 /**
- * The three-bin standard - the wm1 section.
+ * The three-bin scheme - the wm1 section.
  *
  * swatch is an explicit hex rather than a theme token because these are
- * the bin colours themselves, not the site's palette. Green and blue
- * happen to sit close to the tricolour green and government blue, but
- * they are not the same value and must not drift with the theme.
+ * the bin colours themselves, not the site's palette. Green happens to sit
+ * close to the tricolour green, but it is not the same value and must not
+ * drift with the theme.
+ *
+ * onSwatch says which text colour the header strip needs to stay legible
+ * over swatch, and it is data rather than a component guess because it is
+ * a property of the colour itself. "light" means white text, "dark" means
+ * the site's navy. Yellow is the reason this field exists: white on
+ * #f0b429 is about 1.9:1, well under the 4.5:1 minimum, while navy on the
+ * same yellow clears 8:1.
  */
 export const ENV_BINS = [
     {
         name: "Green",
         stream: "Wet / Biodegradable",
         swatch: "#1b7f2e",
+        onSwatch: "light",
         summary: "Anything that will rot. This is the largest share of a household's waste by weight.",
         accepts: [
             "Cooked food and leftovers",
@@ -94,9 +108,27 @@ export const ENV_BINS = [
             "the contents were sent for, and has to be opened and picked out again.",
     },
     {
-        name: "Blue",
+        name: "Red",
+        stream: "Sanitary / Domestic Hazardous",
+        swatch: "#b91c1c",
+        onSwatch: "light",
+        summary: "The small fraction that is unsafe to bury, burn or handle unprotected - and the part no collector should meet unwrapped.",
+        accepts: [
+            "Sanitary napkins, diapers, dressings",
+            "Batteries and electronic waste",
+            "CFL bulbs and tube lights",
+            "Expired medicines, paint, solvents",
+        ],
+        mistake:
+            "Dropping a battery or a sanitary item in with the dry waste. " +
+            "The battery leaks heavy metals wherever it ends up, and the " +
+            "sanitary item has to be pulled out by hand at the other end.",
+    },
+    {
+        name: "Yellow",
         stream: "Dry / Recyclable",
-        swatch: "#1660a8",
+        swatch: "#f0b429",
+        onSwatch: "dark",
         summary: "Anything that can go back into production - provided it arrives clean and dry.",
         accepts: [
             "Paper, newspaper, cardboard",
@@ -108,21 +140,6 @@ export const ENV_BINS = [
             "Dropping in unrinsed containers or a greasy food box. Oil and " +
             "food residue contaminate the paper around them, and the batch " +
             "is downgraded or discarded.",
-    },
-    {
-        name: "Black",
-        stream: "Domestic Hazardous",
-        swatch: "#2b2b2b",
-        summary: "The small fraction that is dangerous to bury, burn or handle unprotected.",
-        accepts: [
-            "Batteries and electronic waste",
-            "CFL bulbs and tube lights",
-            "Expired medicines",
-            "Paint, solvents, pesticide containers",
-        ],
-        mistake:
-            "Treating a battery as ordinary dry waste. It leaks heavy metals " +
-            "wherever it ends up, and it ends up in the water table.",
     },
 ];
 

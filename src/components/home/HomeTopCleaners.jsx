@@ -48,7 +48,7 @@ export default function HomeTopCleaners() {
 
 
     return (
-        <section className="border-t border-rule bg-white">
+        <section className="border-t border-rule bg-paper">
             <div className="mx-auto max-w-7xl px-4 py-12">
 
                 <div className="flex flex-wrap items-end justify-between gap-3 border-b border-rule pb-3">
@@ -84,7 +84,7 @@ export default function HomeTopCleaners() {
                     {entries.slice(0, PREVIEW_COUNT).map((entry, index) => (
                         <li
                             key={`${entry.rank}-${entry.cleanerName}-${index}`}
-                            className="rounded-gov border border-rule bg-paper p-5"
+                            className="rounded-gov border border-rule bg-white p-5"
                         >
                             <div className="flex items-start justify-between gap-3">
                                 <RankMedal rank={entry.rank} />

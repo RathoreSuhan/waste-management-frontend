@@ -7,14 +7,14 @@
     <!--
       Site marks.
 
-      favicon.svg is a small hand-drawn rendition of the platform logo,
-      because public/logo.svg is a 1.4 MB traced raster that would be
-      fetched on every page load and would be illegible at 16px. The full
-      logo is still used where there is room for it: the masthead, the
-      home screen icon, and link previews.
+      All three point at the circular platform logo in public/. The .ico
+      carries the packed small sizes a browser tab wants, so it is used
+      for the favicon; the .png is the single-resolution artwork and
+      serves the home screen icon and link previews, where there is room
+      for it to be read properly.
     -->
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <link rel="apple-touch-icon" href="/logo.svg" />
+    <link rel="icon" href="/clean-bharat-logo-preview.ico" sizes="any" />
+    <link rel="apple-touch-icon" href="/clean-bharat-logo-preview.png" />
 
     <title>Clean Bharat | Community Waste Reporting</title>
 
@@ -30,7 +30,7 @@
       property="og:description"
       content="Report waste in your neighbourhood, follow the cleanup, and see the before and after."
     />
-    <meta property="og:image" content="/logo.svg" />
+    <meta property="og:image" content="/clean-bharat-logo-preview.png" />
     <meta name="twitter:card" content="summary" />
 
     <!-- Tints the browser chrome on mobile to match the masthead -->

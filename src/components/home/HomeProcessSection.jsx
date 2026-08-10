@@ -93,10 +93,20 @@ const STAGE_ACCENTS = {
     },
 };
 
-export default function HomeProcessSection() {
+/**
+ * @param className  the outer section's classes, so a page can set the
+ *                   background this sits on. Mounted on both the home
+ *                   page and the About page, which alternate their
+ *                   sections differently - the same stages need to be
+ *                   paper on one and white on the other. Defaulted to
+ *                   the home page's value, so only About passes it.
+ */
+export default function HomeProcessSection({
+    className = "border-b border-rule bg-paper",
+}) {
 
     return (
-        <section className="border-b border-rule bg-paper">
+        <section className={className}>
             <div className="mx-auto max-w-7xl px-4 py-12">
 
                 {/* ---------------- Heading ---------------- */}

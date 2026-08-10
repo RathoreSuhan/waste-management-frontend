@@ -11,6 +11,7 @@ import HomeSuccessSection from "@/components/feed/HomeSuccessSection";
 import HomeImpactBand from "@/components/home/HomeImpactBand";
 import HomePledgeBand from "@/components/home/HomePledgeBand";
 import HomeProcessSection from "@/components/home/HomeProcessSection";
+import HomeFaqSection from "@/components/home/HomeFaqSection";
 import HomeQuoteBand from "@/components/home/HomeQuoteBand";
 
 import HomeRolesSection from "@/components/home/HomeRolesSection";
@@ -230,9 +231,34 @@ export default function HomePage() {
                 <HomeRolesSection />
 
 
-                {/* ---------------- Public notice ---------------- */}
+                {/* ---------------- Questions ---------------- */}
+                {/*
+                  Target of the footer's FAQ link, which is why the id
+                  sits on a wrapper here rather than inside the section -
+                  the anchor belongs to this page's arrangement, not to
+                  the component.
 
-                <section className="mx-auto max-w-7xl px-4 py-12">
+                  scroll-mt-20 clears the sticky navigation, the same
+                  offset the About page uses for #how-it-works.
+                */}
+                <div id="faq" className="scroll-mt-20">
+                    <HomeFaqSection />
+                </div>
+
+                {/* ---------------- Public notice ---------------- */}
+                {/*
+                  Sits below the questions rather than above them. Two of
+                  the four answers cover the same ground - why a
+                  photograph gets rejected, and what happens when a spot
+                  is already reported - so read in this order the notice
+                  lands as the short version of something already
+                  explained, rather than as a rule the FAQ then repeats.
+
+                  Light on top padding: the FAQ's own py-12 already sits
+                  above this, and two full stacks of it left the notice
+                  adrift from the link it follows.
+                */}
+                <section className="mx-auto max-w-7xl px-4 pt-4 pb-12">
                     <div className="rounded-gov border border-rule border-l-4 border-l-saffron bg-white p-5">
 
                         <h2 className="text-[11px] font-semibold tracking-[0.15em] text-ink-muted uppercase">

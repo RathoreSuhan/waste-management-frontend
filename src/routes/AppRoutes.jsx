@@ -30,6 +30,7 @@ import SuccessStoryDetailPage from "@/pages/public/SuccessStoryDetailPage";
 // Leaderboard Page (Phase 11)
 import LeaderboardPage from "@/pages/public/LeaderboardPage";
 import EnvironmentPage from "@/pages/public/EnvironmentPage";
+import AboutPage from "@/pages/public/AboutPage";
 
 // Dashboards
 import CitizenDashboard from "@/pages/citizen/CitizenDashboard";
@@ -133,6 +134,15 @@ export default function AppRoutes() {
                   calls and is readable signed out.
                 */}
                 <Route path="/environment" element={<EnvironmentPage />} />
+
+                {/*
+                  About the platform, and the five stages a report passes.
+
+                  Both footer links under "About the Platform" resolve
+                  here - How It Works arrives at #how-it-works, which is
+                  the process rail partway down the page.
+                */}
+                <Route path="/about" element={<AboutPage />} />
             </Route>
 
 
@@ -249,6 +259,9 @@ export default function AppRoutes() {
                       arrives from the sidebar keeps the sidebar.
                     */}
                     <Route path="/app/environment" element={<EnvironmentPage />} />
+
+                    {/* Same page inside the signed-in shell, sidebar kept */}
+                    <Route path="/app/about" element={<AboutPage />} />
                 </Route>
 
             </Route>

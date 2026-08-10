@@ -1,4 +1,8 @@
-import { Link } from "react-router-dom";
+import { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+
+import LoginRequiredDialog from "@/components/auth/LoginRequiredDialog";
+import { useAuthContext } from "@/hooks/useAuthContext";
 
 /**
  * ============================================================================
@@ -11,25 +15,71 @@ import { Link } from "react-router-dom";
  * The disclaimer is the important part: the layout and colours here look
  * official, so the footer states outright that this platform is private and
  * unaffiliated. Looking trustworthy must not shade into looking government.
+ *
+ * Two of these links point into citizen-only territory, so this component
+ * reads auth state - see the note on `citizenOnly` below for why a footer
+ * needs to know who is looking at it.
  * ============================================================================
  */
 
-// Link columns, grouped by what the visitor is trying to do
+/*
+  Link columns, grouped by what the visitor is trying to do.
+
+  `citizenOnly` marks a destination behind RoleRoute allowedRole
+  ="ROLE_CITIZEN". Those entries render as buttons rather than links,
+  because a plain <Link> to them is a trap:
+
+    - a guest is bounced to /login by ProtectedRoute with no explanation
+    - a cleaner or admin is silently redirected to their own dashboard
+      by RoleRoute, which reads as a broken link
+
+  Neither is wrong about access - the guard holds either way - but both
+  leave the reader with no idea what happened. PublicNav already solved
+  this for its File a Report button by asking LoginRequiredDialog to
+  explain first; the footer now uses the same dialog rather than a
+  second, differently-worded answer to the same question.
+*/
 const FOOTER_SECTIONS = [
     {
         heading: "Report Waste",
         links: [
-            { label: "File a Report", to: "/citizen/report" },
-            { label: "Track My Reports", to: "/citizen/history" },
+            {
+                label: "File a Report",
+                to: "/citizen/report",
+                citizenOnly: true,
+                // Phrased to complete "You need an account to ..."
+                action: "file a waste report",
+            },
+            {
+                label: "Track My Reports",
+                to: "/citizen/history",
+                citizenOnly: true,
+                action: "track your reports",
+            },
             { label: "Public Reports", to: "/reports" },
         ],
     },
     {
         heading: "About the Platform",
         links: [
-            { label: "About the Project", to: "/" },
-            { label: "How It Works", to: "/" },
-            { label: "Frequently Asked Questions", to: "/" },
+            { label: "About the Project", to: "/about" },
+
+            /*
+              Same page, further down. How It Works is the five-stage
+              rail inside the About page rather than a page of its own -
+              it is the answer to "what is this", not a separate subject,
+              and alone it would be a heading and a diagram.
+            */
+            { label: "How It Works", to: "/about#how-it-works" },
+
+            /*
+              The FAQ closes the landing page rather than occupying one
+              of its own - four questions do not make a page, and the
+              answers are most useful to somebody still reading about
+              the platform. ScrollManager takes the reader to the
+              section itself.
+            */
+            { label: "Frequently Asked Questions", to: "/#faq" },
         ],
     },
     {
@@ -43,6 +93,39 @@ const FOOTER_SECTIONS = [
 ];
 
 export default function SiteFooter() {
+
+    const { user } = useAuthContext();
+    const navigate = useNavigate();
+
+    /*
+      The citizen-only link currently being explained, or null when
+      nothing is being asked. Holds the link itself so the dialog can
+      name the action and return the reader to the right place.
+    */
+    const [prompt, setPrompt] = useState(null);
+
+    /**
+     * Follow a citizen-only footer link, if the reader may.
+     *
+     * Same three-way decision PublicNav makes: no account, wrong role,
+     * or through.
+     */
+    function handleGuardedLink(link) {
+
+        // No account yet - invite them to sign in, remembering the destination
+        if (!user) {
+            setPrompt({ ...link, citizenOnly: false });
+            return;
+        }
+
+        // Signed in, but reporting and report history belong to citizens
+        if (user.role !== "ROLE_CITIZEN") {
+            setPrompt({ ...link, citizenOnly: true });
+            return;
+        }
+
+        navigate(link.to);
+    }
 
     return (
         <footer className="mt-auto">
@@ -80,12 +163,32 @@ export default function SiteFooter() {
                             <ul className="mt-3 space-y-2">
                                 {section.links.map((link) => (
                                     <li key={link.label}>
-                                        <Link
-                                            to={link.to}
-                                            className="text-xs text-white/75 transition hover:text-white hover:underline"
-                                        >
-                                            {link.label}
-                                        </Link>
+                                        {link.citizenOnly ? (
+                                            /*
+                                              A button, not a link. It may
+                                              not navigate at all, and
+                                              dressing something that opens
+                                              a dialog as a hyperlink
+                                              promises a page it might not
+                                              deliver. Styled identically
+                                              to its neighbours so the
+                                              column still reads as a list.
+                                            */
+                                            <button
+                                                type="button"
+                                                onClick={() => handleGuardedLink(link)}
+                                                className="text-left text-xs text-white/75 transition hover:text-white hover:underline"
+                                            >
+                                                {link.label}
+                                            </button>
+                                        ) : (
+                                            <Link
+                                                to={link.to}
+                                                className="text-xs text-white/75 transition hover:text-white hover:underline"
+                                            >
+                                                {link.label}
+                                            </Link>
+                                        )}
                                     </li>
                                 ))}
                             </ul>
@@ -115,6 +218,22 @@ export default function SiteFooter() {
                     </p>
                 </div>
             </div>
+
+            {/*
+              Raised when the reader cannot follow a citizen-only link.
+
+              redirectTo is the link's own destination, so signing in from
+              here lands on the page they asked for rather than back at
+              the bottom of whatever page they happened to be reading.
+            */}
+            <LoginRequiredDialog
+                open={Boolean(prompt)}
+                onClose={() => setPrompt(null)}
+                action={prompt?.action}
+                citizenOnly={prompt?.citizenOnly}
+                currentRole={user?.role}
+                redirectTo={prompt?.to}
+            />
         </footer>
     );
 }

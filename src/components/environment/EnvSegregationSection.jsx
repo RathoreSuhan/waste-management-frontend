@@ -20,9 +20,10 @@ import { ENV_BINS } from "@/constants/environmentContent";
  * go where is exactly the person who notices the pile that should not be
  * there. The button files a report.
  *
- * Bin colours come from the Solid Waste Management Rules, 2016 and are held
- * as explicit hex values in environmentContent, not theme tokens - they
- * describe physical bins and must not shift if the palette is retuned.
+ * Bin colours are held as explicit hex values in environmentContent, not
+ * theme tokens - they describe physical bins and must not shift if the
+ * palette is retuned. Each bin also carries onSwatch, which decides whether
+ * its header strip takes white or navy text; yellow will not hold white.
  * ============================================================================
  */
 
@@ -84,14 +85,23 @@ export default function EnvSegregationSection({ image }) {
 
                         <p className="mt-2 max-w-3xl text-sm leading-relaxed text-ink-muted">
                             The Solid Waste Management Rules, 2016 set three
-                            streams for household waste across India. Each card
-                            lists what belongs in that bin, and the one mistake
-                            that undoes the effort.
+                            streams for household waste across India - wet, dry
+                            and domestic hazardous. The colours below are the
+                            ones many corporations use for them. Each card lists
+                            what belongs in that bin, and the one mistake that
+                            undoes the effort.
                         </p>
                     </div>
 
                     <div className="mt-6 grid gap-4 md:grid-cols-3">
-                        {ENV_BINS.map((bin) => (
+                        {ENV_BINS.map((bin) => {
+
+                            // Light swatches need dark type over them. Yellow
+                            // is the case in point: white on it reads at about
+                            // 1.9:1, navy at over 8:1.
+                            const dark = bin.onSwatch === "dark";
+
+                            return (
                             <article
                                 key={bin.name}
                                 className="flex flex-col overflow-hidden rounded-gov border border-rule bg-paper"
@@ -99,18 +109,18 @@ export default function EnvSegregationSection({ image }) {
                                 {/*
                                   The bin's own colour as a header strip, so
                                   the card is identifiable before it is read.
-                                  White on all three swatches clears the
-                                  contrast minimum comfortably.
+                                  Type colour follows onSwatch so every header
+                                  clears the contrast minimum.
                                 */}
                                 <header
-                                    className="px-5 py-3 text-white"
+                                    className={`px-5 py-3 ${dark ? "text-gov-navy" : "text-white"}`}
                                     style={{ backgroundColor: bin.swatch }}
                                 >
                                     <p className="font-serif text-lg font-bold">
                                         {bin.name} Bin
                                     </p>
 
-                                    <p className="text-xs text-white/85">
+                                    <p className={`text-xs ${dark ? "text-gov-navy/80" : "text-white/85"}`}>
                                         {bin.stream}
                                     </p>
                                 </header>
@@ -161,20 +171,23 @@ export default function EnvSegregationSection({ image }) {
                                     </div>
                                 </div>
                             </article>
-                        ))}
+                            );
+                        })}
                     </div>
 
                     {/*
-                      An honest caveat. Corporations do vary - some issue a
-                      red bin for hazardous and sanitary waste - and telling
-                      a reader their city's scheme is wrong would be worse
-                      than telling them to check it.
+                      An honest caveat. Corporations genuinely differ on which
+                      colour carries which stream - blue and black are as
+                      common as the yellow and red shown here - and telling a
+                      reader their city's scheme is wrong would be worse than
+                      telling them to check it.
                     */}
                     <p className="mt-4 text-xs leading-relaxed text-ink-muted">
-                        Bin colours vary between municipal corporations. Some
-                        issue a fourth, usually red, for sanitary and hazardous
-                        waste. Where your corporation publishes its own scheme,
-                        follow that.
+                        Bin colours vary between municipal corporations. Many
+                        use blue for dry recyclable waste and black for domestic
+                        hazardous waste, and some add a fourth bin for sanitary
+                        waste alone. Where your corporation publishes its own
+                        scheme, follow that.
                     </p>
 
                     {/* Where reading turns into reporting */}

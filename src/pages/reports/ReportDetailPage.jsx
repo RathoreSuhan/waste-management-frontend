@@ -1,12 +1,20 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link, useLocation, useParams } from "react-router-dom";
-import { ArrowLeft, ExternalLink, MapPin, FileText, Star } from "lucide-react";
+import {
+    ArrowLeft,
+    ExternalLink,
+    MapPin,
+    FileText,
+    Star,
+    Building2,
+} from "lucide-react";
 
 import Alert from "@/components/ui/Alert";
 import PageContainer from "@/components/layout/PageContainer";
 import StatusBadge from "@/components/reports/StatusBadge";
 import UrgencyRating from "@/components/reports/UrgencyRating";
 import BeforeAfterImage from "@/components/reports/BeforeAfterImage";
+import MunicipalContactPanel from "@/components/reports/MunicipalContactPanel";
 import CommentSection from "@/components/comments/CommentSection";
 
 
@@ -268,6 +276,19 @@ export default function ReportDetailPage() {
                                 // A vote moves both scores, so reload the record
                                 onVoted={refresh}
                             />
+                        </Section>
+
+                        {/*
+                            Who is answerable for this report.
+
+                            Placed after the priority vote and before the
+                            record metadata: by this point the reader knows
+                            what was reported and where, and the natural next
+                            question is who to chase. The internal ids and
+                            timestamps below are of far less use to them.
+                        */}
+                        <Section title="Municipal Contact" icon={Building2}>
+                            <MunicipalContactPanel report={report} />
                         </Section>
 
                         {/* Record metadata */}

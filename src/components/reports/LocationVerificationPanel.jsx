@@ -2,7 +2,10 @@ import { Crosshair, MapPin, ShieldCheck, TriangleAlert } from "lucide-react";
 import Button from "@/components/ui/Button";
 import { formatDistance } from "@/utils/geo";
 import { LOCATION_STATUS } from "@/utils/locationVerification";
-import { SITE_PROXIMITY_RADIUS_METRES } from "@/constants/reportConstants";
+import {
+    SITE_PROXIMITY_RADIUS_METRES,
+    PHOTO_PROXIMITY_ADVICE_METRES,
+} from "@/constants/reportConstants";
 
 /**
  * ============================================================================
@@ -140,15 +143,29 @@ export default function LocationVerificationPanel({
                         )}
 
                     {/*
-                        Accuracy is quoted once a usable fix exists, so the
-                        citizen can judge the reading rather than take it
-                        on trust.
+                        What the citizen should actually do.
+
+                        This line used to quote the device's accuracy
+                        reading - "Located to within 67 m" - which answered
+                        a question nobody asked. Accuracy is a property of
+                        the GPS fix, not an instruction, and a number that
+                        moves on its own invites the reader to wonder
+                        whether something is wrong.
+
+                        The advice is shown in every state, not only when
+                        verified, because it is most useful before the
+                        photograph is taken rather than after.
+
+                        Note this is deliberately stricter than the radius
+                        quoted in the TOO_FAR message above: 50m is what we
+                        ask for, 150m is what verification tolerates. See
+                        PHOTO_PROXIMITY_ADVICE_METRES.
                     */}
-                    {position && status === LOCATION_STATUS.VERIFIED && (
-                        <p className="mt-2 text-xs text-ink-muted">
-                            Located to within {formatDistance(position.accuracy)}.
-                        </p>
-                    )}
+                    <p className="mt-2 text-xs text-ink-muted">
+                        Always take the photograph within{" "}
+                        {formatDistance(PHOTO_PROXIMITY_ADVICE_METRES)} of the
+                        waste, so the cleanup team can find the exact spot.
+                    </p>
                 </div>
             </div>
 

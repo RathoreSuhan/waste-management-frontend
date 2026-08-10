@@ -204,6 +204,22 @@ export const DEFAULT_IMAGE_REJECTION_META = {
 export const SITE_PROXIMITY_RADIUS_METRES = 150;
 
 /**
+ * How close the citizen is *asked* to stand when taking the photograph.
+ *
+ * Deliberately not the same number as the radius above, and not a rule.
+ * The 150m radius is what verification enforces, and it is generous on
+ * purpose so a poor street fix does not reject an honest report. This is
+ * the advice printed on the panel - aim for 50m and the photograph will
+ * show the waste clearly, the coordinates will be tight, and the cleanup
+ * team will find the site.
+ *
+ * Advice stricter than the limit is the right way round. Reversing them
+ * would either turn honest reporters away or print guidance nobody needs
+ * to follow.
+ */
+export const PHOTO_PROXIMITY_ADVICE_METRES = 50;
+
+/**
  * Readings vaguer than this are treated as unusable.
  *
  * A desktop browser positions by IP address and can report accuracy in

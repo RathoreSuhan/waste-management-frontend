@@ -81,7 +81,7 @@ export default function AuthShell({
                     className="mb-5 inline-flex items-center gap-2.5 text-white transition hover:opacity-90"
                 >
                     <img
-                        src="/logo.svg"
+                        src="/clean-bharat-logo-preview.png"
                         alt=""
                         aria-hidden="true"
                         className="h-9 w-9"

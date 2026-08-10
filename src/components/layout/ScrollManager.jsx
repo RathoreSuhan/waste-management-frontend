@@ -161,12 +161,70 @@ export default function ScrollManager() {
         */
         if (location.hash) {
 
-            const target = document.querySelector(location.hash);
+            /*
+              Aiming at an anchor has the same problem as restoring an
+              offset, so it gets the same treatment.
 
-            if (target) {
-                target.scrollIntoView();
-                return;
-            }
+              A single scrollIntoView on arrival is only correct when the
+              whole page is already laid out. Coming from another route
+              it usually is not: the landing page mounts bands that fetch
+              their own data, and each one that arrives afterwards is
+              taller than the nothing it replaced. The reader is left
+              some way above the section they asked for, having watched
+              it slide past.
+
+              So retry until the anchor stops moving - once it is present
+              and nothing grew during a frame, the position is final.
+              RESTORE_TIMEOUT_MS caps it, in case something on the page
+              never stops changing size.
+
+              An arrow rather than a declaration because this sits inside
+              a block, where a hoisted function is a lint error.
+            */
+            const deadline = Date.now() + RESTORE_TIMEOUT_MS;
+
+            let lastHeight = -1;
+            let found = false;
+
+            const attemptAnchor = () => {
+
+                const target = document.querySelector(location.hash);
+                const height = document.documentElement.scrollHeight;
+
+                if (target) {
+                    found = true;
+                    target.scrollIntoView();
+
+                    // Anchor present and the page held still - we are there
+                    if (height === lastHeight) {
+                        restoreFrame.current = null;
+                        return;
+                    }
+                }
+
+                lastHeight = height;
+
+                if (Date.now() < deadline) {
+                    restoreFrame.current =
+                        window.requestAnimationFrame(attemptAnchor);
+                    return;
+                }
+
+                restoreFrame.current = null;
+
+                /*
+                  The anchor never appeared - a stale or mistyped hash.
+                  The window is still sitting at the previous route's
+                  offset, which belongs to a page that is no longer on
+                  screen, so treat it as an ordinary forward navigation.
+                */
+                if (!found && navigationType !== "POP") {
+                    window.scrollTo(0, 0);
+                }
+            };
+
+            attemptAnchor();
+            return;
         }
 
         // Forward: always start at the top

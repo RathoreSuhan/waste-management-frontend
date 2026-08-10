@@ -100,7 +100,7 @@ const ROLES = [
 export default function HomeRolesSection() {
 
     return (
-        <section className="border-t border-rule bg-paper">
+        <section className="border-t border-rule bg-white">
             <div className="mx-auto max-w-7xl px-4 py-12">
 
                 <div className="border-b border-rule pb-3">
