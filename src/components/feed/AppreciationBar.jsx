@@ -1,8 +1,10 @@
 import { useState } from "react";
 import { Eye, Heart, Share2, Check } from "lucide-react";
 
-import { incrementLike, incrementShare } from "@/services/publicFeedService";
-import { hasLiked, rememberLike } from "@/utils/myAppreciations";
+import LoginRequiredDialog from "@/components/auth/LoginRequiredDialog";
+
+import { toggleLike, incrementShare } from "@/services/publicFeedService";
+import { useAuthContext } from "@/hooks/useAuthContext";
 
 /**
  * ============================================================================
@@ -12,53 +14,120 @@ import { hasLiked, rememberLike } from "@/utils/myAppreciations";
  * Views, likes and shares for one success story, with the like and share
  * actions attached.
  *
- * The counters are held in local state and moved optimistically. The
- * backend acknowledges a like with a message and timestamp but does not
- * return the new total, so the only alternative would be re-fetching the
- * whole story to move one number.
+ * A like belongs to an account. The backend stores one row per person per
+ * cleanup and derives the total from those rows, so pressing the heart a
+ * second time withdraws the like instead of counting it twice, and the
+ * figure follows the person rather than the browser they used.
  *
- * A failed request rolls the number back. Silently, because a like is a
- * courtesy rather than a transaction: an error notice would make more of
- * the failure than a reader of a public gallery needs.
+ * The heart is therefore drawn from likedByMe on the record, and the reply
+ * to a press is taken as the truth - it too is counted from stored likes,
+ * so it settles any disagreement with the optimistic guess.
+ *
+ * Nothing is copied out of the record into state. What the visitor changes
+ * is held separately and takes precedence while they are here, which keeps
+ * a reloaded story correct without an effect to hold the two in step.
+ *
+ * Anonymous visitors see the counts and may share, but liking asks them to
+ * sign in first: the endpoint would refuse them, and a heart that fills and
+ * then empties again explains nothing.
  * ============================================================================
  */
 
 export default function AppreciationBar({ story, compact = false }) {
 
-    // Counts start from the record and drift as the visitor interacts
-    const [likes, setLikes] = useState(Number(story.likeCount) || 0);
-    const [shares, setShares] = useState(Number(story.shareCount) || 0);
+    const { user } = useAuthContext();
 
-    // Seeded from this device's history so a reload does not forget
-    const [liked, setLiked] = useState(() => hasLiked(story.reportId));
+    // Liking is recorded against an account, so it needs a session
+    const isGuest = !user;
+
+    /*
+      The visitor's own like, once they press: { liked, likeCount } as the
+      backend reported it. null means untouched, so the record is shown as
+      it arrived.
+    */
+    const [myLike, setMyLike] = useState(null);
+
+    // Shares this visitor started, added on top of the recorded total
+    const [sharesGiven, setSharesGiven] = useState(0);
+
+    // Raised when a signed-out visitor presses the heart
+    const [loginPromptOpen, setLoginPromptOpen] = useState(false);
+
+    // Ignore repeat presses while a toggle is in flight
+    const [saving, setSaving] = useState(false);
 
     // Brief confirmation after the link is copied
     const [copied, setCopied] = useState(false);
 
+    // What to show: the visitor's own action if there was one, else the record
+    const liked = myLike ? myLike.liked : Boolean(story.likedByMe);
+
+    const likes = myLike ? myLike.likeCount : Number(story.likeCount) || 0;
+
+    const shares = (Number(story.shareCount) || 0) + sharesGiven;
+
     /**
-     * Record a like, unless this browser already did.
+     * Give or withdraw this account's appreciation.
      */
     async function handleLike() {
 
-        // The backend would happily count a second like from the same person
-        if (liked) {
+        /*
+          The endpoint is authenticated, so a guest's press would come back
+          401. They are invited to sign in rather than shown a heart that
+          fills and then quietly empties.
+        */
+        if (isGuest) {
+            setLoginPromptOpen(true);
             return;
         }
 
+        if (saving) {
+            return;
+        }
+
+        setSaving(true);
+
+        // Kept to fall back on if the request never lands
+        const previous = myLike;
+
         // Move first so the heart responds immediately
-        setLiked(true);
-        setLikes((count) => count + 1);
+        setMyLike({
+            liked: !liked,
+            likeCount: liked ? Math.max(0, likes - 1) : likes + 1,
+        });
 
         try {
-            await incrementLike(story.reportId);
+            const result = await toggleLike(story.reportId);
 
-            // Only remembered once the backend has actually accepted it
-            rememberLike(story.reportId);
-        } catch {
+            /*
+              Replaces the guess above. The reply is counted from the stored
+              likes, so it also picks up anyone else who liked the same
+              cleanup while this page was open.
+            */
+            setMyLike({
+                liked: Boolean(result?.liked),
+                likeCount: Number(result?.likeCount) || 0,
+            });
+        } catch (requestError) {
 
-            // Put the count back rather than show a total that was never stored
-            setLiked(false);
-            setLikes((count) => Math.max(0, count - 1));
+            // Put the display back, nothing was stored
+            setMyLike(previous);
+
+            /*
+              A session that expired while the page sat open looks exactly
+              like being signed out, so it is treated the same way.
+            */
+            if (requestError?.response?.status === 401) {
+                setLoginPromptOpen(true);
+            }
+
+            /*
+              Other failures pass without a notice. A like is a courtesy
+              rather than a transaction, and an error banner in a public
+              gallery would make more of it than a reader needs.
+            */
+        } finally {
+            setSaving(false);
         }
     }
 
@@ -95,12 +164,12 @@ export default function AppreciationBar({ story, compact = false }) {
         }
 
         // Counted only once the link actually left the page
-        setShares((count) => count + 1);
+        setSharesGiven((count) => count + 1);
 
         try {
             await incrementShare(story.reportId);
         } catch {
-            setShares((count) => Math.max(0, count - 1));
+            setSharesGiven((count) => Math.max(0, count - 1));
         }
     }
 
@@ -117,16 +186,25 @@ export default function AppreciationBar({ story, compact = false }) {
                 <span className="sr-only">views</span>
             </span>
 
-            {/* Like */}
+            {/* Like - pressing again withdraws it */}
             <button
                 type="button"
                 onClick={handleLike}
-                disabled={liked}
+                /*
+                  Only a request in flight closes the control. The heart
+                  stays live once given, because it can be taken back.
+                */
+                disabled={saving}
                 className={`inline-flex items-center gap-1 rounded transition-colors ${liked
                         ? "text-saffron"
                         : "hover:text-saffron focus-visible:text-saffron"
                     }`}
-                title={liked ? "You appreciated this cleanup" : "Appreciate this cleanup"}
+                aria-pressed={liked}
+                title={
+                    liked
+                        ? "You appreciated this cleanup - press again to withdraw"
+                        : "Appreciate this cleanup"
+                }
             >
                 <Heart
                     size={compact ? 13 : 15}
@@ -155,6 +233,13 @@ export default function AppreciationBar({ story, compact = false }) {
                 {copied ? "Copied" : shares}
                 <span className="sr-only">share this story</span>
             </button>
+
+            {/* Shown when a signed-out visitor presses the heart */}
+            <LoginRequiredDialog
+                open={loginPromptOpen}
+                onClose={() => setLoginPromptOpen(false)}
+                action="appreciate this cleanup"
+            />
         </div>
     );
 }

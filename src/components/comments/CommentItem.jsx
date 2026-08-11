@@ -2,7 +2,9 @@ import { useState } from "react";
 import { CornerDownRight, Trash2 } from "lucide-react";
 
 import CommentForm from "@/components/comments/CommentForm";
+import { ROLE_LABELS } from "@/constants/roleLabels";
 import { formatRelativeTime } from "@/utils/formatters";
+
 
 /**
  * ============================================================================
@@ -47,6 +49,17 @@ export default function CommentItem({
 
     const deleting = deletingId === comment.id;
 
+    /*
+      Designation of whoever wrote this, shown beside the name so an
+      official reply is not mistaken for a neighbour's remark.
+
+      Looked up rather than defaulted: an unrecognised or missing role
+      shows nothing at all. Falling back to "Citizen" would label a
+      sanitation officer wrongly, which is worse than staying silent.
+    */
+    const roleLabel = ROLE_LABELS[comment.userRole];
+
+
     async function handleReply(message) {
         const succeeded = await onReply(comment.id, message);
 
@@ -81,17 +94,24 @@ export default function CommentItem({
 
                     <div className="min-w-0 flex-1">
 
-                        {/* Author and age */}
+                        {/* Author, designation and age */}
                         <p className="text-sm">
                             <span className="font-semibold text-ink">
                                 {comment.userName || "Unknown user"}
                             </span>
+
+                            {roleLabel && (
+                                <span className="text-ink-muted">
+                                    {" "}({roleLabel})
+                                </span>
+                            )}
 
                             <span className="text-ink-muted">
                                 {" "}&bull;{" "}
                                 {formatRelativeTime(comment.createdAt)}
                             </span>
                         </p>
+
 
                         {/* Comment text, preserving the author's line breaks */}
                         <p className="mt-1 text-sm leading-relaxed whitespace-pre-line text-ink">

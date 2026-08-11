@@ -1,97 +1,76 @@
-import { Building2, Phone, Mail } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Building2, Phone, Mail, Loader2 } from "lucide-react";
+import { getMunicipalCorporationByCity } from "@/services/municipalCorporationService";
 
 /**
  * ============================================================================
  * Municipal Contact Panel
  * ============================================================================
  *
- * The municipal corporation responsible for the city a report was filed in,
+ * The municipal corporation answerable for the city a report was filed in,
  * with the phone number and email a citizen can chase it on.
  *
- * ----------------------------------------------------------------------------
- * Why this reads the report defensively
- * ----------------------------------------------------------------------------
- *
- * At the time of writing the backend does NOT send these details:
- *
- *   - `ReportResponse` carries no municipal corporation fields at all. It
- *     stops at city/state/pincode.
- *   - `/api/municipal-corporations/**` is `hasRole("ADMIN")` in
- *     SecurityConfig, GET included, so the frontend cannot fetch them as a
- *     second request either - a citizen would get 403.
- *
- * The data exists (`MunicipalCorporationResponse` has organizationName,
- * phone and email, keyed by city) and a report knows its city, so this is
- * purely a question of the API exposing it. Rather than leave the page with
- * nothing, this component reads whatever shape the report arrives in and
- * renders as soon as the fields appear - no further frontend change needed
- * once the backend sends them.
- *
- * Two shapes are accepted, because either is a reasonable thing for the
- * backend to settle on:
- *
- *   1. Nested:  report.municipalCorporation = { organizationName, phone, email }
- *   2. Flat:    report.municipalCorporationName / ...Phone / ...Email
- *
- * The flat spelling matches `PublicFeedResponse.municipalCorporationName`,
- * which is the one precedent already in the codebase.
+ * Calls GET /api/municipal-corporations/city/{city} through the existing
+ * service. The backend resolves the city with findByCityIgnoreCase, so
+ * "Mohali", "mohali" and "MOHALI" all reach the same record.
  *
  * ----------------------------------------------------------------------------
- * Why it renders an empty state instead of hiding
+ * The four outcomes are kept distinct on purpose
  * ----------------------------------------------------------------------------
  *
- * Many cities will simply have no record - the corporation list is
- * maintained by hand by administrators, and the city lookup returns 404
- * rather than an empty body for anything missing. Silently hiding the
- * section would leave a citizen wondering whether nobody is responsible for
- * their report. Naming the gap is more honest, and tells the reader the
- * report is still logged regardless.
+ *   found     - render the contact card
+ *   notFound  - a real 404: no corporation registered for this city. Many
+ *               cities have no row, since the list is maintained by hand by
+ *               administrators, so this is an ordinary outcome and is said
+ *               plainly.
+ *   error     - network, timeout or permission failure. Renders nothing.
+ *               Claiming "no contact is registered" here would be a lie
+ *               about the data when the truth is we could not ask.
+ *   idle      - never asked (see the anonymous-visitor note below).
+ *
+ * ----------------------------------------------------------------------------
+ * Why anonymous visitors are not asked at all
+ * ----------------------------------------------------------------------------
+ *
+ * The endpoint is .authenticated(), but report pages are public
+ * (GET /api/reports/* is permitAll), so this component renders for
+ * logged-out visitors too. Spring answers an anonymous request with 401,
+ * and the global axios response interceptor clears the stored token and
+ * user on any 401. Firing this request while logged out would therefore
+ * be a self-inflicted logout on a page the visitor is entitled to read.
+ *
+ * So the token is checked first and the request is skipped when absent.
  * ============================================================================
  */
 
+/** Request outcomes, kept as names rather than loose booleans. */
+const STATUS = {
+    IDLE: "idle",
+    LOADING: "loading",
+    FOUND: "found",
+    NOT_FOUND: "notFound",
+    ERROR: "error",
+};
+
 /**
- * Pull the corporation details off a report, whichever shape it arrives in.
+ * Has the login flow stored a usable JWT?
  *
- * Returns null when nothing usable is present, so the caller can tell
- * "no record for this city" apart from "record with a missing phone".
- *
- * @param {Object} report - a ReportResponse
- * @returns {{organizationName?: string, phone?: string, email?: string}|null}
+ * Mirrors the check the axios request interceptor makes before attaching
+ * the header, so this component's idea of "signed in" cannot drift from
+ * whether the token would actually be sent.
  */
-function readCorporation(report) {
+function hasStoredToken() {
 
-    if (!report) return null;
+    const token = localStorage.getItem("token");
 
-    // Preferred shape: a nested object
-    const nested = report.municipalCorporation;
-
-    if (nested && typeof nested === "object") {
-
-        // An object with every field blank is no more use than no object
-        const hasAnything =
-            nested.organizationName || nested.phone || nested.email;
-
-        return hasAnything ? nested : null;
-    }
-
-    // Fallback shape: flat fields, as PublicFeedResponse already spells them
-    const flat = {
-        organizationName: report.municipalCorporationName,
-        phone: report.municipalCorporationPhone,
-        email: report.municipalCorporationEmail,
-    };
-
-    const hasAnything = flat.organizationName || flat.phone || flat.email;
-
-    return hasAnything ? flat : null;
+    return Boolean(token && token.trim() && token.trim().startsWith("eyJ"));
 }
 
 /**
- * One contact line - an icon, a label and a value that can be acted on.
+ * One contact line - an icon, a label, and a value that can be acted on.
  *
- * Phone and email are rendered as tel: and mailto: links, since the whole
- * point of showing them is that the reader gets in touch. Anything without
- * a value is skipped by the caller rather than printed as a blank row.
+ * Phone and email are links, since the only reason to show them is that
+ * the reader gets in touch.
  */
 function ContactRow({ icon: Icon, label, value, href }) {
 
@@ -109,16 +88,9 @@ function ContactRow({ icon: Icon, label, value, href }) {
                 </dt>
 
                 <dd className="mt-0.5 text-sm break-words text-ink">
-                    {href ? (
-                        <a
-                            href={href}
-                            className="font-medium text-gov-blue hover:underline"
-                        >
-                            {value}
-                        </a>
-                    ) : (
-                        value
-                    )}
+                    <a href={href} className="font-medium text-gov-blue hover:underline">
+                        {value}
+                    </a>
                 </dd>
             </div>
         </div>
@@ -126,36 +98,126 @@ function ContactRow({ icon: Icon, label, value, href }) {
 }
 
 /**
- * @param report  the loaded ReportResponse
+ * @param report  the loaded ReportResponse - only `city` is used
  */
 export default function MunicipalContactPanel({ report }) {
 
-    const corporation = readCorporation(report);
+    const city = report?.city?.trim() || "";
 
-    // No record for this city, or the API is not sending the details yet
-    if (!corporation) {
+    // Whether this render is even allowed to ask the API
+    const canLookup = Boolean(city) && hasStoredToken();
+
+    /*
+      `city` is recorded alongside the result so a response can be matched
+      to the city it was fetched for. Comparing during render is what keeps
+      a previous city's contact off screen without a setState in the effect
+      body, which React now warns about as a cascading render.
+    */
+    const [result, setResult] = useState({
+        status: canLookup ? STATUS.LOADING : STATUS.IDLE,
+        data: null,
+        city,
+    });
+
+    useEffect(() => {
+
+        // Nothing to ask for, or not permitted to ask
+        if (!canLookup) {
+            return;
+        }
+
+        // Guards against a slow reply for a city we have since navigated away from
+        let active = true;
+
+        getMunicipalCorporationByCity(city)
+            .then((data) => {
+                if (!active) return;
+
+                setResult({ status: STATUS.FOUND, data, city });
+            })
+            .catch((err) => {
+                if (!active) return;
+
+                /*
+                  404 is the backend's way of saying no corporation is
+                  registered for this city - a legitimate state worth
+                  telling the reader about. Every other failure is a
+                  problem on our side, and is kept quiet.
+                */
+                const status =
+                    err?.response?.status === 404
+                        ? STATUS.NOT_FOUND
+                        : STATUS.ERROR;
+
+                setResult({ status, data: null, city });
+            });
+
+        return () => {
+            active = false;
+        };
+    }, [city, canLookup]);
+
+    // A result for a different city is stale until the effect refetches
+    const status = result.city === city ? result.status : STATUS.LOADING;
+
+    // ---- Report has no city, so there is nothing to look up ----
+    if (!city) {
         return (
             <div className="rounded-gov border border-rule bg-paper p-4">
                 <p className="text-sm leading-relaxed text-ink-muted">
-                    No municipal contact is registered for
-                    {report?.city ? (
-                        <> <span className="font-semibold text-ink">{report.city}</span></>
-                    ) : (
-                        " this city"
-                    )}
-                    {" "}yet. The report is still logged and will be assigned to a
+                    No city was recorded against this report, so the responsible
+                    municipal corporation cannot be identified.
+                </p>
+            </div>
+        );
+    }
+
+    /*
+      ---- Not asked, or asked and failed ----
+
+      Both render nothing. An anonymous visitor is not told a contact is
+      missing when it was never looked up, and a failed request does not
+      get dressed up as an answer.
+    */
+    if (status === STATUS.IDLE || status === STATUS.ERROR) {
+        return null;
+    }
+
+    // ---- Waiting on the lookup ----
+    if (status === STATUS.LOADING) {
+        return (
+            <div className="rounded-gov border border-rule bg-paper p-4">
+                <p className="flex items-center gap-2 text-xs text-ink-muted">
+                    <Loader2 size={14} className="animate-spin" aria-hidden="true" />
+                    Looking up the municipal corporation for {city}...
+                </p>
+            </div>
+        );
+    }
+
+    // ---- No corporation registered for this city ----
+    if (status === STATUS.NOT_FOUND) {
+        return (
+            <div className="rounded-gov border border-rule bg-paper p-4">
+                <p className="text-sm leading-relaxed text-ink-muted">
+                    No municipal contact is registered for{" "}
+                    <span className="font-semibold text-ink">{city}</span>{" "}
+                    yet. The report is still logged and will be assigned to a
                     cleanup team in the usual way.
                 </p>
             </div>
         );
     }
 
+    // ---- Found ----
+    const corporation = result.data;
+
     return (
         <div className="rounded-gov border border-rule bg-white p-4">
 
             {/*
-              The corporation's name leads, because it answers the reader's
-              first question - who is actually responsible for this.
+              The name leads, because it answers the reader's first
+              question: who is actually answerable for this.
             */}
             {corporation.organizationName && (
                 <div className="flex items-start gap-2.5 border-b border-rule pb-3">
@@ -170,11 +232,9 @@ export default function MunicipalContactPanel({ report }) {
                             {corporation.organizationName}
                         </p>
 
-                        {report?.city && (
-                            <p className="mt-0.5 text-xs text-ink-muted">
-                                Responsible for {report.city}
-                            </p>
-                        )}
+                        <p className="mt-0.5 text-xs text-ink-muted">
+                            Responsible for {city}
+                        </p>
                     </div>
                 </div>
             )}
@@ -188,9 +248,9 @@ export default function MunicipalContactPanel({ report }) {
                         label="Phone"
                         value={corporation.phone}
                         /*
-                          Spaces and dashes are fine for a human to read but
-                          break a tel: link on some dialers, so they are
-                          stripped from the href only.
+                          Spaces and dashes read well but break a tel: link
+                          on some dialers, so they are stripped from the
+                          href while the displayed value keeps them.
                         */
                         href={`tel:${String(corporation.phone).replace(/[\s-]/g, "")}`}
                     />
@@ -207,9 +267,9 @@ export default function MunicipalContactPanel({ report }) {
             </dl>
 
             {/*
-              A citizen who rings the corporation will be asked which report
-              they mean, so the reference is worth repeating here rather than
-              leaving them to scroll back up for it.
+              Anyone ringing the corporation will be asked which report they
+              mean, so the reference is repeated rather than leaving them to
+              scroll back up the page for it.
             */}
             <p className="mt-3 border-t border-rule pt-3 text-xs leading-relaxed text-ink-muted">
                 Quote the report reference above when you contact them.

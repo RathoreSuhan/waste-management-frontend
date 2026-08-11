@@ -19,20 +19,19 @@ import { MUNICIPAL_CORPORATIONS_API } from "@/constants/apiConstants";
  * MunicipalCorporationResponse:
  *   { id, city, organizationName, phone, email }
  *
- * Every path is admin-only in the backend SecurityConfig, GET included,
- * so these functions must only be called from a ROLE_ADMIN screen.
+ * Access, as set in the backend SecurityConfig:
+ *
+ *   GET /city/{city}  - any signed-in user (citizen, cleaner or admin).
+ *                       The report detail page shows this contact to the
+ *                       citizen who filed the report.
+ *   everything else   - ROLE_ADMIN only, so the remaining functions here
+ *                       must only be called from an admin screen.
+ *
+ * Note the city lookup still requires a token: it is authenticated, not
+ * public. Anonymous callers get 401, which the axios response interceptor
+ * treats as an expired session and clears storage for - so callers on
+ * publicly reachable pages must check for a token before calling it.
  * ============================================================================
- */
-
-/**
- * Register a municipal corporation.
- *
- * The backend accepts a plain JSON body and applies no bean validation
- * of its own, which is exactly why the form validates first - an empty
- * city would otherwise be stored happily and break the city lookup.
- *
- * @param {Object} corporation - { city, organizationName, phone, email }
- * @returns MunicipalCorporationResponse
  */
 export async function createMunicipalCorporation(corporation) {
     const response = await axiosClient.post(

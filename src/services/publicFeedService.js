@@ -13,11 +13,17 @@ import { PUBLIC_FEED_API } from "@/constants/apiConstants";
  *   GET  /api/public-feed              -> every verified cleanup
  *   GET  /api/public-feed/{reportId}   -> one verified cleanup
  *   POST /api/public-feed/{id}/view    -> record a view
- *   POST /api/public-feed/{id}/like    -> record a like
+ *   POST /api/public-feed/{id}/like    -> give or withdraw a like
  *   POST /api/public-feed/{id}/share   -> record a share initiation
  *
- * These are permitAll() in SecurityConfig, so every call here works
- * while logged out and must never depend on a token.
+ * Reading the feed, and the view and share counters, are permitAll() in
+ * SecurityConfig, so those calls work while logged out and must never
+ * depend on a token.
+ *
+ * Liking is the exception: it is recorded against an account so that one
+ * person counts once, so it requires authentication. Callers must check
+ * that someone is signed in before offering it.
+
  *
  * A feed entry exists only once analytics were created for the
  * assignment, which happens after AI verification succeeds. A report
@@ -86,22 +92,28 @@ export async function incrementView(reportId) {
 }
 
 /**
- * Record an appreciation for the cleanup.
+ * Give or withdraw this account's appreciation for the cleanup.
  *
- * The endpoint carries no user identity and performs no de-duplication,
- * so nothing server-side stops the same visitor liking twice. Callers
- * should keep their own record of what has already been liked.
+ * One call does both: the backend adds the like if it is not there and
+ * removes it if it is, so pressing twice leaves no trace rather than
+ * counting twice.
+ *
+ * The reply carries the resulting state and the new total, both read
+ * from stored likes, so the display never has to guess.
+ *
+ * Requires a signed-in user and rejects anonymous calls with 401.
  *
  * @param {number|string} reportId
- * @returns Backend SuccessResponse -> { message, timestamp }
+ * @returns Backend LikeResponse -> { liked, likeCount }
  */
-export async function incrementLike(reportId) {
+export async function toggleLike(reportId) {
     const response = await axiosClient.post(
         `${PUBLIC_FEED_API}/${reportId}/like`
     );
 
     return response.data;
 }
+
 
 /**
  * Record that a share was started.

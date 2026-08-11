@@ -1,5 +1,6 @@
 import { useMemo, useRef, useState } from "react";
-import { Search, Globe2 } from "lucide-react";
+import { Search, Globe2, X } from "lucide-react";
+
 
 import PageIntro from "@/components/layout/PageIntro";
 import PageSection from "@/components/layout/PageSection";
@@ -38,8 +39,19 @@ export default function AllReportsPage() {
     // Load every report from the backend
     const { data: reports, loading, error, reload } = useReports(getAllReports);
 
-    // Free text search (title, city, address)
+    // Free text search (title, city, address) - what is in the box
     const [search, setSearch] = useState("");
+
+    /*
+      What the register is actually filtered by.
+
+      Separate from `search` deliberately. The box changes on every
+      keystroke; this only moves when the search is submitted, so the cards
+      stay put while a place name is being typed rather than rearranging
+      after every letter.
+    */
+    const [appliedSearch, setAppliedSearch] = useState("");
+
 
     // Selected status filter
     const [statusFilter, setStatusFilter] = useState("ALL");
@@ -52,8 +64,9 @@ export default function AllReportsPage() {
         // Guard against a non-array response
         const list = Array.isArray(reports) ? reports : [];
 
-        // Case-insensitive search text
-        const query = search.trim().toLowerCase();
+        // Case-insensitive search text, as last submitted
+        const query = appliedSearch.trim().toLowerCase();
+
 
         return list
             .filter((report) =>
@@ -77,7 +90,8 @@ export default function AllReportsPage() {
             // Newest report on top
             .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
-    }, [reports, search, statusFilter]);
+    }, [reports, appliedSearch, statusFilter]);
+
 
     /*
       Ten records to a page.
@@ -99,6 +113,45 @@ export default function AllReportsPage() {
 
     // Where to scroll back to when the page changes
     const listTopRef = useRef(null);
+
+    // The search box, so submitting can take focus off it
+    const searchInputRef = useRef(null);
+
+    /**
+     * Run the search.
+     *
+     * Promoting the box contents to `appliedSearch` is what narrows the
+     * register, so nothing moves until this runs - by the button or by
+     * Enter, since this is a submit inside a form.
+     *
+     * The blur then dismisses the on-screen keyboard on a phone, which
+     * would otherwise cover the results.
+     */
+    function handleSearchSubmit(event) {
+        event.preventDefault();
+
+        setAppliedSearch(search);
+
+        searchInputRef.current?.blur();
+
+        listTopRef.current?.scrollIntoView({
+            behavior: "smooth",
+            block: "start",
+        });
+    }
+
+    /**
+     * Empty the box and restore the full register in one press.
+     *
+     * Both have to be reset: clearing the box alone would leave the
+     * previous results on screen beneath an empty field.
+     */
+    function clearSearch() {
+        setSearch("");
+        setAppliedSearch("");
+    }
+
+
 
     return (
 
@@ -125,23 +178,66 @@ export default function AllReportsPage() {
 
                     <div className="p-4">
 
-                        {/* Search box with a leading icon */}
-                        <div className="relative">
-                            <Search
-                                size={15}
-                                className="absolute top-1/2 left-3 -translate-y-1/2 text-ink-muted"
-                                aria-hidden="true"
-                            />
+                        {/*
+                          Search box with a leading icon and a Search button.
 
-                            <input
-                                type="text"
-                                value={search}
-                                onChange={(event) => setSearch(event.target.value)}
-                                placeholder="Search by title, city, state or address"
-                                aria-label="Search reports"
-                                className="w-full rounded-gov border border-rule py-2 pr-3 pl-9 text-sm outline-none transition placeholder:text-ink-muted/60 focus:border-gov-blue"
-                            />
-                        </div>
+                          A form, so Enter and the button follow the same path.
+                          role="search" marks it as the search landmark.
+                        */}
+                        <form
+                            role="search"
+                            onSubmit={handleSearchSubmit}
+                            className="flex items-center gap-2"
+                        >
+                            <div className="relative flex-1">
+                                <Search
+                                    size={15}
+                                    className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-ink-muted"
+                                    aria-hidden="true"
+                                />
+
+                                <input
+                                    ref={searchInputRef}
+                                    type="text"
+                                    value={search}
+                                    onChange={(event) => setSearch(event.target.value)}
+                                    placeholder="Search by title, city, state or address"
+                                    aria-label="Search reports"
+                                    className="w-full rounded-gov border border-rule py-2 pr-9 pl-9 text-sm outline-none transition placeholder:text-ink-muted/60 focus:border-gov-blue"
+                                />
+
+                                {/*
+                                  Offered as soon as there is anything to
+                                  clear, including text not yet searched for.
+                                */}
+                                {search.length > 0 && (
+                                    <button
+                                        type="button"
+                                        onClick={clearSearch}
+
+                                        className="absolute top-1/2 right-3 -translate-y-1/2 rounded p-0.5 text-ink-muted transition hover:text-ink"
+                                        aria-label="Clear search"
+                                    >
+                                        <X size={15} aria-hidden="true" />
+                                    </button>
+                                )}
+                            </div>
+
+                            {/*
+                              Left enabled on an empty box - pressing it then
+                              simply re-runs the unfiltered register, and a
+                              control greyed out for no visible reason reads
+                              as broken.
+                            */}
+                            <button
+                                type="submit"
+                                className="inline-flex shrink-0 items-center gap-1.5 rounded-gov border border-gov-blue bg-gov-blue px-4 py-2 text-sm font-semibold text-white transition hover:bg-gov-blue-dark"
+                            >
+                                <Search size={15} aria-hidden="true" />
+                                Search
+                            </button>
+                        </form>
+
 
                         {/* Status filter buttons */}
                         <div className="mt-3 flex flex-wrap items-center gap-2">
