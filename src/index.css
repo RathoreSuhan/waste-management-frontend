@@ -141,27 +141,28 @@ body {
 |
 | The base root size below is what an unscaled page uses - it also matches
 | the "A" (medium) setting, so a first load before any button is pressed
-| looks identical to the default the control reports. Each step is a single
-| point apart: A- is one point smaller, A+ one larger. The whole ladder
-| sits a step below the browser's usual 16px, because the previous 16 / 18px
-| top end rendered far larger than the controls implied and pushed the
+| looks identical to the default the control reports. Each step is two
+| points apart: A- is 10px, A (default) is 12px, A+ is 14px. The whole
+| ladder sits well below the browser's usual 16px, because the larger
+| sizes rendered far bigger than the controls implied and pushed the
 | widest layouts (the A+ masthead) past their edges.
 */
 html {
-  font-size: 14px;
-}
-
-html.text-sm-scale {
   font-size: 12px;
 }
 
+html.text-sm-scale {
+  font-size: 10px;
+}
+
 html.text-md-scale {
-  font-size: 14px;
+  font-size: 12px;
 }
 
 html.text-lg-scale {
-  font-size: 16px;
+  font-size: 14px;
 }
+
 
 
 /*
