@@ -1,3 +1,4 @@
+import { lazy, Suspense } from "react";
 import {
     Routes,
     Route,
@@ -10,65 +11,90 @@ import PublicLayout from "@/layouts/PublicLayout";
 // Scroll behaviour, applied to every navigation in the project
 import ScrollManager from "@/components/layout/ScrollManager";
 
-
+// Placeholder while a page chunk is on its way
+import RouteFallback from "@/components/common/RouteFallback";
 
 // Route Guards
 import PublicRoute from "@/routes/PublicRoute";
 import ProtectedRoute from "@/routes/ProtectedRoute";
 import RoleRoute from "@/routes/RoleRoute";
 
-// Public Pages
+/*
+  ============================================================================
+  Page imports
+  ============================================================================
+
+  Every page below is loaded on demand rather than bundled into one file.
+
+  Statically imported, the whole site arrived as a single script: a citizen
+  filing a report downloaded the entire admin portal, and an admin
+  downloaded the cleaner task screens, before either could see anything.
+  The build was warning about the resulting chunk size.
+
+  Split this way, each visitor fetches the shell plus the page they asked
+  for. Layouts and guards stay static above - they are needed on the very
+  first render, so deferring them would only add a second round trip.
+
+  HomePage is the one page kept eager. It is the entry point for most
+  visits, and it is what a search engine crawler lands on; making it wait
+  on a second request would delay the first paint that matters most.
+  ============================================================================
+*/
+
+// Landing page - eager, see above
 import HomePage from "@/pages/public/HomePage";
-import LoginPage from "@/pages/auth/LoginPage";
-import RegisterPage from "@/pages/auth/RegisterPage";
-import NotFoundPage from "@/pages/common/NotFoundPage";
+
+// Auth pages
+const LoginPage = lazy(() => import("@/pages/auth/LoginPage"));
+const RegisterPage = lazy(() => import("@/pages/auth/RegisterPage"));
+const NotFoundPage = lazy(() => import("@/pages/common/NotFoundPage"));
 
 // Public Feed Pages (Phase 10)
-import SuccessStoriesPage from "@/pages/public/SuccessStoriesPage";
-import SuccessStoryDetailPage from "@/pages/public/SuccessStoryDetailPage";
+const SuccessStoriesPage = lazy(() => import("@/pages/public/SuccessStoriesPage"));
+const SuccessStoryDetailPage = lazy(() => import("@/pages/public/SuccessStoryDetailPage"));
 
 // Leaderboard Page (Phase 11)
-import LeaderboardPage from "@/pages/public/LeaderboardPage";
-import EnvironmentPage from "@/pages/public/EnvironmentPage";
-import AboutPage from "@/pages/public/AboutPage";
+const LeaderboardPage = lazy(() => import("@/pages/public/LeaderboardPage"));
+const EnvironmentPage = lazy(() => import("@/pages/public/EnvironmentPage"));
+const AboutPage = lazy(() => import("@/pages/public/AboutPage"));
 
 /*
   Terms, privacy and accessibility, as three anchored documents on one
   route. The footer's Policies column links to /policies#terms,
   /policies#privacy and /policies#accessibility.
 */
-import PoliciesPage from "@/pages/public/PoliciesPage";
+const PoliciesPage = lazy(() => import("@/pages/public/PoliciesPage"));
 
 // Dashboards
-import CitizenDashboard from "@/pages/citizen/CitizenDashboard";
-import CleanerDashboard from "@/pages/cleaner/CleanerDashboard";
-import AdminDashboard from "@/pages/admin/AdminDashboard";
+const CitizenDashboard = lazy(() => import("@/pages/citizen/CitizenDashboard"));
+const CleanerDashboard = lazy(() => import("@/pages/cleaner/CleanerDashboard"));
+const AdminDashboard = lazy(() => import("@/pages/admin/AdminDashboard"));
 
 // Report Pages (Phase 2)
-import CreateReportPage from "@/pages/citizen/CreateReportPage";
-import MyReportsPage from "@/pages/citizen/MyReportsPage";
-import AllReportsPage from "@/pages/reports/AllReportsPage";
-import ReportDetailPage from "@/pages/reports/ReportDetailPage";
+const CreateReportPage = lazy(() => import("@/pages/citizen/CreateReportPage"));
+const MyReportsPage = lazy(() => import("@/pages/citizen/MyReportsPage"));
+const AllReportsPage = lazy(() => import("@/pages/reports/AllReportsPage"));
+const ReportDetailPage = lazy(() => import("@/pages/reports/ReportDetailPage"));
 
 // Cleanup Assignment Pages (Phase 8)
-import AvailableTasksPage from "@/pages/cleaner/AvailableTasksPage";
-import MyTasksPage from "@/pages/cleaner/MyTasksPage";
+const AvailableTasksPage = lazy(() => import("@/pages/cleaner/AvailableTasksPage"));
+const MyTasksPage = lazy(() => import("@/pages/cleaner/MyTasksPage"));
 
 // Reward Pages (Phase 9)
-import MyRewardsPage from "@/pages/cleaner/MyRewardsPage";
+const MyRewardsPage = lazy(() => import("@/pages/cleaner/MyRewardsPage"));
 
 // Engagement Analytics Pages (Phase 8)
-import TrendingReportsPage from "@/pages/reports/TrendingReportsPage";
+const TrendingReportsPage = lazy(() => import("@/pages/reports/TrendingReportsPage"));
 
 // Admin Portal Pages (Phase 12)
-import UserManagementPage from "@/pages/admin/UserManagementPage";
-import UserDetailsPage from "@/pages/admin/UserDetailsPage";
-import ReportManagementPage from "@/pages/admin/ReportManagementPage";
+const UserManagementPage = lazy(() => import("@/pages/admin/UserManagementPage"));
+const UserDetailsPage = lazy(() => import("@/pages/admin/UserDetailsPage"));
+const ReportManagementPage = lazy(() => import("@/pages/admin/ReportManagementPage"));
 
 // Municipal Corporation Pages (Phase 5)
-import MunicipalCorporationsPage from "@/pages/admin/MunicipalCorporationsPage";
-import CreateMunicipalCorporationPage from "@/pages/admin/CreateMunicipalCorporationPage";
-import EditMunicipalCorporationPage from "@/pages/admin/EditMunicipalCorporationPage";
+const MunicipalCorporationsPage = lazy(() => import("@/pages/admin/MunicipalCorporationsPage"));
+const CreateMunicipalCorporationPage = lazy(() => import("@/pages/admin/CreateMunicipalCorporationPage"));
+const EditMunicipalCorporationPage = lazy(() => import("@/pages/admin/EditMunicipalCorporationPage"));
 
 /**
  * Defines all routes for the application.
@@ -87,6 +113,13 @@ export default function AppRoutes() {
             */}
             <ScrollManager />
 
+            {/*
+              One boundary around the whole table rather than one per route.
+              Only the page being navigated to is ever suspended, so a single
+              boundary is enough - and it keeps the fallback consistent
+              instead of varying page by page.
+            */}
+            <Suspense fallback={<RouteFallback />}>
             <Routes>
 
             {/*
@@ -294,6 +327,7 @@ export default function AppRoutes() {
                 {/* 404 fallback for undefined routes */}
                 <Route path="*" element={<NotFoundPage />} />
             </Routes>
+            </Suspense>
         </>
     );
 }

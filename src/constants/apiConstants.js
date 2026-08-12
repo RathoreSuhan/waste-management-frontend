@@ -10,8 +10,24 @@
 
 /**
  * Spring Boot Backend URL
+ *
+ * Read from the build environment so the same source can serve a local
+ * machine and a deployed site. Vite inlines VITE_ prefixed variables at
+ * build time, so this is resolved when the bundle is produced, not when
+ * it runs - changing it on the host requires a rebuild, which is why it
+ * is set in the Vercel project settings rather than shipped in a file.
+ *
+ * The localhost fallback keeps `npm run dev` working with no .env
+ * present, which is how the project has been developed so far.
+ *
+ * Trailing slashes are trimmed: every path constant below begins with a
+ * slash, and a base ending in one would produce //api/reports.
  */
-export const API_BASE_URL = "http://localhost:8080";
+export const API_BASE_URL =
+    (import.meta.env.VITE_API_BASE_URL || "http://localhost:8080").replace(
+        /\/+$/,
+        ""
+    );
 
 /**
  * Authentication APIs

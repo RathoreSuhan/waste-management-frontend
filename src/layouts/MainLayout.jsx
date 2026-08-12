@@ -1,3 +1,4 @@
+import { useCallback, useState } from "react";
 import { Outlet, useLocation } from "react-router-dom";
 import {
     LayoutDashboard,
@@ -14,12 +15,14 @@ import {
     Award,
     Sparkles,
     TrendingUp,
+    Menu,
 } from "lucide-react";
 
 import SiteHeader from "@/components/layout/SiteHeader";
 import SiteFooter from "@/components/layout/SiteFooter";
 import Breadcrumbs from "@/components/layout/Breadcrumbs";
 import Sidebar from "@/components/layout/Sidebar";
+import MobileNavDrawer from "@/components/layout/MobileNavDrawer";
 import useAuth from "@/hooks/useAuth";
 import LayoutModeContext, {
     APP_LAYOUT,
@@ -59,6 +62,11 @@ const COMMUNITY_ITEMS = [
  *
  * Note: page headings live inside each page, not here. The old Topbar
  * printed the title a second time, so every page showed its heading twice.
+ *
+ * Below lg the sidebar is replaced by MobileNavDrawer, opened from the bar
+ * beneath the breadcrumbs. Without it there was no navigation at all on a
+ * phone: the sidebar was simply hidden, and it is the only menu this shell
+ * has, so every signed-in page became a dead end.
  * ============================================================================
  */
 
@@ -69,6 +77,15 @@ export default function MainLayout() {
 
     // Current path, used to build the breadcrumb trail
     const location = useLocation();
+
+    // Mobile navigation panel, closed on every fresh page load
+    const [navOpen, setNavOpen] = useState(false);
+
+    /*
+      Stable reference: the drawer closes itself on navigation from inside
+      an effect, and a handler rebuilt on every render would re-run it.
+    */
+    const closeNav = useCallback(() => setNavOpen(false), []);
 
     /*
       Navigation differs per role. Icons are components, not emoji, and
@@ -240,6 +257,34 @@ export default function MainLayout() {
 
             {/* Position within the site */}
             <Breadcrumbs trail={trail} />
+
+            {/*
+              Navigation trigger, shown only where the sidebar is not.
+              Sits directly above the page content, so it is the first
+              thing reached after the breadcrumbs rather than being
+              buried in the masthead beside the account controls.
+            */}
+            <div className="border-b border-rule bg-white lg:hidden">
+                <div className="mx-auto flex w-full max-w-7xl px-4 py-2">
+                    <button
+                        type="button"
+                        onClick={() => setNavOpen(true)}
+                        className="inline-flex items-center gap-2 rounded-gov border border-rule px-3 py-2 text-sm font-semibold text-gov-navy transition hover:bg-paper"
+                        aria-expanded={navOpen}
+                        aria-haspopup="dialog"
+                    >
+                        <Menu size={16} aria-hidden="true" />
+                        Menu
+                    </button>
+                </div>
+            </div>
+
+            {/* The same menu, as a panel, for narrow screens */}
+            <MobileNavDrawer
+                open={navOpen}
+                onClose={closeNav}
+                menuItems={menuItems}
+            />
 
             {/* Sidebar plus page content */}
             <div className="mx-auto flex w-full max-w-7xl flex-1 items-stretch">

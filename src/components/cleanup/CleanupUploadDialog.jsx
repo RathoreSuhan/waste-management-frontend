@@ -4,6 +4,7 @@ import { X, ShieldCheck, ShieldAlert, Sparkles } from "lucide-react";
 import Button from "@/components/ui/Button";
 import Alert from "@/components/ui/Alert";
 import ImageUploadField from "@/components/reports/ImageUploadField";
+import useModalBehaviour from "@/hooks/useModalBehaviour";
 import { uploadCleanupImage } from "@/services/cleanupService";
 import { getErrorMessage } from "@/utils/errorMessage";
 import { formatConfidence } from "@/constants/assignmentConstants";
@@ -28,6 +29,10 @@ import {
  * The important subtlety: a REJECTED cleanup still returns HTTP 200, with
  * aiVerified set to false. Branching on the status code would tell a cleaner
  * their failed upload succeeded, so the verdict is read from aiVerified.
+ *
+ * Escape, the scroll lock and the focus trap come from useModalBehaviour -
+ * except while the upload is in flight, where Escape is ignored so a stray
+ * keypress cannot discard a verification the cleaner is waiting on.
  * ============================================================================
  */
 
@@ -47,6 +52,14 @@ export default function CleanupUploadDialog({ assignment, onClose, onVerified })
 
     // Backend CleanupValidationResponse once it arrives
     const [result, setResult] = useState(null);
+
+    /*
+      This dialog is mounted only when it is open - the parent renders it
+      conditionally - so `open` is always true here.
+    */
+    const panelRef = useModalBehaviour(true, onClose, {
+        closeOnEscape: !submitting,
+    });
 
     /**
      * Validate the photograph before spending an AI call on it.
@@ -146,11 +159,20 @@ export default function CleanupUploadDialog({ assignment, onClose, onVerified })
         <div
             // Dim the page so the verification result has full attention
             className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/50 p-4"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="cleanup-upload-title"
         >
-            <div className="my-8 w-full max-w-xl rounded-gov border border-rule bg-white shadow-lg">
+            {/*
+              role="dialog" belongs on the box, not on the backdrop above:
+              the backdrop is the dimming layer, not the dialog itself.
+            */}
+            <div
+                ref={panelRef}
+                tabIndex={-1}
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="cleanup-upload-title"
+                // my-4 on a phone: my-8 wasted screen a small viewport needs
+                className="my-4 w-full max-w-xl rounded-gov border border-rule bg-white shadow-lg outline-none sm:my-8"
+            >
 
                 {/* ---------------- Header ---------------- */}
                 <div className="flex items-start justify-between gap-4 border-b border-rule px-5 py-4">
@@ -173,7 +195,14 @@ export default function CleanupUploadDialog({ assignment, onClose, onVerified })
                         type="button"
                         onClick={onClose}
                         aria-label="Close"
-                        className="shrink-0 rounded-gov p-1 text-ink-muted transition hover:bg-slate-100 hover:text-ink"
+                        /*
+                          Closed off during the upload. The request is
+                          already with the server, and dismissing here
+                          would hide the verdict it is about to return.
+                        */
+                        disabled={submitting}
+                        // p-2 rather than p-1: a 16px hit area is not usable on a phone
+                        className="shrink-0 rounded-gov p-2 text-ink-muted transition hover:bg-slate-100 hover:text-ink disabled:opacity-50"
                     >
                         <X size={18} aria-hidden="true" />
                     </button>

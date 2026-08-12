@@ -1,0 +1,22 @@
+# Clean Bharat - crawler directions
+#
+# The public reading surface is open: the home page, the reports, the
+# trending ranking, the success stories, the leaderboard and the
+# reference pages are all meant to be found.
+#
+# The signed-in areas are not. They are behind a login and would only
+# ever return the login redirect to a crawler, so pointing them out
+# wastes crawl budget on pages that cannot be indexed.
+
+User-agent: *
+Allow: /
+
+# Authenticated shells - nothing here is readable without a session
+Disallow: /app/
+Disallow: /admin/
+Disallow: /citizen/
+Disallow: /cleaner/
+
+# Account forms - no value in a search result
+Disallow: /login
+Disallow: /register
