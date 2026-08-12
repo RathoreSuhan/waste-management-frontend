@@ -85,9 +85,30 @@ const FOOTER_SECTIONS = [
     {
         heading: "Policies",
         links: [
-            { label: "Terms & Conditions", to: "/" },
-            { label: "Privacy Policy", to: "/" },
-            { label: "Accessibility Statement", to: "/" },
+            /*
+              All three resolve to one Policies page rather than three
+              routes - one subject, three short documents, and a reader
+              checking one usually wants a look at its neighbour. Kept as
+              three separate links because that is how somebody scans a
+              footer for the one they want.
+            */
+
+            /*
+              No #terms on this one, deliberately.
+
+              Terms is the first document on the page, so the anchor was
+              doing nothing but skipping the heading and the contents
+              strip to land on a section that already sat just below
+              them - the reader arrived mid-page having missed both.
+              Without a hash, ScrollManager applies its ordinary forward
+              rule and opens the page at the top, where the terms are
+              the first thing read anyway.
+            */
+            { label: "Terms & Conditions", to: "/policies" },
+
+            // These two sit further down, so the anchor is doing real work
+            { label: "Privacy Policy", to: "/policies#privacy" },
+            { label: "Accessibility Statement", to: "/policies#accessibility" },
         ],
     },
 ];

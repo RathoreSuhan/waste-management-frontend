@@ -32,6 +32,13 @@ import LeaderboardPage from "@/pages/public/LeaderboardPage";
 import EnvironmentPage from "@/pages/public/EnvironmentPage";
 import AboutPage from "@/pages/public/AboutPage";
 
+/*
+  Terms, privacy and accessibility, as three anchored documents on one
+  route. The footer's Policies column links to /policies#terms,
+  /policies#privacy and /policies#accessibility.
+*/
+import PoliciesPage from "@/pages/public/PoliciesPage";
+
 // Dashboards
 import CitizenDashboard from "@/pages/citizen/CitizenDashboard";
 import CleanerDashboard from "@/pages/cleaner/CleanerDashboard";
@@ -143,6 +150,16 @@ export default function AppRoutes() {
                   the process rail partway down the page.
                 */}
                 <Route path="/about" element={<AboutPage />} />
+
+                {/*
+                  Terms, privacy and accessibility.
+
+                  All three footer links under "Policies" resolve here,
+                  each arriving at its own anchor. They share a route
+                  because they share a subject, and because a reader
+                  checking one of them usually wants a look at the next.
+                */}
+                <Route path="/policies" element={<PoliciesPage />} />
             </Route>
 
 
@@ -262,6 +279,14 @@ export default function AppRoutes() {
 
                     {/* Same page inside the signed-in shell, sidebar kept */}
                     <Route path="/app/about" element={<AboutPage />} />
+
+                    {/*
+                      The footer is rendered by both shells, so its
+                      policy links must resolve in both. Without this a
+                      signed-in reader would be thrown out to the public
+                      site to read the terms.
+                    */}
+                    <Route path="/app/policies" element={<PoliciesPage />} />
                 </Route>
 
             </Route>
