@@ -70,7 +70,9 @@ export const UI = {
         leaderboard: { en: "Leaderboard", hi: "अग्रणी सूची" },
         environment: { en: "Environment", hi: "पर्यावरण" },
         fileReport: { en: "File a Report", hi: "रिपोर्ट दर्ज करें" },
+        menu: { en: "Menu", hi: "मेन्यू" },
     },
+
 
     /* ---------------- Sidebar ---------------- */
     sidebar: {

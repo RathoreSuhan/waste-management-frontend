@@ -1,4 +1,5 @@
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
+
 import { MessageSquare } from "lucide-react";
 
 import CommentForm from "@/components/comments/CommentForm";
@@ -198,6 +199,26 @@ export default function CommentSection({ reportId, onChanged }) {
     const total = countComments(comments || []);
 
     /*
+      Newest first, the way a reader expects a discussion to open - the
+      most recent remark at the top rather than buried under everything
+      said before it, matching the ordering of every familiar comment
+      thread.
+
+      Only the top-level comments are reordered. Replies keep the
+      chronological order the backend returns them in, so a back-and-forth
+      under one comment still reads top to bottom.
+
+      A copy is sorted rather than the array itself: the fetched list is
+      shared state, and sorting in place would mutate it. Memoised so the
+      sort runs only when the thread actually changes, not on every render.
+    */
+    const sortedComments = useMemo(() => {
+        return [...(comments || [])].sort(
+            (a, b) => new Date(b.createdAt) - new Date(a.createdAt),
+        );
+    }, [comments]);
+
+    /*
       Only top-level comments are paged. Replies stay with their parent,
       so a thread never has its answers stranded on another page.
     */
@@ -209,7 +230,8 @@ export default function CommentSection({ reportId, onChanged }) {
         rangeStart,
         rangeEnd,
         goToPage,
-    } = usePagination(comments || []);
+    } = usePagination(sortedComments);
+
 
     // Anchor for the jump back to the top of the thread
     const threadTopRef = useRef(null);

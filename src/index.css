@@ -138,18 +138,31 @@ body {
 | Accessibility - text resizing
 | The A- / A / A+ controls in the header set these classes on <html>.
 | Because all sizing uses rem, changing the root scales the whole portal.
+|
+| The base root size below is what an unscaled page uses - it also matches
+| the "A" (medium) setting, so a first load before any button is pressed
+| looks identical to the default the control reports. Each step is a single
+| point apart: A- is one point smaller, A+ one larger. The whole ladder
+| sits a step below the browser's usual 16px, because the previous 16 / 18px
+| top end rendered far larger than the controls implied and pushed the
+| widest layouts (the A+ masthead) past their edges.
 */
-html.text-sm-scale {
+html {
   font-size: 14px;
 }
 
+html.text-sm-scale {
+  font-size: 12px;
+}
+
 html.text-md-scale {
-  font-size: 16px;
+  font-size: 14px;
 }
 
 html.text-lg-scale {
-  font-size: 18px;
+  font-size: 16px;
 }
+
 
 /*
 | Visible focus ring for keyboard users.

@@ -1,12 +1,14 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Home, Flame, Sparkles, Trophy, Leaf, FilePlus2 } from "lucide-react";
+import { Home, Flame, Sparkles, Trophy, Leaf, FilePlus2, Menu } from "lucide-react";
 
 import LoginRequiredDialog from "@/components/auth/LoginRequiredDialog";
+import PublicNavDrawer from "@/components/layout/PublicNavDrawer";
 import BiText from "@/components/common/BiText";
 import { useAuthContext } from "@/hooks/useAuthContext";
 
 import { UI } from "@/i18n/strings";
+
 
 
 /**
@@ -35,6 +37,13 @@ export default function PublicNav() {
       asked. Also used for a signed-in user whose role cannot report.
     */
     const [prompt, setPrompt] = useState(null);
+
+    /*
+      The slide-in drawer, for widths below lg where the inline bar cannot
+      fit its links and buttons on one row.
+    */
+    const [drawerOpen, setDrawerOpen] = useState(false);
+
 
     // Dashboard path differs per role
     const dashboardPath =
@@ -79,8 +88,26 @@ export default function PublicNav() {
             <nav className="sticky top-0 z-40 border-b border-rule bg-white shadow-sm">
                 <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-2">
 
-                    {/* Primary links - always visible */}
-                    <div className="flex items-center gap-1">
+                    {/*
+                      Hamburger, below lg only. Opens the drawer that carries
+                      the links and account controls on narrow screens, where
+                      they cannot share one row - the reason Register was
+                      being pushed off the edge on a phone.
+                    */}
+                    <button
+                        type="button"
+                        onClick={() => setDrawerOpen(true)}
+                        className="flex items-center gap-1.5 rounded-gov border border-rule px-2.5 py-1.5 text-xs font-semibold text-ink transition hover:bg-paper lg:hidden"
+                        aria-label="Open navigation menu"
+                        aria-expanded={drawerOpen}
+                    >
+                        <Menu size={16} aria-hidden="true" />
+                        <BiText {...UI.nav.menu} primaryOnly />
+                    </button>
+
+                    {/* Primary links - shown once there is room for them */}
+                    <div className="hidden items-center gap-1 lg:flex">
+
                         <NavLink to="/" icon={Home} {...UI.nav.home} />
 
                         {/*
@@ -119,7 +146,13 @@ export default function PublicNav() {
                         />
                     </div>
 
-                    <div className="flex items-center gap-2">
+                    {/*
+                      Action cluster, shown only once the inline links are
+                      present. Below lg the same actions live in the drawer,
+                      so hiding them here is what stops Register spilling off
+                      the right edge of a phone.
+                    */}
+                    <div className="hidden items-center gap-2 lg:flex">
 
                         {/*
                           The reason the site exists, so it is set apart from
@@ -130,6 +163,7 @@ export default function PublicNav() {
                             onClick={handleFileReport}
                             className="flex items-center gap-1.5 rounded-gov border border-saffron bg-saffron px-3 py-1.5 text-xs font-semibold text-gov-navy transition hover:bg-saffron/85"
                         >
+
                             <FilePlus2 size={14} aria-hidden="true" />
                             <BiText {...UI.nav.fileReport} primaryOnly />
                         </button>
@@ -193,9 +227,23 @@ export default function PublicNav() {
                 redirectTo="/citizen/report"
             />
 
+            {/*
+              The narrow-screen navigation. It renders nothing until opened,
+              and File a Report is handed back up to handleFileReport so the
+              eligibility check and login prompt stay in one place.
+            */}
+            <PublicNavDrawer
+                open={drawerOpen}
+                onClose={() => setDrawerOpen(false)}
+                user={user}
+                dashboardPath={dashboardPath}
+                onFileReport={handleFileReport}
+            />
+
         </>
     );
 }
+
 
 /**
  * A single nav link with icon and bilingual label.
