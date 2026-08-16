@@ -1,0 +1,132 @@
+src/constants/apiConstants.js:38: trailing whitespace.
+[32m+[m[32m * Authenticated Account APIs[m[41m[m
+src/constants/apiConstants.js:39: trailing whitespace.
+[32m+[m[32m */[m[41m[m
+src/constants/apiConstants.js:40: trailing whitespace.
+[32m+[m[32mexport const ACCOUNT_API = "/api/account";[m[41m[m
+src/constants/apiConstants.js:41: trailing whitespace.
+[32m+[m[41m[m
+src/constants/apiConstants.js:42: trailing whitespace.
+[32m+[m[32m/**[m[41m[m
+src/i18n/strings.js:98: trailing whitespace.
+[32m+[m[32m        changePassword: { en: "Change Password", hi: "पासवर्ड बदलें" },[m[41m[m
+src/layouts/MainLayout.jsx:19: trailing whitespace.
+[32m+[m[32m    KeyRound,[m[41m[m
+src/layouts/MainLayout.jsx:50: trailing whitespace.
+[32m+[m[32mconst ACCOUNT_ITEM = {[m[41m[m
+src/layouts/MainLayout.jsx:51: trailing whitespace.
+[32m+[m[32m    to: "/app/change-password",[m[41m[m
+src/layouts/MainLayout.jsx:52: trailing whitespace.
+[32m+[m[32m    ...UI.sidebar.changePassword,[m[41m[m
+src/layouts/MainLayout.jsx:53: trailing whitespace.
+[32m+[m[32m    icon: KeyRound,[m[41m[m
+src/layouts/MainLayout.jsx:54: trailing whitespace.
+[32m+[m[32m};[m[41m[m
+src/layouts/MainLayout.jsx:55: trailing whitespace.
+[32m+[m[41m[m
+src/layouts/MainLayout.jsx:123: trailing whitespace.
+[32m+[m[32m                ACCOUNT_ITEM,[m[41m[m
+src/layouts/MainLayout.jsx:132: trailing whitespace.
+[32m+[m[32m                    ACCOUNT_ITEM,[m[41m[m
+src/layouts/MainLayout.jsx:145: trailing whitespace.
+[32m+[m[32m                    ACCOUNT_ITEM,[m[41m[m
+src/layouts/MainLayout.jsx:215: trailing whitespace.
+[32m+[m[32m        "/app/change-password": [{ label: "Change Password" }],[m[41m[m
+src/routes/AppRoutes.jsx:50: trailing whitespace.
+[32m+[m[32mconst ChangePasswordPage = lazy(() => import("@/pages/account/ChangePasswordPage"));[m[41m[m
+src/routes/AppRoutes.jsx:210: trailing whitespace.
+[32m+[m[32m                    {/* Shared account settings for every authenticated role */}[m[41m[m
+src/routes/AppRoutes.jsx:211: trailing whitespace.
+[32m+[m[32m                    <Route[m[41m[m
+src/routes/AppRoutes.jsx:212: trailing whitespace.
+[32m+[m[32m                        path="/app/change-password"[m[41m[m
+src/routes/AppRoutes.jsx:213: trailing whitespace.
+[32m+[m[32m                        element={<ChangePasswordPage />}[m[41m[m
+src/routes/AppRoutes.jsx:214: trailing whitespace.
+[32m+[m[32m                    />[m[41m[m
+src/routes/AppRoutes.jsx:215: trailing whitespace.
+[32m+[m[41m[m
+src/schemas/authSchema.js:19: trailing whitespace.
+[32m+[m[32m    });[m[41m[m
+src/schemas/authSchema.js:20: trailing whitespace.
+[32m+[m[41m[m
+src/schemas/authSchema.js:21: trailing whitespace.
+[32m+[m[32m/**[m[41m[m
+src/schemas/authSchema.js:22: trailing whitespace.
+[32m+[m[32m * ==========================================================[m[41m[m
+src/schemas/authSchema.js:23: trailing whitespace.
+[32m+[m[32m * Change Password Validation Schema[m[41m[m
+src/schemas/authSchema.js:24: trailing whitespace.
+[32m+[m[32m * ==========================================================[m[41m[m
+src/schemas/authSchema.js:25: trailing whitespace.
+[32m+[m[32m */[m[41m[m
+src/schemas/authSchema.js:26: trailing whitespace.
+[32m+[m[32mexport const changePasswordSchema = z[m[41m[m
+src/schemas/authSchema.js:27: trailing whitespace.
+[32m+[m[32m    .object({[m[41m[m
+src/schemas/authSchema.js:28: trailing whitespace.
+[32m+[m[32m        currentPassword: z[m[41m[m
+src/schemas/authSchema.js:29: trailing whitespace.
+[32m+[m[32m            .string()[m[41m[m
+src/schemas/authSchema.js:30: trailing whitespace.
+[32m+[m[32m            .min(1, "Current password is required"),[m[41m[m
+src/schemas/authSchema.js:31: trailing whitespace.
+[32m+[m[41m[m
+src/schemas/authSchema.js:32: trailing whitespace.
+[32m+[m[32m        newPassword: z[m[41m[m
+src/schemas/authSchema.js:33: trailing whitespace.
+[32m+[m[32m            .string()[m[41m[m
+src/schemas/authSchema.js:34: trailing whitespace.
+[32m+[m[32m            .min(6, "New password must contain at least 6 characters"),[m[41m[m
+src/schemas/authSchema.js:35: trailing whitespace.
+[32m+[m[41m[m
+src/schemas/authSchema.js:36: trailing whitespace.
+[32m+[m[32m        confirmPassword: z[m[41m[m
+src/schemas/authSchema.js:37: trailing whitespace.
+[32m+[m[32m            .string()[m[41m[m
+src/schemas/authSchema.js:38: trailing whitespace.
+[32m+[m[32m            .min(1, "Please confirm your new password"),[m[41m[m
+src/schemas/authSchema.js:39: trailing whitespace.
+[32m+[m[32m    })[m[41m[m
+src/schemas/authSchema.js:40: trailing whitespace.
+[32m+[m[32m    .superRefine((data, context) => {[m[41m[m
+src/schemas/authSchema.js:41: trailing whitespace.
+[32m+[m[32m        if (data.newPassword !== data.confirmPassword) {[m[41m[m
+src/schemas/authSchema.js:42: trailing whitespace.
+[32m+[m[32m            context.addIssue({[m[41m[m
+src/schemas/authSchema.js:43: trailing whitespace.
+[32m+[m[32m                code: z.ZodIssueCode.custom,[m[41m[m
+src/schemas/authSchema.js:44: trailing whitespace.
+[32m+[m[32m                path: ["confirmPassword"],[m[41m[m
+src/schemas/authSchema.js:45: trailing whitespace.
+[32m+[m[32m                message: "New password and confirmation do not match",[m[41m[m
+src/schemas/authSchema.js:46: trailing whitespace.
+[32m+[m[32m            });[m[41m[m
+src/schemas/authSchema.js:47: trailing whitespace.
+[32m+[m[32m        }[m[41m[m
+src/schemas/authSchema.js:48: trailing whitespace.
+[32m+[m[41m[m
+src/schemas/authSchema.js:49: trailing whitespace.
+[32m+[m[32m        if ([m[41m[m
+src/schemas/authSchema.js:50: trailing whitespace.
+[32m+[m[32m            data.currentPassword &&[m[41m[m
+src/schemas/authSchema.js:51: trailing whitespace.
+[32m+[m[32m            data.newPassword &&[m[41m[m
+src/schemas/authSchema.js:52: trailing whitespace.
+[32m+[m[32m            data.currentPassword === data.newPassword[m[41m[m
+src/schemas/authSchema.js:53: trailing whitespace.
+[32m+[m[32m        ) {[m[41m[m
+src/schemas/authSchema.js:54: trailing whitespace.
+[32m+[m[32m            context.addIssue({[m[41m[m
+src/schemas/authSchema.js:55: trailing whitespace.
+[32m+[m[32m                code: z.ZodIssueCode.custom,[m[41m[m
+src/schemas/authSchema.js:56: trailing whitespace.
+[32m+[m[32m                path: ["newPassword"],[m[41m[m
+src/schemas/authSchema.js:57: trailing whitespace.
+[32m+[m[32m                message: "New password must be different from the current password",[m[41m[m
+src/schemas/authSchema.js:58: trailing whitespace.
+[32m+[m[32m            });[m[41m[m
+src/schemas/authSchema.js:59: trailing whitespace.
+[32m+[m[32m        }[m[41m[m
+src/schemas/authSchema.js:60: trailing whitespace.
+[32m+[m[32m    });[m[41m[m

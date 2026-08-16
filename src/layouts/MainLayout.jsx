@@ -16,6 +16,7 @@ import {
     Sparkles,
     TrendingUp,
     Menu,
+    KeyRound,
 } from "lucide-react";
 
 import SiteHeader from "@/components/layout/SiteHeader";
@@ -45,6 +46,12 @@ const COMMUNITY_ITEMS = [
     { to: "/app/success-stories", ...UI.nav.successStories, icon: Sparkles },
     { to: "/app/leaderboard", ...UI.nav.leaderboard, icon: Trophy },
 ];
+
+const ACCOUNT_ITEM = {
+    to: "/app/change-password",
+    ...UI.sidebar.changePassword,
+    icon: KeyRound,
+};
 
 /**
  * ============================================================================
@@ -113,6 +120,7 @@ export default function MainLayout() {
                     // "new" and "edit" are children, so exact matching is not wanted here
                 },
 
+                ACCOUNT_ITEM,
                 ...COMMUNITY_ITEMS,
             ]
             : user?.role === "ROLE_CLEANER"
@@ -121,6 +129,7 @@ export default function MainLayout() {
                     { to: "/cleaner/available", ...UI.sidebar.availableTasks, icon: Search },
                     { to: "/cleaner/tasks", ...UI.sidebar.myTasks, icon: CheckSquare },
                     { to: "/cleaner/rewards", ...UI.sidebar.myRewards, icon: Award },
+                    ACCOUNT_ITEM,
 
                     /*
                       One leaderboard for everyone, shown inside the shell.
@@ -133,6 +142,7 @@ export default function MainLayout() {
                     { to: "/citizen/dashboard", ...UI.sidebar.overview, icon: LayoutDashboard },
                     { to: "/citizen/report", ...UI.nav.fileReport, icon: FilePlus2 },
                     { to: "/citizen/history", ...UI.sidebar.myReports, icon: History },
+                    ACCOUNT_ITEM,
 
                     ...COMMUNITY_ITEMS,
                 ];
@@ -202,6 +212,7 @@ export default function MainLayout() {
         ],
         "/app/success-stories": [{ label: "Success Stories" }],
         "/app/leaderboard": [{ label: "Cleaner Leaderboard" }],
+        "/app/change-password": [{ label: "Change Password" }],
     };
 
     /*

@@ -95,6 +95,7 @@ export const UI = {
         availableTasks: { en: "Available Tasks", hi: "उपलब्ध कार्य" },
         myTasks: { en: "My Tasks", hi: "मेरे कार्य" },
         myRewards: { en: "My Rewards", hi: "मेरे पुरस्कार" },
+        changePassword: { en: "Change Password", hi: "पासवर्ड बदलें" },
     },
 };
 

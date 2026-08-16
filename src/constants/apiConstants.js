@@ -35,6 +35,11 @@ export const API_BASE_URL =
 export const AUTH_API = "/api/auth";
 
 /**
+ * Authenticated Account APIs
+ */
+export const ACCOUNT_API = "/api/account";
+
+/**
  * Garbage Report APIs (Phase 2)
  */
 export const REPORTS_API = "/api/reports";

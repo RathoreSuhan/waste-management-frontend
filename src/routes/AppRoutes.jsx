@@ -47,6 +47,7 @@ import HomePage from "@/pages/public/HomePage";
 // Auth pages
 const LoginPage = lazy(() => import("@/pages/auth/LoginPage"));
 const RegisterPage = lazy(() => import("@/pages/auth/RegisterPage"));
+const ChangePasswordPage = lazy(() => import("@/pages/account/ChangePasswordPage"));
 const NotFoundPage = lazy(() => import("@/pages/common/NotFoundPage"));
 
 // Public Feed Pages (Phase 10)
@@ -206,6 +207,12 @@ export default function AppRoutes() {
             {/* Protected pages - require login */}
             <Route element={<ProtectedRoute />}>
                 <Route element={<MainLayout />}>
+                    {/* Shared account settings for every authenticated role */}
+                    <Route
+                        path="/app/change-password"
+                        element={<ChangePasswordPage />}
+                    />
+
                     {/* Citizen-only pages */}
                     <Route element={<RoleRoute allowedRole="ROLE_CITIZEN" />}>
                         <Route path="/citizen/dashboard" element={<CitizenDashboard />} />

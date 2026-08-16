@@ -16,7 +16,48 @@ export const loginSchema = z.object({
         .string()
         .min(1, "Password is required"),
 
-});
+    });
+
+/**
+ * ==========================================================
+ * Change Password Validation Schema
+ * ==========================================================
+ */
+export const changePasswordSchema = z
+    .object({
+        currentPassword: z
+            .string()
+            .min(1, "Current password is required"),
+
+        newPassword: z
+            .string()
+            .min(6, "New password must contain at least 6 characters"),
+
+        confirmPassword: z
+            .string()
+            .min(1, "Please confirm your new password"),
+    })
+    .superRefine((data, context) => {
+        if (data.newPassword !== data.confirmPassword) {
+            context.addIssue({
+                code: z.ZodIssueCode.custom,
+                path: ["confirmPassword"],
+                message: "New password and confirmation do not match",
+            });
+        }
+
+        if (
+            data.currentPassword &&
+            data.newPassword &&
+            data.currentPassword === data.newPassword
+        ) {
+            context.addIssue({
+                code: z.ZodIssueCode.custom,
+                path: ["newPassword"],
+                message: "New password must be different from the current password",
+            });
+        }
+    });
 
 /**
  * ==========================================================
