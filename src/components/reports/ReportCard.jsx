@@ -22,7 +22,7 @@ import { formatReportRef } from "@/constants/reportConstants";
  * ==========================================================
  */
 
-export default function ReportCard({ report }) {
+export default function ReportCard({ report, displayStatus = report.status }) {
 
     // "" on the public site, "/app" inside the signed-in shell
     const { basePath } = useLayoutMode();
@@ -65,7 +65,7 @@ export default function ReportCard({ report }) {
                         </h3>
                     </div>
 
-                    <StatusBadge status={report.status} />
+                    <StatusBadge status={displayStatus} />
                 </div>
 
                 {/* Description, limited to two lines to keep rows even */}

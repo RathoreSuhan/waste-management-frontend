@@ -14,9 +14,10 @@ import {
 } from "@/components/reports/ReportListStates";
 
 import usePagination from "@/hooks/usePagination";
-
+import useAuth from "@/hooks/useAuth";
 
 import { getAllReports } from "@/services/reportService";
+import { getPendingAssignments } from "@/services/cleanupService";
 import {
     getTrendingReports,
     indexAnalyticsByReportId,
@@ -26,6 +27,7 @@ import {
     sortReportsBy,
     filterReportsByStatus,
 } from "@/constants/engagementConstants";
+import { getReportDisplayStatus } from "@/constants/reportConstants";
 import { getErrorMessage } from "@/utils/errorMessage";
 
 /**
@@ -35,16 +37,21 @@ import { getErrorMessage } from "@/utils/errorMessage";
  *
  * Reports ranked by how much the community has engaged with them.
  *
- * Two endpoints feed this page:
+ * Three endpoints can feed this page:
  *
- *   /api/reports            - the renderable record (title, photo, city,
- *                             status, createdAt) and engagementScore
- *   /api/analytics/trending - the comment/reply breakdown behind that score
+ *   /api/reports                     - the renderable report records
+ *   /api/analytics/trending          - the engagement-score breakdown
+ *   /api/cleanup-assignments/pending - pending assignment report IDs
  *
- * The analytics response carries no title or timestamp, so it cannot be
- * rendered on its own; it is joined onto the report list by reportId.
- * Since the score itself already lives on ReportResponse, a failure of
- * the analytics call costs only the breakdown - the ranking survives.
+ * The protected assignment endpoint is requested only for authenticated
+ * visitors. It distinguishes truly pending reports from reports whose
+ * assignments have been claimed or started while ReportResponse.status
+ * remains PENDING. The page falls back to that report status when the
+ * assignment snapshot is unavailable.
+ *
+ * Analytics carries no title or timestamp, so it is joined onto the
+ * report list by reportId. Since the score itself already lives on
+ * ReportResponse, an analytics failure costs only the breakdown.
  * That is why this uses allSettled rather than all.
  *
  * Ordering and filtering are done here because the backend offers a
@@ -57,7 +64,16 @@ import { getErrorMessage } from "@/utils/errorMessage";
 
 export default function TrendingReportsPage() {
 
+    const { isAuthenticated } = useAuth();
+
     const [reports, setReports] = useState([]);
+
+    /*
+      Set of report IDs whose cleanup assignments are still PENDING.
+      Null means the protected assignment snapshot was unavailable.
+    */
+    const [pendingAssignmentReportIds, setPendingAssignmentReportIds] =
+        useState(null);
 
     // reportId -> ReportAnalyticsResponse. Empty when analytics fails.
     const [analyticsMap, setAnalyticsMap] = useState(() => new Map());
@@ -79,16 +95,24 @@ export default function TrendingReportsPage() {
     /**
      * Load the register.
      *
-     * allSettled keeps the two calls independent: the page is usable
-     * whenever the report list arrives, whatever analytics does.
+     * allSettled keeps optional calls independent: the page is usable
+     * whenever reports arrive, whatever analytics or assignments do.
      */
     useEffect(() => {
 
         // Prevents state updates from an outdated request
         let ignore = false;
 
-        Promise.allSettled([getAllReports(), getTrendingReports()])
-            .then(([reportResult, analyticsResult]) => {
+        const pendingAssignmentsRequest = isAuthenticated
+            ? getPendingAssignments()
+            : Promise.resolve(null);
+
+        Promise.allSettled([
+            getAllReports(),
+            getTrendingReports(),
+            pendingAssignmentsRequest,
+        ])
+            .then(([reportResult, analyticsResult, assignmentResult]) => {
                 if (ignore) {
                     return;
                 }
@@ -104,6 +128,22 @@ export default function TrendingReportsPage() {
 
                 setReports(reportResult.value ?? []);
                 setError("");
+
+                if (
+                    assignmentResult.status === "fulfilled"
+                    && Array.isArray(assignmentResult.value)
+                ) {
+                    setPendingAssignmentReportIds(
+                        new Set(
+                            assignmentResult.value
+                                .filter((assignment) => assignment.reportId != null)
+                                .map((assignment) => String(assignment.reportId))
+                        )
+                    );
+                } else {
+                    // Signed-out users and failed protected calls use report.status.
+                    setPendingAssignmentReportIds(null);
+                }
 
                 if (analyticsResult.status === "fulfilled") {
                     setAnalyticsMap(indexAnalyticsByReportId(analyticsResult.value));
@@ -124,7 +164,7 @@ export default function TrendingReportsPage() {
         return () => {
             ignore = true;
         };
-    }, [reloadKey]);
+    }, [isAuthenticated, reloadKey]);
 
     /**
      * Retry the request (used by the error state button).
@@ -144,10 +184,14 @@ export default function TrendingReportsPage() {
      * through sort modes does not re-sort on every unrelated render.
      */
     const visibleReports = useMemo(() => {
-        const filtered = filterReportsByStatus(reports, statusFilter);
+        const filtered = filterReportsByStatus(
+            reports,
+            statusFilter,
+            pendingAssignmentReportIds
+        );
 
         return sortReportsBy(filtered, sortMode);
-    }, [reports, statusFilter, sortMode]);
+    }, [reports, statusFilter, sortMode, pendingAssignmentReportIds]);
 
     // A position is only meaningful while the list is ranked by engagement
     const showRank = sortMode === SORT_ENGAGEMENT_DESC;
@@ -231,7 +275,13 @@ export default function TrendingReportsPage() {
                                     {pageItems.map((report, index) => (
                                         <li key={report.id}>
                                             {/* The card is the link; the bar sits outside it */}
-                                            <ReportCard report={report} />
+                                            <ReportCard
+                                                report={report}
+                                                displayStatus={getReportDisplayStatus(
+                                                    report,
+                                                    pendingAssignmentReportIds
+                                                )}
+                                            />
 
                                             <EngagementBar
                                                 report={report}

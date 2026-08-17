@@ -15,9 +15,11 @@ import Pagination from "@/components/common/Pagination";
 
 import useReports from "@/hooks/useReports";
 import usePagination from "@/hooks/usePagination";
+import usePendingAssignmentReportIds from "@/hooks/usePendingAssignmentReportIds";
 import { getMyReports } from "@/services/reportService";
 
 import {
+    getReportDisplayStatus,
     REPORT_STATUS,
     REPORT_STATUS_FILTERS,
 } from "@/constants/reportConstants";
@@ -37,6 +39,9 @@ export default function MyReportsPage() {
     // Load the citizen's own reports
     const { data: reports, loading, error, reload } = useReports(getMyReports);
 
+    // Optional snapshot used only to reconcile the lifecycle shown to citizens
+    const pendingAssignmentReportIds = usePendingAssignmentReportIds();
+
     // Currently selected status filter
     const [statusFilter, setStatusFilter] = useState("ALL");
 
@@ -50,12 +55,17 @@ export default function MyReportsPage() {
 
         return list
             .filter((report) =>
-                statusFilter === "ALL" ? true : report.status === statusFilter
+                statusFilter === "ALL"
+                    ? true
+                    : getReportDisplayStatus(
+                        report,
+                        pendingAssignmentReportIds
+                    ) === statusFilter
             )
             // Newest report on top
             .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
-    }, [reports, statusFilter]);
+    }, [reports, statusFilter, pendingAssignmentReportIds]);
 
     /**
      * Count reports per status for the summary row.
@@ -66,11 +76,29 @@ export default function MyReportsPage() {
 
         return {
             total: list.length,
-            pending: list.filter((r) => r.status === REPORT_STATUS.PENDING).length,
-            inProgress: list.filter((r) => r.status === REPORT_STATUS.IN_PROGRESS).length,
-            resolved: list.filter((r) => r.status === REPORT_STATUS.RESOLVED).length,
+            pending: list.filter(
+                (report) =>
+                    getReportDisplayStatus(
+                        report,
+                        pendingAssignmentReportIds
+                    ) === REPORT_STATUS.PENDING
+            ).length,
+            inProgress: list.filter(
+                (report) =>
+                    getReportDisplayStatus(
+                        report,
+                        pendingAssignmentReportIds
+                    ) === REPORT_STATUS.IN_PROGRESS
+            ).length,
+            resolved: list.filter(
+                (report) =>
+                    getReportDisplayStatus(
+                        report,
+                        pendingAssignmentReportIds
+                    ) === REPORT_STATUS.RESOLVED
+            ).length,
         };
-    }, [reports]);
+    }, [reports, pendingAssignmentReportIds]);
 
     // Ten reports to a page, filtered set first
     const {
@@ -163,7 +191,14 @@ export default function MyReportsPage() {
                 total > 0 ? (
                     <div ref={listTopRef} className="space-y-3">
                         {pageItems.map((report) => (
-                            <ReportCard key={report.id} report={report} />
+                            <ReportCard
+                                key={report.id}
+                                report={report}
+                                displayStatus={getReportDisplayStatus(
+                                    report,
+                                    pendingAssignmentReportIds
+                                )}
+                            />
                         ))}
 
                         <Pagination

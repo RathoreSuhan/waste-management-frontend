@@ -12,8 +12,12 @@ import {
 } from "@/components/reports/ReportListStates";
 
 import useReports from "@/hooks/useReports";
+import usePendingAssignmentReportIds from "@/hooks/usePendingAssignmentReportIds";
 import { getMyReports } from "@/services/reportService";
-import { REPORT_STATUS } from "@/constants/reportConstants";
+import {
+    getReportDisplayStatus,
+    REPORT_STATUS,
+} from "@/constants/reportConstants";
 
 /**
  * ============================================================================
@@ -30,6 +34,9 @@ export default function CitizenDashboard() {
     // Load the reports filed by this citizen
     const { data: reports, loading, error, reload } = useReports(getMyReports);
 
+    // Optional snapshot used only to reconcile displayed lifecycle status
+    const pendingAssignmentReportIds = usePendingAssignmentReportIds();
+
     /**
      * Build the summary figures from the report list.
      */
@@ -43,7 +50,11 @@ export default function CitizenDashboard() {
         ).length;
 
         const pending = list.filter(
-            (report) => report.status === REPORT_STATUS.PENDING
+            (report) =>
+                getReportDisplayStatus(
+                    report,
+                    pendingAssignmentReportIds
+                ) === REPORT_STATUS.PENDING
         ).length;
 
         return {
@@ -51,7 +62,7 @@ export default function CitizenDashboard() {
             resolved,
             pending,
         };
-    }, [reports]);
+    }, [reports, pendingAssignmentReportIds]);
 
     /**
      * Three most recent reports for the activity section.
@@ -159,7 +170,14 @@ export default function CitizenDashboard() {
                             recentReports.length > 0 ? (
                                 <div className="space-y-3">
                                     {recentReports.map((report) => (
-                                        <ReportCard key={report.id} report={report} />
+                                        <ReportCard
+                                            key={report.id}
+                                            report={report}
+                                            displayStatus={getReportDisplayStatus(
+                                                report,
+                                                pendingAssignmentReportIds
+                                            )}
+                                        />
                                     ))}
                                 </div>
                             ) : (

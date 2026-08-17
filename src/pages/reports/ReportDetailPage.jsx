@@ -25,10 +25,14 @@ import {
 
 import useReports from "@/hooks/useReports";
 import useLayoutMode from "@/hooks/useLayoutMode";
+import usePendingAssignmentReportIds from "@/hooks/usePendingAssignmentReportIds";
 import { getReport } from "@/services/reportService";
 import { findPublicFeedByReportId } from "@/services/publicFeedService";
 
-import { formatReportRef } from "@/constants/reportConstants";
+import {
+    formatReportRef,
+    getReportDisplayStatus,
+} from "@/constants/reportConstants";
 import {
     formatCoordinates,
     formatDateTime,
@@ -75,6 +79,9 @@ export default function ReportDetailPage() {
         reload,
         refresh,
     } = useReports(fetchReport, null);
+
+    // Optional authenticated snapshot used only for the displayed badge
+    const pendingAssignmentReportIds = usePendingAssignmentReportIds();
 
     // External maps link built from the stored coordinates
     const mapsUrl = report
@@ -184,7 +191,12 @@ export default function ReportDetailPage() {
                                 </p>
                             </div>
 
-                            <StatusBadge status={report.status} />
+                            <StatusBadge
+                                status={getReportDisplayStatus(
+                                    report,
+                                    pendingAssignmentReportIds
+                                )}
+                            />
                         </div>
                     </header>
 

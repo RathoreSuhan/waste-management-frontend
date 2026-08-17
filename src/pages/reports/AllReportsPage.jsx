@@ -14,9 +14,13 @@ import {
 
 import useReports from "@/hooks/useReports";
 import usePagination from "@/hooks/usePagination";
+import usePendingAssignmentReportIds from "@/hooks/usePendingAssignmentReportIds";
 
 import { getAllReports } from "@/services/reportService";
-import { REPORT_STATUS_FILTERS } from "@/constants/reportConstants";
+import {
+    getReportDisplayStatus,
+    REPORT_STATUS_FILTERS,
+} from "@/constants/reportConstants";
 
 /**
  * ============================================================================
@@ -38,6 +42,9 @@ export default function AllReportsPage() {
 
     // Load every report from the backend
     const { data: reports, loading, error, reload } = useReports(getAllReports);
+
+    // Optional authenticated snapshot used only to reconcile displayed status
+    const pendingAssignmentReportIds = usePendingAssignmentReportIds();
 
     // Free text search (title, city, address) - what is in the box
     const [search, setSearch] = useState("");
@@ -70,7 +77,12 @@ export default function AllReportsPage() {
 
         return list
             .filter((report) =>
-                statusFilter === "ALL" ? true : report.status === statusFilter
+                statusFilter === "ALL"
+                    ? true
+                    : getReportDisplayStatus(
+                        report,
+                        pendingAssignmentReportIds
+                    ) === statusFilter
             )
             .filter((report) => {
 
@@ -90,7 +102,12 @@ export default function AllReportsPage() {
             // Newest report on top
             .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
-    }, [reports, appliedSearch, statusFilter]);
+    }, [
+        reports,
+        appliedSearch,
+        statusFilter,
+        pendingAssignmentReportIds,
+    ]);
 
 
     /*
@@ -290,7 +307,14 @@ export default function AllReportsPage() {
                             </p>
 
                             {pageItems.map((report) => (
-                                <ReportCard key={report.id} report={report} />
+                                <ReportCard
+                                    key={report.id}
+                                    report={report}
+                                    displayStatus={getReportDisplayStatus(
+                                        report,
+                                        pendingAssignmentReportIds
+                                    )}
+                                />
                             ))}
 
                             <Pagination

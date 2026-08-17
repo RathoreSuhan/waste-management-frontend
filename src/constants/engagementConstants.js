@@ -1,3 +1,5 @@
+import { getReportDisplayStatus } from "@/constants/reportConstants";
+
 /**
  * ============================================================================
  * Engagement & Sorting Constants (Phase 8)
@@ -35,8 +37,9 @@ export const REPORT_SORT_OPTIONS = [
 /**
  * Status filters
  *
- * Values mirror the backend ReportStatus enum exactly
- * (PENDING / IN_PROGRESS / RESOLVED). ALL is a frontend-only sentinel.
+ * Values describe the lifecycle shown in this register. CLAIMED and
+ * IN_PROGRESS cleanup assignments both map to the IN_PROGRESS tab.
+ * ALL is a frontend-only sentinel.
  */
 export const STATUS_ALL = "ALL";
 
@@ -115,13 +118,21 @@ export function sortReportsBy(reports, mode) {
  * Filter Reports By Status
  *
  * @param {Array} reports - ReportResponse list
- * @param {string} status - a ReportStatus value or STATUS_ALL
+ * @param {string} status - a register status value or STATUS_ALL
+ * @param {Set<string>|null} pendingAssignmentReportIds
  * @returns {Array} filtered copy
  */
-export function filterReportsByStatus(reports, status) {
+export function filterReportsByStatus(
+    reports,
+    status,
+    pendingAssignmentReportIds = null
+) {
     if (!status || status === STATUS_ALL) {
         return reports ?? [];
     }
 
-    return (reports ?? []).filter((report) => report.status === status);
+    return (reports ?? []).filter(
+        (report) =>
+            getReportDisplayStatus(report, pendingAssignmentReportIds) === status
+    );
 }

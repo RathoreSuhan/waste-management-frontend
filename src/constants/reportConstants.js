@@ -6,7 +6,8 @@
  * Single source of truth for report status values and image upload rules.
  *
  * Labels deliberately mirror the backend names rather than inventing
- * friendlier synonyms, so what the user reads matches what the API stores.
+ * friendlier synonyms. A separate display resolver below accounts for cleanup
+ * work that has started while the report response still says PENDING.
  *
  * These values are kept in sync with the Spring Boot backend:
  *
@@ -24,6 +25,39 @@ export const REPORT_STATUS = {
     IN_PROGRESS: "IN_PROGRESS", // cleaner is working on it
     RESOLVED: "RESOLVED",       // area has been cleaned
 };
+
+/**
+ * Resolve the lifecycle status shown in report registers and badges.
+ *
+ * The backend changes the cleanup assignment to CLAIMED or IN_PROGRESS without
+ * changing ReportResponse.status from PENDING. A successful snapshot of all
+ * still-pending assignments therefore tells us which reports are genuinely
+ * waiting; a pending report absent from that snapshot has moved into work.
+ *
+ * Null is deliberately different from an empty Set. Null means no reliable
+ * authenticated snapshot is available, so the backend status is preserved
+ * rather than guessed. Every non-PENDING backend status is also preserved.
+ *
+ * @param {object|null|undefined} report - ReportResponse
+ * @param {Set<string>|null} pendingAssignmentReportIds
+ * @returns {string|undefined} status intended for presentation
+ */
+export function getReportDisplayStatus(
+    report,
+    pendingAssignmentReportIds = null
+) {
+    if (
+        report?.status !== REPORT_STATUS.PENDING
+        || !(pendingAssignmentReportIds instanceof Set)
+        || report?.id == null
+    ) {
+        return report?.status;
+    }
+
+    return pendingAssignmentReportIds.has(String(report.id))
+        ? REPORT_STATUS.PENDING
+        : REPORT_STATUS.IN_PROGRESS;
+}
 
 /**
  * Display information for each status.
