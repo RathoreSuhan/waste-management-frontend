@@ -145,7 +145,15 @@ export default function ReportDetailPage() {
 
 
     return (
-        <PageContainer maxWidth="max-w-4xl" className="space-y-5">
+        /*
+          max-w-7xl, the same column the header, footer and the report list
+          this page is opened from all use. At max-w-4xl the slip sat ~380px
+          narrower than everything around it, leaving a band of empty
+          background down each side. Prose and label grids inside set their
+          own measure, so the extra width is spent on the record rather than
+          on longer lines of text.
+        */
+        <PageContainer maxWidth="max-w-7xl" className="space-y-5">
 
             {/* Back navigation */}
             <Link
@@ -230,7 +238,10 @@ export default function ReportDetailPage() {
 
                         {/* Description, matching the backend field name */}
                         <Section title="Description" icon={FileText}>
-                            <p className="whitespace-pre-line text-sm leading-relaxed text-ink">
+                            {/* Capped to a readable measure - across the full
+                                width of the wider card the citizen's account
+                                would run well past 150 characters a line */}
+                            <p className="max-w-4xl whitespace-pre-line text-sm leading-relaxed text-ink">
                                 {report.description || "No description provided."}
                             </p>
                         </Section>
@@ -254,7 +265,10 @@ export default function ReportDetailPage() {
                                 )
                             }
                         >
-                            <dl className="grid gap-x-6 gap-y-3 sm:grid-cols-2">
+                            {/* Three columns on a wide card: these are short
+                                values, and two half-width columns left most
+                                of each row empty */}
+                            <dl className="grid gap-x-6 gap-y-3 sm:grid-cols-2 xl:grid-cols-3">
 
                                 {/* Street address */}
                                 <DetailItem label="Address" value={report.address} />
@@ -306,7 +320,10 @@ export default function ReportDetailPage() {
                         {/* Record metadata */}
                         <Section title="Record Details">
 
-                            <dl className="grid gap-x-6 gap-y-3 sm:grid-cols-2">
+                            {/* Same three-column treatment as the location
+                                fields above, so the two lists still read as
+                                one kind of thing */}
+                            <dl className="grid gap-x-6 gap-y-3 sm:grid-cols-2 xl:grid-cols-3">
 
                                 {/* Internal identifier, kept for support queries */}
                                 <DetailItem label="Record ID" value={`#${report.id}`} />

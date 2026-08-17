@@ -107,7 +107,15 @@ export default function SuccessStoryDetailPage() {
             .join(", ");
 
     return (
-        <div className="mx-auto w-full max-w-4xl px-4 py-8">
+        /*
+          max-w-7xl, matching the gallery this story was opened from and the
+          site header and footer above and below it. At max-w-4xl the card
+          stood ~380px narrower than every other column on the site, which
+          left a band of empty background down each side and made a finished
+          cleanup look like a smaller kind of record than the list it came
+          from. The wide blocks inside cap their own measure instead.
+        */
+        <div className="mx-auto w-full max-w-7xl px-4 py-8">
 
             {/* Back to the gallery, not to the protected report list */}
             <Link
@@ -188,7 +196,12 @@ export default function SuccessStoryDetailPage() {
                                     What Was Reported
                                 </h2>
 
-                                <p className="mt-2 text-sm leading-relaxed whitespace-pre-line text-ink">
+                                {/* Held to a readable measure. Set to the full
+                                    width of the card the citizen's account of
+                                    the problem would run past 150 characters a
+                                    line, which is harder to read than the
+                                    narrow card this replaced. */}
+                                <p className="mt-2 max-w-4xl text-sm leading-relaxed whitespace-pre-line text-ink">
                                     {story.reportDescription}
                                 </p>
                             </section>
@@ -200,7 +213,10 @@ export default function SuccessStoryDetailPage() {
                                 Cleanup Record
                             </h2>
 
-                            <dl className="mt-3 grid gap-4 sm:grid-cols-2">
+                            {/* Four tiles across on a wide card, so short
+                                facts like the completion date no longer sit
+                                in a half-empty half-width column */}
+                            <dl className="mt-3 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
 
                                 <Fact
                                     icon={MapPin}
@@ -247,7 +263,9 @@ export default function SuccessStoryDetailPage() {
                                     Verification Remarks
                                 </h2>
 
-                                <p className="mt-2 text-sm leading-relaxed text-ink">
+                                {/* Same measure as the report text above -
+                                    the model's remarks are prose too */}
+                                <p className="mt-2 max-w-4xl text-sm leading-relaxed text-ink">
                                     {story.aiRemarks}
                                 </p>
                             </section>

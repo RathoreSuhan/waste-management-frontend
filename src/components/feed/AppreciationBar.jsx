@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { Eye, Heart, Share2, Check } from "lucide-react";
 
 import LoginRequiredDialog from "@/components/auth/LoginRequiredDialog";
@@ -52,6 +52,14 @@ export default function AppreciationBar({ story, compact = false }) {
 
     // Raised when a signed-out visitor presses the heart
     const [loginPromptOpen, setLoginPromptOpen] = useState(false);
+
+    /*
+      Kept stable across renders. The dialog's focus, escape and scroll-lock
+      effect is keyed on this handler, so a fresh arrow on every render would
+      tear that effect down and set it up again - pulling focus back to the
+      close button each time this bar re-rendered.
+    */
+    const closeLoginPrompt = useCallback(() => setLoginPromptOpen(false), []);
 
     // Ignore repeat presses while a toggle is in flight
     const [saving, setSaving] = useState(false);
@@ -234,10 +242,12 @@ export default function AppreciationBar({ story, compact = false }) {
                 <span className="sr-only">share this story</span>
             </button>
 
-            {/* Shown when a signed-out visitor presses the heart */}
+            {/* Shown when a signed-out visitor presses the heart.
+                Renders through a portal, so it is centred on the viewport
+                rather than trapped inside this card. */}
             <LoginRequiredDialog
                 open={loginPromptOpen}
-                onClose={() => setLoginPromptOpen(false)}
+                onClose={closeLoginPrompt}
                 action="appreciate this cleanup"
             />
         </div>

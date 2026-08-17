@@ -1,7 +1,8 @@
-import { useEffect, useRef } from "react";
+import { createPortal } from "react-dom";                  // Lifts the overlay out of whatever opened it
 import { useLocation, useNavigate } from "react-router-dom";
 import { X, LogIn, UserPlus } from "lucide-react";
 
+import useModalBehaviour from "@/hooks/useModalBehaviour";  // Escape, scroll lock and focus trap, shared by every dialog
 import { ROLE_LABELS } from "@/constants/roleLabels";
 
 /**
@@ -24,6 +25,17 @@ import { ROLE_LABELS } from "@/constants/roleLabels";
  * cannot perform the action, such as a cleaner pressing File a Report.
  * There is nothing to sign in to there, so the dialog explains the
  * restriction instead of offering login.
+ *
+ * On placement: the overlay is sent to document.body through a portal.
+ * The dialog is raised from controls that live inside cards, and a card
+ * that lifts on hover is a transformed element - which becomes the
+ * containing block for anything positioned fixed inside it. Mounted in
+ * place, the dialog was therefore pinned to the corner of the card that
+ * opened it, dimmed that card alone, and jumped as the hover transform
+ * animated away. The card also clips its overflow, so the part of the
+ * overlay that reached past its edges was cut off. At the body there is
+ * no transformed ancestor and nothing to clip against, so inset-0 always
+ * means the viewport and the panel always lands in the middle of it.
  * ============================================================================
  */
 
@@ -43,43 +55,15 @@ export default function LoginRequiredDialog({
     const navigate = useNavigate();
     const location = useLocation();
 
-    // Focus target on open, so keyboard and screen reader users start inside
-    const closeButtonRef = useRef(null);
+    /*
+      Escape closes it, the page behind is frozen, focus moves into the
+      panel and is kept there, and the trigger gets focus back on close.
 
-    // Element focused before opening, restored on close
-    const previouslyFocused = useRef(null);
-
-    useEffect(() => {
-        if (!open) {
-            return;
-        }
-
-        previouslyFocused.current = document.activeElement;
-
-        closeButtonRef.current?.focus();
-
-        function handleKeyDown(event) {
-            if (event.key === "Escape") {
-                onClose();
-            }
-        }
-
-        document.addEventListener("keydown", handleKeyDown);
-
-        // The page behind must not scroll while the dialog is up
-        const previousOverflow = document.body.style.overflow;
-        document.body.style.overflow = "hidden";
-
-        return () => {
-            document.removeEventListener("keydown", handleKeyDown);
-            document.body.style.overflow = previousOverflow;
-
-            // Send focus back where it came from
-            if (previouslyFocused.current instanceof HTMLElement) {
-                previouslyFocused.current.focus();
-            }
-        };
-    }, [open, onClose]);
+      This file used to carry its own copy of all four. The shared hook
+      does the same work and adds the Tab trap the hand-written version
+      was missing, so there is one behaviour to maintain rather than two.
+    */
+    const panelRef = useModalBehaviour(open, onClose);  // attached to the panel below
 
     if (!open) {
         return null;
@@ -104,9 +88,20 @@ export default function LoginRequiredDialog({
     const roleLabel = ROLE_LABELS[currentRole] || "account";
 
 
-    return (
+    /*
+      Portalled to document.body rather than returned in place, so the
+      fixed overlay is measured against the viewport instead of against
+      the hover-lifted card it was opened from. See the note at the top
+      of the file for what that mis-placement looked like.
+    */
+    return createPortal(
         <div
-            className="fixed inset-0 z-50 flex items-center justify-center p-4"
+            /*
+              overflow-y-auto keeps the panel reachable when the viewport is
+              shorter than the dialog - a phone in landscape, for instance,
+              where a centred panel would otherwise be cut off at both ends.
+            */
+            className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto p-4"
             role="presentation"
         >
             {/* Backdrop - clicking outside dismisses */}
@@ -117,11 +112,14 @@ export default function LoginRequiredDialog({
             />
 
             <div
+                ref={panelRef}
+                // A plain div cannot take focus on its own, so the hook is given a target
+                tabIndex={-1}
                 role="dialog"
                 aria-modal="true"
                 aria-labelledby="login-required-title"
                 aria-describedby="login-required-description"
-                className="relative w-full max-w-md rounded-gov border border-rule bg-white shadow-lg"
+                className="relative w-full max-w-md rounded-gov border border-rule bg-white shadow-lg focus:outline-none"
             >
                 {/* Header */}
                 <div className="flex items-start justify-between gap-3 border-b border-rule bg-paper px-4 py-3">
@@ -136,7 +134,6 @@ export default function LoginRequiredDialog({
 
 
                     <button
-                        ref={closeButtonRef}
                         type="button"
                         onClick={onClose}
                         aria-label="Close"
@@ -230,6 +227,9 @@ export default function LoginRequiredDialog({
                 </div>
 
             </div>
-        </div>
+        </div>,
+
+        // The one place on the page with no transformed or clipping ancestor
+        document.body
     );
 }
