@@ -4,8 +4,10 @@ import PageHeading from "@/components/common/PageHeading";
 import Alert from "@/components/ui/Alert";
 import TaskCard from "@/components/cleanup/TaskCard";
 import CleanupUploadDialog from "@/components/cleanup/CleanupUploadDialog";
+import CleanupDisclaimerDialog from "@/components/cleanup/CleanupDisclaimerDialog";
 import Pagination from "@/components/common/Pagination";
 import useAssignments from "@/hooks/useAssignments";
+import useCleanupDisclaimer from "@/hooks/useCleanupDisclaimer";
 import usePagination from "@/hooks/usePagination";
 
 import { getMyTasks, startCleanup } from "@/services/cleanupService";
@@ -29,6 +31,11 @@ import {
  * /claimed, /in-progress and /completed, but calling one endpoint and
  * grouping locally avoids three round trips that can disagree with each
  * other when a task changes state between requests.
+ *
+ * Starting work is held behind the bilingual presence notice: the proof
+ * photograph is only accepted from within a fixed radius of the reported
+ * location, so the cleaner is reminded of that before setting out rather than
+ * when the upload is refused.
  * ============================================================================
  */
 
@@ -165,6 +172,12 @@ export default function MyTasksPage() {
         }
     }
 
+    /*
+      The notice stands between the card's Start button and handleStart, so the
+      distance requirement is acknowledged before the cleaner travels.
+    */
+    const disclaimer = useCleanupDisclaimer(handleStart);
+
     /**
      * Called only when AI accepted the cleanup, so the task can move to
      * Completed. A rejected upload leaves everything exactly as it was.
@@ -244,7 +257,8 @@ export default function MyTasksPage() {
                             <TaskGroup
                                 key={group.status}
                                 group={group}
-                                onStart={handleStart}
+                                // Opens the notice; the start call runs on acceptance
+                                onStart={disclaimer.requestAcknowledgement}
                                 onUpload={setUploadTarget}
                                 busyId={startingId}
                             />
@@ -262,6 +276,15 @@ export default function MyTasksPage() {
                     onVerified={handleVerified}
                 />
             )}
+
+            {/* Presence undertaking - shown afresh every time work is started */}
+            <CleanupDisclaimerDialog
+                open={Boolean(disclaimer.pendingAssignment)}
+                reportTitle={disclaimer.pendingAssignment?.reportTitle}
+                busy={startingId !== null}
+                onAccept={disclaimer.accept}
+                onCancel={disclaimer.cancel}
+            />
         </div>
     );
 }

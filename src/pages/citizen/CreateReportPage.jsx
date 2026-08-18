@@ -84,7 +84,6 @@ export default function CreateReportPage() {
         detecting,
         locationError,
         detectLocation,
-        clearLocationError,
     } = useGeoLocation();
 
     /**
@@ -95,13 +94,7 @@ export default function CreateReportPage() {
      */
     const [position, setPosition] = useState(null);
 
-    /**
-     * Whether the citizen has declared the location themselves, which is
-     * what allows a report through when GPS cannot confirm it.
-     */
-    const [locationDeclared, setLocationDeclared] = useState(false);
-
-    // Raised when submission is attempted with neither confirmation
+    // Raised when submission is attempted before the device position is verified
     const [locationBlocked, setLocationBlocked] = useState("");
 
     // Selected garbage photo - recovered from the draft if one is held
@@ -146,35 +139,34 @@ export default function CreateReportPage() {
         handleSubmit,
         setValue,
         getValues,
-        watch,
         formState: { errors, isSubmitting },
     } = useForm({
         resolver: zodResolver(createReportSchema),
 
-        // Continue from the saved draft when there is one
-        defaultValues: restoredValues || EMPTY_FORM,
+        /**
+         * Continue from the saved draft when there is one, but always with
+         * blank coordinates. A position restored from an earlier visit would
+         * leave the form looking complete while proving nothing about where
+         * the citizen is standing now.
+         */
+        defaultValues: restoredValues
+            ? { ...restoredValues, latitude: "", longitude: "" }
+            : EMPTY_FORM,
     });
 
     /**
-     * Coordinates are watched rather than read on demand, because the
-     * verification panel has to respond the moment they are edited. Typing
-     * a different latitude should visibly withdraw the confirmation, not
-     * leave a stale "Location Confirmed" on screen.
+     * Current verification outcome, recalculated whenever a fresh position is
+     * captured. Only the device reading is examined, because coordinates can
+     * no longer be typed in - they are written from the reading and nowhere
+     * else.
      */
-    const latitude = watch("latitude");
-    const longitude = watch("longitude");
-
-    /**
-     * Current verification outcome, recalculated whenever the captured
-     * position or the coordinates change.
-     */
-    const { status: locationStatus, distanceMetres } = useMemo(
-        () => evaluateLocation(position, latitude, longitude),
-        [position, latitude, longitude]
+    const { status: locationStatus } = useMemo(
+        () => evaluateLocation(position),
+        [position]
     );
 
-    // Whether the report is allowed through in its present state
-    const locationAllowed = canSubmitLocation(locationStatus, locationDeclared);
+    // A report is only allowed through on a verified device reading
+    const locationAllowed = canSubmitLocation(locationStatus);
 
     /**
      * Mirror the current values into the draft store.
@@ -183,7 +175,10 @@ export default function CreateReportPage() {
      * so typing does not trigger a re-render of this fairly large page.
      */
     function saveDraft() {
-        saveDraftValues(getValues());
+
+        // Coordinates are kept out of the draft, since they only mean
+        // something beside the live reading that produced them
+        saveDraftValues({ ...getValues(), latitude: "", longitude: "" });
     }
 
     /**
@@ -272,23 +267,6 @@ export default function CreateReportPage() {
     }
 
     /**
-     * Record the citizen's own confirmation of the location.
-     *
-     * Ticking it clears both the block and any detection error, since the
-     * citizen has taken responsibility for the coordinates and the failed
-     * reading is no longer something they need to act on.
-     */
-    function handleDeclaredChange(checked) {
-
-        setLocationDeclared(checked);
-
-        if (checked) {
-            setLocationBlocked("");
-            clearLocationError();
-        }
-    }
-
-    /**
      * Submit the report to the backend.
      */
     async function onSubmit(data) {
@@ -310,15 +288,15 @@ export default function CreateReportPage() {
         }
 
         /**
-         * Reports are meant to be filed at the site, so an unconfirmed
-         * location is stopped here rather than sent on to the backend, which
-         * has no way to tell where the citizen actually was.
+         * Reports must be filed from the site itself, so anything short of a
+         * verified device reading is stopped here rather than sent on to the
+         * backend, which has no way to tell where the citizen actually was.
          */
         if (!locationAllowed) {
             setLocationBlocked(
-                locationStatus === LOCATION_STATUS.TOO_FAR
-                    ? "The location entered is away from where you are. Capture your position at the site, or confirm the location yourself in section 3."
-                    : "Please confirm the location in section 3 before submitting."
+                locationStatus === LOCATION_STATUS.NOT_CAPTURED
+                    ? "Please capture your current location in section 3. A report can only be filed from the site itself."
+                    : "Your location could not be accepted. Please capture it again in section 3 while standing at the site."
             );
             return;
         }
@@ -507,18 +485,16 @@ export default function CreateReportPage() {
                             <div className="space-y-4">
 
                                 {/*
-                                  Confirms the citizen is at the site. Placed
-                                  above the coordinates because it is what
-                                  fills them in for most reports.
+                                  The only route by which coordinates reach
+                                  this form: the panel captures the device
+                                  position and reports whether it can be
+                                  trusted.
                                 */}
                                 <LocationVerificationPanel
                                     status={locationStatus}
-                                    distanceMetres={distanceMetres}
                                     position={position}
                                     detecting={detecting}
                                     locationError={locationError}
-                                    declared={locationDeclared}
-                                    onDeclaredChange={handleDeclaredChange}
                                     onCapture={handleCapturePosition}
                                 />
 
@@ -532,31 +508,15 @@ export default function CreateReportPage() {
                                     </p>
                                 )}
 
-                                <div className="grid gap-4 sm:grid-cols-2">
-
-                                    {/*
-                                      Coordinates stay editable so the pin can
-                                      be moved onto the waste across the road,
-                                      but the panel withdraws its confirmation
-                                      once they leave the site radius.
-                                    */}
-                                    <Input
-                                        label="Latitude"
-                                        required
-                                        placeholder="22.572600"
-                                        {...register("latitude")}
-                                        error={errors.latitude}
-                                    />
-
-                                    {/* GPS longitude */}
-                                    <Input
-                                        label="Longitude"
-                                        required
-                                        placeholder="88.363900"
-                                        {...register("longitude")}
-                                        error={errors.longitude}
-                                    />
-                                </div>
+                                {/*
+                                  Coordinates are carried as hidden fields so
+                                  the schema still validates them, while the
+                                  citizen has no way to type a place they are
+                                  not standing at. The captured values are
+                                  shown for reference inside the panel above.
+                                */}
+                                <input type="hidden" {...register("latitude")} />
+                                <input type="hidden" {...register("longitude")} />
 
                                 {/* Street address */}
                                 <Input

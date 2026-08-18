@@ -1,13 +1,22 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { X, ShieldCheck, ShieldAlert, Sparkles } from "lucide-react";
 
 import Button from "@/components/ui/Button";
 import Alert from "@/components/ui/Alert";
 import ImageUploadField from "@/components/reports/ImageUploadField";
+import CleanupLocationCapture from "@/components/cleanup/CleanupLocationCapture";
 import useModalBehaviour from "@/hooks/useModalBehaviour";
+import useGeoLocation from "@/hooks/useGeoLocation";
 import { uploadCleanupImage } from "@/services/cleanupService";
 import { getErrorMessage } from "@/utils/errorMessage";
-import { formatConfidence } from "@/constants/assignmentConstants";
+import {
+    formatConfidence,
+    CLEANUP_PROOF_RADIUS_METRES,
+} from "@/constants/assignmentConstants";
+import {
+    canSubmitLocation,
+    evaluateCleanupLocation,
+} from "@/utils/locationVerification";
 import {
     ALLOWED_IMAGE_TYPES,
     MAX_IMAGE_SIZE_BYTES,
@@ -33,6 +42,11 @@ import {
  * Escape, the scroll lock and the focus trap come from useModalBehaviour -
  * except while the upload is in flight, where Escape is ignored so a stray
  * keypress cannot discard a verification the cleaner is waiting on.
+ *
+ * Phase 15 adds proof of presence: the cleaner captures a device position,
+ * which must fall inside CLEANUP_PROOF_RADIUS_METRES of the coordinates the
+ * citizen filed before the photograph can be sent. The backend measures the
+ * same distance again, so this only saves the cleaner a wasted upload.
  * ============================================================================
  */
 
@@ -53,6 +67,36 @@ export default function CleanupUploadDialog({ assignment, onClose, onVerified })
     // Backend CleanupValidationResponse once it arrives
     const [result, setResult] = useState(null);
 
+    // Device reading proving the cleaner is standing at the reported site
+    const [position, setPosition] = useState(null);
+
+    // Browser geolocation plumbing, shared with the citizen report form
+    const {
+        detecting,
+        locationError,
+        detectLocation,
+        clearLocationError,
+    } = useGeoLocation();
+
+    /*
+      Measured against the report coordinates the assignment carries.
+
+      Recomputed on every reading so the panel and the submit button always
+      agree about whether the cleaner is close enough.
+    */
+    const { status: locationStatus, distanceMetres } = useMemo(
+        () =>
+            evaluateCleanupLocation(
+                position,
+                assignment.reportLatitude,
+                assignment.reportLongitude
+            ),
+        [position, assignment.reportLatitude, assignment.reportLongitude]
+    );
+
+    // Nothing may be uploaded until presence at the site is established
+    const locationVerified = canSubmitLocation(locationStatus);
+
     /*
       This dialog is mounted only when it is open - the parent renders it
       conditionally - so `open` is always true here.
@@ -60,6 +104,24 @@ export default function CleanupUploadDialog({ assignment, onClose, onVerified })
     const panelRef = useModalBehaviour(true, onClose, {
         closeOnEscape: !submitting,
     });
+
+    /**
+     * Read the cleaner's position from the device.
+     *
+     * The only way coordinates enter this dialog - there is deliberately no
+     * manual entry, since a typed position would prove nothing.
+     */
+    async function handleCapturePosition() {
+        clearLocationError();
+
+        const captured = await detectLocation();
+
+        // A failed read leaves the previous reading alone rather than wiping it
+        if (captured) {
+            setPosition(captured);
+            setError("");
+        }
+    }
 
     /**
      * Validate the photograph before spending an AI call on it.
@@ -107,13 +169,22 @@ export default function CleanupUploadDialog({ assignment, onClose, onVerified })
             return;
         }
 
+        // Presence at the site is a hard requirement, not a warning
+        if (!locationVerified) {
+            setError(
+                `Capture your position at the site first. Cleanup proof is accepted only within ${CLEANUP_PROOF_RADIUS_METRES} m of the reported location.`
+            );
+            return;
+        }
+
         setSubmitting(true);
         setError("");
 
         try {
             const response = await uploadCleanupImage(
                 assignment.assignmentId,
-                file
+                file,
+                position          // Re-checked by the backend before any upload
             );
 
             // Verdict lives in the body, not the status code
@@ -147,6 +218,9 @@ export default function CleanupUploadDialog({ assignment, onClose, onVerified })
         setFile(null);
         setFileError("");
         setError("");
+
+        // The old reading may be stale by now, so presence is proven again
+        setPosition(null);
     }
 
     // AI accepted the cleanup
@@ -315,6 +389,17 @@ export default function CleanupUploadDialog({ assignment, onClose, onVerified })
                                 </div>
                             )}
 
+                            {/* Proof of presence, required before the file is sent */}
+                            <CleanupLocationCapture
+                                status={locationStatus}
+                                position={position}
+                                distanceMetres={distanceMetres}
+                                detecting={detecting}
+                                locationError={locationError}
+                                onCapture={handleCapturePosition}
+                                disabled={submitting}
+                            />
+
                             <ImageUploadField
                                 file={file}
                                 onFileChange={handleFileChange}
@@ -325,7 +410,11 @@ export default function CleanupUploadDialog({ assignment, onClose, onVerified })
                             {error && <Alert type="error">{error}</Alert>}
 
                             <div className="flex flex-col gap-2 sm:flex-row">
-                                <Button type="submit" loading={submitting}>
+                                <Button
+                                    type="submit"
+                                    loading={submitting}
+                                    disabled={!locationVerified}   // Presence first
+                                >
                                     <Sparkles size={15} aria-hidden="true" />
                                     Submit for Verification
                                 </Button>

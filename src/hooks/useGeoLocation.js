@@ -8,8 +8,9 @@ import { useCallback, useState } from "react";
  * The backend requires latitude and longitude for every report
  * (duplicate detection works on distance between coordinates).
  *
- * This hook reads the device GPS through the browser API so the
- * citizen does not have to type coordinates manually.
+ * This hook reads the device GPS through the browser API, which from Phase 15
+ * is the only way coordinates enter the platform - neither a citizen filing a
+ * report nor a cleaner uploading cleanup proof can type them by hand.
  *
  * Phase 13 note: the reading also carries `accuracy` and `capturedAt`.
  * A position is only as meaningful as its accuracy radius - a desktop
@@ -42,7 +43,8 @@ export default function useGeoLocation() {
         // Browser does not support the geolocation API
         if (!navigator.geolocation) {
             setLocationError(
-                "Your browser does not support location detection. Please enter coordinates manually."
+                // No manual fallback exists any more, so name a device that works
+                "This browser cannot read your location. Please use an updated mobile browser with location services switched on."
             );
             return Promise.resolve(null);
         }
@@ -79,7 +81,8 @@ export default function useGeoLocation() {
                     // Show a specific reason so the user knows what to fix
                     if (error.code === error.PERMISSION_DENIED) {
                         setLocationError(
-                            "Location permission was denied. Please allow access or enter coordinates manually."
+                            // Permission is now mandatory, not one option of two
+                            "Location permission was denied. Location access is required, so please allow it in your browser settings and capture again."
                         );
                     } else if (error.code === error.TIMEOUT) {
                         setLocationError(
@@ -87,7 +90,8 @@ export default function useGeoLocation() {
                         );
                     } else {
                         setLocationError(
-                            "Unable to detect your location. Please enter coordinates manually."
+                            // Being indoors is the usual cause, so say what to do
+                            "Your location could not be read. Please step into the open and capture again."
                         );
                     }
 
@@ -111,9 +115,8 @@ export default function useGeoLocation() {
     /**
      * Discard the current error.
      *
-     * Needed when the user switches to entering coordinates by hand: the
-     * failure has been dealt with, so leaving the message on screen would
-     * just be noise.
+     * Called once a caller has moved past the failure, so a stale message does
+     * not sit on screen contradicting what the user is now looking at.
      */
     const clearLocationError = useCallback(() => {
         setLocationError("");

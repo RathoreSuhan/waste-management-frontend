@@ -8,44 +8,49 @@ import {
 
 import Button from "@/components/ui/Button";
 import { LOCATION_STATUS } from "@/utils/locationVerification";
-import {
-    PHOTO_PROXIMITY_ADVICE_METRES,
-    MIN_ACCEPTABLE_ACCURACY_METRES,
-} from "@/constants/reportConstants";
+import { CLEANUP_PROOF_RADIUS_METRES } from "@/constants/assignmentConstants";
+import { MIN_ACCEPTABLE_ACCURACY_METRES } from "@/constants/reportConstants";
+import { formatDistance } from "@/utils/geo";
 
 /**
  * ============================================================================
- * Location Verification Panel (Phase 13, tightened in Phase 15)
+ * Cleanup Location Capture (Phase 15)
  * ============================================================================
  *
- * The location step of the report form.
+ * Proof-of-presence step inside the cleanup upload dialog.
  *
- * Phase 15 made this the *only* way coordinates reach the form: the citizen
- * captures a device reading, and the panel shows what was captured. There are
- * no coordinate inputs to correct and no declaration to tick, so this panel is
- * now the whole story of where the report will be filed.
+ * A cleaner claims work on a specific citizen report, so the photograph must
+ * be taken at that report's location - not merely somewhere in the same city.
+ * This panel reads the device position and measures it against the coordinates
+ * the citizen filed, refusing to enable the upload until the cleaner is inside
+ * the permitted radius.
  *
- * Copy is deliberately about what to do next, not about what went wrong. Every
- * unverified state has the same remedy - stand at the waste, outdoors, and
- * capture again - so each message says so in its own words.
+ * As on the citizen form, there are no coordinate inputs: a typed position
+ * would defeat the entire check. The only control here is "Capture".
+ *
+ * The measurement is repeated by the backend on upload, so this panel is about
+ * telling the cleaner what to do before a large file is sent - it is not the
+ * safeguard itself.
  * ============================================================================
  */
 
 /**
- * Heading, explanation and tone for each verification state.
+ * Heading, explanation and tone for each capture state.
+ *
+ * TOO_FAR is intentionally absent: its message quotes the measured distance,
+ * so it is built in the component where that number is known.
  */
 const STATUS_META = {
     [LOCATION_STATUS.NOT_CAPTURED]: {
         title: "Location Not Yet Captured",
-        description:
-            "Stand at the waste and capture your position. Reports are filed at your device location, which is how the cleanup team is sent to the right place.",
+        description: `Stand at the cleaned site and capture your position. Proof is accepted only within ${CLEANUP_PROOF_RADIUS_METRES} m of the location the citizen reported.`,
         tone: "neutral",
         Icon: MapPinOff,
     },
 
     [LOCATION_STATUS.LOW_ACCURACY]: {
         title: "Position Too Imprecise",
-        description: `Your device could not fix your position closely enough to identify a site. Step into the open, away from buildings, and capture again. A reading vaguer than ${MIN_ACCEPTABLE_ACCURACY_METRES} m cannot be accepted.`,
+        description: `Your device could not fix your position closely enough to prove you are at the site. Step into the open and capture again. A reading vaguer than ${MIN_ACCEPTABLE_ACCURACY_METRES} m cannot be accepted.`,
         tone: "warning",
         Icon: TriangleAlert,
     },
@@ -53,30 +58,22 @@ const STATUS_META = {
     [LOCATION_STATUS.STALE]: {
         title: "Position No Longer Current",
         description:
-            "This reading is old enough that you may have moved on since. Capture your position again so the report records where you are standing now.",
+            "This reading is old enough that you may have left the site since. Capture your position again before submitting the photograph.",
         tone: "warning",
         Icon: Clock,
     },
 
-    [LOCATION_STATUS.TOO_FAR]: {
-        title: "You Appear To Be Away From This Site",
-        description:
-            "Your position does not match the site being reported. Capture again at the waste itself.",
-        tone: "warning",
-        Icon: TriangleAlert,
-    },
-
     [LOCATION_STATUS.VERIFIED]: {
-        title: "Location Confirmed",
+        title: "Presence At Site Confirmed",
         description:
-            "Your position has been captured and will be filed with this report.",
+            "Your position matches the reported location and will be submitted with the photograph.",
         tone: "success",
         Icon: MapPinCheck,
     },
 };
 
 /**
- * Panel background and border per tone.
+ * Panel background and border per tone (same language as the citizen panel).
  */
 const TONE_CLASSES = {
     neutral: "border-rule bg-paper",
@@ -93,16 +90,26 @@ const TONE_ICON_CLASSES = {
     success: "text-india-green",
 };
 
-export default function LocationVerificationPanel({
+export default function CleanupLocationCapture({
     status,
     position,
+    distanceMetres,
     detecting,
     locationError,
     onCapture,
+    disabled = false,
 }) {
 
-    // Fall back to the neutral state for any status this build does not know
-    const meta = STATUS_META[status] || STATUS_META[LOCATION_STATUS.NOT_CAPTURED];
+    // Too-far copy carries the measured distance, so it cannot live in a table
+    const meta =
+        status === LOCATION_STATUS.TOO_FAR
+            ? {
+                title: "You Are Away From The Reported Site",
+                description: `Your position is ${formatDistance(distanceMetres)} from the location the citizen reported. Move to within ${CLEANUP_PROOF_RADIUS_METRES} m of the waste and capture again.`,
+                tone: "warning",
+                Icon: TriangleAlert,
+            }
+            : STATUS_META[status] || STATUS_META[LOCATION_STATUS.NOT_CAPTURED];
 
     const { title, description, tone, Icon } = meta;
 
@@ -129,11 +136,7 @@ export default function LocationVerificationPanel({
 
                     {/* ---------------- What was actually captured ---------------- */}
                     {position && (
-                        /*
-                         * Shown read-only. The citizen can no longer edit these,
-                         * but should still be able to see and quote the exact
-                         * coordinates their report carries.
-                         */
+                        /* Read-only: a typed coordinate would defeat the check */
                         <dl className="mt-3 grid gap-x-6 gap-y-1 text-xs text-ink sm:grid-cols-2">
 
                             <div className="flex gap-1.5">
@@ -165,6 +168,16 @@ export default function LocationVerificationPanel({
                                     </dd>
                                 </div>
                             )}
+
+                            {/* Distance is the number the decision rests on, so it is shown */}
+                            {Number.isFinite(distanceMetres) && (
+                                <div className="flex gap-1.5">
+                                    <dt className="font-semibold text-ink-muted">
+                                        From Report
+                                    </dt>
+                                    <dd>{formatDistance(distanceMetres)}</dd>
+                                </div>
+                            )}
                         </dl>
                     )}
 
@@ -185,6 +198,7 @@ export default function LocationVerificationPanel({
                             variant="secondary"
                             fullWidth={false}
                             loading={detecting}
+                            disabled={disabled}
                             onClick={onCapture}
                         >
                             <Crosshair size={14} aria-hidden="true" />
@@ -193,12 +207,6 @@ export default function LocationVerificationPanel({
                             {position ? "Capture Position Again" : "Capture My Position"}
                         </Button>
                     </div>
-
-                    {/* Advice, deliberately stricter than what verification enforces */}
-                    <p className="mt-3 text-xs text-ink-muted">
-                        Always take the photograph within {PHOTO_PROXIMITY_ADVICE_METRES} m
-                        of the waste, so the site is easy for the cleanup team to find.
-                    </p>
                 </div>
             </div>
         </div>

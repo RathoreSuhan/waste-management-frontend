@@ -73,15 +73,26 @@ export async function startCleanup(assignmentId) {
  *
  * @param {number|string} assignmentId
  * @param {File} image - after-cleanup photograph
+ * @param {{ latitude: number, longitude: number }} position - position captured
+ *        on the cleaner's device; the backend re-measures its distance from the
+ *        reported location and rejects proof taken outside the allowed radius
  * @returns Backend CleanupValidationResponse ->
  *          { aiVerified, confidence, remarks, assignmentStatus, reportStatus, message }
  */
-export async function uploadCleanupImage(assignmentId, image) {
+export async function uploadCleanupImage(assignmentId, image, position) {
 
     // Field name must match @RequestParam("image") on the controller
     const formData = new FormData();
 
     formData.append("image", image);
+
+    // Field names must match @RequestParam("latitude"/"longitude");
+    // sent only when a real position was captured, so a missing reading
+    // produces the backend's guidance message instead of a parse error
+    if (position && Number.isFinite(position.latitude) && Number.isFinite(position.longitude)) {
+        formData.append("latitude", String(position.latitude));
+        formData.append("longitude", String(position.longitude));
+    }
 
     const response = await axiosClient.post(
         `${CLEANUP_ASSIGNMENTS_API}/${assignmentId}/upload-image`,

@@ -29,6 +29,16 @@ export const ASSIGNMENT_STATUS = {
 };
 
 /**
+ * Distance a cleaner may stand from the reported location and still have
+ * cleanup proof accepted.
+ *
+ * Mirrors CLEANUP_PROOF_RADIUS_METERS in CleanupAssignmentServiceImpl - the
+ * backend re-measures the distance on upload, so this copy only exists to
+ * warn the cleaner before the file is sent.
+ */
+export const CLEANUP_PROOF_RADIUS_METRES = 50;
+
+/**
  * Display information for each assignment status.
  *
  * Colours follow the same tricolour language as report statuses so a cleaner

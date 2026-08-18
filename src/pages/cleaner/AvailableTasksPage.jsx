@@ -4,8 +4,10 @@ import { useNavigate } from "react-router-dom";
 import PageHeading from "@/components/common/PageHeading";
 import Alert from "@/components/ui/Alert";
 import TaskCard from "@/components/cleanup/TaskCard";
+import CleanupDisclaimerDialog from "@/components/cleanup/CleanupDisclaimerDialog";
 import Pagination from "@/components/common/Pagination";
 import useAssignments from "@/hooks/useAssignments";
+import useCleanupDisclaimer from "@/hooks/useCleanupDisclaimer";
 import usePagination from "@/hooks/usePagination";
 
 import { getPendingAssignments, claimAssignment } from "@/services/cleanupService";
@@ -27,6 +29,11 @@ import {
  * and state, but the pending list is not filtered by that rule, so tasks from
  * elsewhere can appear here. Rather than hide that, a failed claim surfaces
  * the backend's explanation verbatim - it names the actual restriction.
+ *
+ * Claiming also passes through the bilingual presence notice: cleanup proof is
+ * only accepted from within a fixed radius of the reported location, and a
+ * cleaner who cannot reach the site should decline before taking the task off
+ * the list for everyone else.
  * ============================================================================
  */
 
@@ -99,6 +106,12 @@ export default function AvailableTasksPage() {
         }
     }
 
+    /*
+      The notice stands between the card's Claim button and handleClaim, so the
+      undertaking is acknowledged for this specific task before it is taken on.
+    */
+    const disclaimer = useCleanupDisclaimer(handleClaim);
+
     return (
         <div>
             <PageHeading
@@ -148,7 +161,8 @@ export default function AvailableTasksPage() {
                         <TaskCard
                             key={assignment.assignmentId}
                             assignment={assignment}
-                            onClaim={handleClaim}
+                            // Opens the notice; the claim itself runs on acceptance
+                            onClaim={disclaimer.requestAcknowledgement}
                             busyId={claimingId}
                         />
                     ))}
@@ -177,6 +191,15 @@ export default function AvailableTasksPage() {
                     Go to My Tasks
                 </button>
             )}
+
+            {/* Presence undertaking - shown afresh for every claim */}
+            <CleanupDisclaimerDialog
+                open={Boolean(disclaimer.pendingAssignment)}
+                reportTitle={disclaimer.pendingAssignment?.reportTitle}
+                busy={claimingId !== null}
+                onAccept={disclaimer.accept}
+                onCancel={disclaimer.cancel}
+            />
         </div>
     );
 }
