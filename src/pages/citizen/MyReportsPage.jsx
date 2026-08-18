@@ -15,11 +15,9 @@ import Pagination from "@/components/common/Pagination";
 
 import useReports from "@/hooks/useReports";
 import usePagination from "@/hooks/usePagination";
-import usePendingAssignmentReportIds from "@/hooks/usePendingAssignmentReportIds";
 import { getMyReports } from "@/services/reportService";
 
 import {
-    getReportDisplayStatus,
     REPORT_STATUS,
     REPORT_STATUS_FILTERS,
 } from "@/constants/reportConstants";
@@ -31,6 +29,11 @@ import {
  *
  * Shows every report created by the logged-in citizen.
  * Calls GET /api/reports/my (user resolved from the JWT token).
+ *
+ * Both the filter and the summary tiles read ReportResponse.status, so the
+ * citizen's own view of a report agrees with the public register: PENDING
+ * until a cleanup team claims it, IN_PROGRESS once claimed, RESOLVED after
+ * the cleanup passes AI verification.
  * ============================================================================
  */
 
@@ -38,9 +41,6 @@ export default function MyReportsPage() {
 
     // Load the citizen's own reports
     const { data: reports, loading, error, reload } = useReports(getMyReports);
-
-    // Optional snapshot used only to reconcile the lifecycle shown to citizens
-    const pendingAssignmentReportIds = usePendingAssignmentReportIds();
 
     // Currently selected status filter
     const [statusFilter, setStatusFilter] = useState("ALL");
@@ -54,18 +54,14 @@ export default function MyReportsPage() {
         const list = Array.isArray(reports) ? reports : [];
 
         return list
+            // Backend status, compared as sent
             .filter((report) =>
-                statusFilter === "ALL"
-                    ? true
-                    : getReportDisplayStatus(
-                        report,
-                        pendingAssignmentReportIds
-                    ) === statusFilter
+                statusFilter === "ALL" ? true : report.status === statusFilter
             )
             // Newest report on top
             .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
-    }, [reports, statusFilter, pendingAssignmentReportIds]);
+    }, [reports, statusFilter]);
 
     /**
      * Count reports per status for the summary row.
@@ -74,31 +70,20 @@ export default function MyReportsPage() {
 
         const list = Array.isArray(reports) ? reports : [];
 
+        // One pass per status, all against report.status
         return {
             total: list.length,
             pending: list.filter(
-                (report) =>
-                    getReportDisplayStatus(
-                        report,
-                        pendingAssignmentReportIds
-                    ) === REPORT_STATUS.PENDING
+                (report) => report.status === REPORT_STATUS.PENDING
             ).length,
             inProgress: list.filter(
-                (report) =>
-                    getReportDisplayStatus(
-                        report,
-                        pendingAssignmentReportIds
-                    ) === REPORT_STATUS.IN_PROGRESS
+                (report) => report.status === REPORT_STATUS.IN_PROGRESS
             ).length,
             resolved: list.filter(
-                (report) =>
-                    getReportDisplayStatus(
-                        report,
-                        pendingAssignmentReportIds
-                    ) === REPORT_STATUS.RESOLVED
+                (report) => report.status === REPORT_STATUS.RESOLVED
             ).length,
         };
-    }, [reports, pendingAssignmentReportIds]);
+    }, [reports]);
 
     // Ten reports to a page, filtered set first
     const {
@@ -191,14 +176,7 @@ export default function MyReportsPage() {
                 total > 0 ? (
                     <div ref={listTopRef} className="space-y-3">
                         {pageItems.map((report) => (
-                            <ReportCard
-                                key={report.id}
-                                report={report}
-                                displayStatus={getReportDisplayStatus(
-                                    report,
-                                    pendingAssignmentReportIds
-                                )}
-                            />
+                            <ReportCard key={report.id} report={report} />
                         ))}
 
                         <Pagination
