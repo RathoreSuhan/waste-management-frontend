@@ -108,14 +108,15 @@ export default function SuccessStoryDetailPage() {
 
     return (
         /*
-          max-w-7xl, matching the gallery this story was opened from and the
-          site header and footer above and below it. At max-w-4xl the card
-          stood ~380px narrower than every other column on the site, which
-          left a band of empty background down each side and made a finished
-          cleanup look like a smaller kind of record than the list it came
-          from. The wide blocks inside cap their own measure instead.
+          max-w-6xl, deliberately between the two extremes this page has
+          been through. At max-w-4xl it stood ~380px narrower than every
+          other column on the site, leaving a wide band of empty background
+          down each side; at max-w-7xl it matched the header exactly but
+          the pair of photographs then dominated the screen. 1152px keeps
+          most of the reclaimed width while leaving the card visibly inset
+          from the header, which reads as a record rather than as a page.
         */
-        <div className="mx-auto w-full max-w-7xl px-4 py-8">
+        <div className="mx-auto w-full max-w-6xl px-4 py-8">
 
             {/* Back to the gallery, not to the protected report list */}
             <Link

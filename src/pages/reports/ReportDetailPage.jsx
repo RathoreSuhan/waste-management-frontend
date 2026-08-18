@@ -146,14 +146,16 @@ export default function ReportDetailPage() {
 
     return (
         /*
-          max-w-7xl, the same column the header, footer and the report list
-          this page is opened from all use. At max-w-4xl the slip sat ~380px
-          narrower than everything around it, leaving a band of empty
-          background down each side. Prose and label grids inside set their
-          own measure, so the extra width is spent on the record rather than
-          on longer lines of text.
+          max-w-6xl, the middle of the two widths this slip has been set to.
+          At max-w-4xl it sat ~380px narrower than everything around it,
+          leaving a band of empty background down each side; at max-w-7xl it
+          filled the header's column and the evidence photographs took over
+          the page. 1152px keeps the record comfortably wide and still reads
+          as a slip inset from the page around it. Passed as the prop, not
+          through className - two max-w utilities on one element are settled
+          by CSS source order, so an override there could silently lose.
         */
-        <PageContainer maxWidth="max-w-7xl" className="space-y-5">
+        <PageContainer maxWidth="max-w-6xl" className="space-y-5">
 
             {/* Back navigation */}
             <Link
