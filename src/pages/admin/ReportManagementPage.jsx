@@ -445,13 +445,21 @@ export default function ReportManagementPage() {
 
                         <div className="overflow-x-auto">
                             <table className="w-full">
+                                {/*
+                                  Interior columns at px-3, matching the user
+                                  register: at px-5 the reference and actions
+                                  columns could not both be on screen at once,
+                                  so one edge was always cut off. First and
+                                  last cells keep px-5 to stay aligned with
+                                  the panel heading above.
+                                */}
                                 <thead className="border-b border-rule bg-paper text-left text-xs font-semibold tracking-wide text-ink-muted uppercase">
                                     <tr>
                                         <th className="px-5 py-3">Reference</th>
-                                        <th className="px-5 py-3">Title</th>
-                                        <th className="px-5 py-3">Location</th>
-                                        <th className="px-5 py-3">Status</th>
-                                        <th className="px-5 py-3">Filed</th>
+                                        <th className="px-3 py-3">Title</th>
+                                        <th className="px-3 py-3">Location</th>
+                                        <th className="px-3 py-3">Status</th>
+                                        <th className="px-3 py-3">Filed</th>
                                         <th className="px-5 py-3 text-right">Actions</th>
                                     </tr>
                                 </thead>
@@ -465,23 +473,23 @@ export default function ReportManagementPage() {
                                                 {formatReportRef(report.id, report.createdAt)}
                                             </td>
 
-                                            <td className="max-w-[260px] px-5 py-3">
+                                            <td className="max-w-[260px] px-3 py-3">
                                                 <p className="truncate font-semibold text-gov-navy">
                                                     {report.title}
                                                 </p>
                                             </td>
 
-                                            <td className="px-5 py-3 text-ink-muted">
+                                            <td className="px-3 py-3 text-ink-muted">
                                                 {report.city}
                                                 {report.state ? `, ${report.state}` : ""}
                                                 {report.pincode ? ` — ${report.pincode}` : ""}
                                             </td>
 
-                                            <td className="px-5 py-3">
+                                            <td className="px-3 py-3">
                                                 <StatusBadge status={report.status} />
                                             </td>
 
-                                            <td className="px-5 py-3 text-xs whitespace-nowrap text-ink-muted">
+                                            <td className="px-3 py-3 text-xs whitespace-nowrap text-ink-muted">
                                                 {formatDateTime(report.createdAt)}
                                             </td>
 

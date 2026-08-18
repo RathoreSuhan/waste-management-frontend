@@ -306,7 +306,13 @@ export default function MainLayout() {
                 </div>
 
                 {/* Target of the header's skip link */}
-                <main id="main-content" className="min-w-0 flex-1 p-4 lg:p-6">
+                {/*
+                  px-4 on desktop instead of p-6: the masthead, breadcrumbs and
+                  footer all sit inside max-w-7xl with px-4, so matching that
+                  gutter puts this box's right edge flush with them, and the
+                  16px reclaimed on each side widens every dashboard table.
+                */}
+                <main id="main-content" className="min-w-0 flex-1 p-4 lg:px-4 lg:py-6">
                     {/*
                       Tells the shared pages they are inside the signed-in
                       shell, so they render a compact heading instead of a

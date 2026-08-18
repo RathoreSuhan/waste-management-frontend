@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { Search, X, Users, ArrowUpCircle, Trash2, Eye } from "lucide-react";
 
@@ -65,7 +65,24 @@ export default function UserManagementPage() {
     // Outcome banner shown above the register after an action succeeds
     const [notice, setNotice] = useState("");
 
-    // Ten accounts to a page
+    /*
+      The API returns accounts in insertion order, so the oldest one sat at
+      the top. Sorted here rather than in the request because both the browse
+      call and the search call land in this same array. Copied first, since
+      sort() would otherwise reorder the state array in place.
+    */
+    const sortedUsers = useMemo(() => {
+        return [...users].sort((a, b) => {
+
+            const bTime = Date.parse(b.createdAt ?? "") || 0;   // A missing or unreadable date sorts last
+            const aTime = Date.parse(a.createdAt ?? "") || 0;
+
+            // Several accounts share a registration day, so id breaks the tie
+            return bTime - aTime || (b.id ?? 0) - (a.id ?? 0);
+        });
+    }, [users]);
+
+    // Ten accounts to a page, paged over the sorted copy so page 1 is newest
     const {
         page,
         pageItems,
@@ -74,7 +91,7 @@ export default function UserManagementPage() {
         rangeStart,
         rangeEnd,
         goToPage,
-    } = usePagination(users);
+    } = usePagination(sortedUsers);
 
     // Anchor for the jump back up when the page changes
     const tableTopRef = useRef(null);
@@ -389,14 +406,21 @@ export default function UserManagementPage() {
 
                         <div className="overflow-x-auto">
                             <table className="w-full">
+                                {/*
+                                  Seven columns at px-5 spent 280px on padding
+                                  alone, which pushed the Actions column past
+                                  the panel edge. The inner columns drop to
+                                  px-3; the first and last keep px-5 so the
+                                  table still lines up with the panel heading.
+                                */}
                                 <thead className="border-b border-rule bg-paper text-left text-xs font-semibold tracking-wide text-ink-muted uppercase">
                                     <tr>
                                         <th className="px-5 py-3">Name</th>
-                                        <th className="px-5 py-3">Email</th>
-                                        <th className="px-5 py-3">Designation</th>
-                                        <th className="px-5 py-3">Location</th>
-                                        <th className="px-5 py-3">Points</th>
-                                        <th className="px-5 py-3">Registered</th>
+                                        <th className="px-3 py-3">Email</th>
+                                        <th className="px-3 py-3">Designation</th>
+                                        <th className="px-3 py-3">Location</th>
+                                        <th className="px-3 py-3">Points</th>
+                                        <th className="px-3 py-3">Registered</th>
                                         <th className="px-5 py-3 text-right">Actions</th>
                                     </tr>
                                 </thead>
@@ -410,26 +434,26 @@ export default function UserManagementPage() {
                                                 {user.name}
                                             </td>
 
-                                            <td className="px-5 py-3 text-ink-muted">
+                                            <td className="px-3 py-3 text-ink-muted">
                                                 {user.email}
                                             </td>
 
-                                            <td className="px-5 py-3">
+                                            <td className="px-3 py-3">
                                                 <RoleBadge role={user.role} />
                                             </td>
 
-                                            <td className="px-5 py-3 text-ink-muted">
+                                            <td className="px-3 py-3 text-ink-muted">
                                                 {user.city
                                                     ? `${user.city}${user.state ? `, ${user.state}` : ""}`
                                                     : "—"}
                                             </td>
 
                                             {/* Only cleaners accumulate points */}
-                                            <td className="px-5 py-3 text-ink">
+                                            <td className="px-3 py-3 text-ink">
                                                 {user.rewardPoints ?? 0}
                                             </td>
 
-                                            <td className="px-5 py-3 text-xs text-ink-muted">
+                                            <td className="px-3 py-3 text-xs text-ink-muted">
                                                 {formatDateTime(user.createdAt)}
                                             </td>
 

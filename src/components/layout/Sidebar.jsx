@@ -32,7 +32,10 @@ export default function Sidebar({ menuItems = [] }) {
     const { user } = useAuth();
 
     return (
-        <aside className="flex w-72 shrink-0 flex-col bg-gov-navy text-white">
+        // w-64 rather than w-72: the 32px returned goes to the content column
+        // beside it, where the admin tables were being clipped. Labels here are
+        // short ("Overview", "Manage Users"), so none of them wrap at 256px.
+        <aside className="flex w-64 shrink-0 flex-col bg-gov-navy text-white">
 
             {/* ---------------- Logged-in user panel ---------------- */}
             <div className="border-b border-white/15 px-5 py-4">

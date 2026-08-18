@@ -81,13 +81,25 @@ export default function MunicipalCorporationsPage() {
     */
     const filtered = useMemo(() => {
 
+        /*
+          Newest first. The API returns these in insertion order, so the
+          first body ever registered sat at the top. Sorted by id
+          descending because the response carries no date field - id is
+          auto-increment, so a higher id is the more recent record. Copied
+          before sorting, as sort() works in place.
+        */
+        const newestFirst = [...corporations].sort(
+            (a, b) => (b.id ?? 0) - (a.id ?? 0)
+        );
+
+        // Sorted before filtering, so search results are newest first too
         if (!isSearching) {
-            return corporations;
+            return newestFirst;
         }
 
         const needle = trimmedQuery.toLowerCase();
 
-        return corporations.filter((corp) =>
+        return newestFirst.filter((corp) =>
             [corp.city, corp.organizationName, corp.phone, corp.email]
                 // A record missing an optional field must not break the search
                 .filter(Boolean)
@@ -422,12 +434,18 @@ export default function MunicipalCorporationsPage() {
                           <>
                         <div className="overflow-x-auto">
                             <table className="w-full">
+                                {/*
+                                  Interior columns at px-3, as in the other two
+                                  registers, so the Actions column stays inside
+                                  the panel. First and last cells keep px-5 to
+                                  line up with the panel heading above.
+                                */}
                                 <thead className="border-b border-rule bg-paper text-left text-xs font-semibold uppercase tracking-wide text-ink-muted">
                                     <tr>
                                         <th className="px-5 py-3">City</th>
-                                        <th className="px-5 py-3">Organisation</th>
-                                        <th className="px-5 py-3">Contact Number</th>
-                                        <th className="px-5 py-3">Email</th>
+                                        <th className="px-3 py-3">Organisation</th>
+                                        <th className="px-3 py-3">Contact Number</th>
+                                        <th className="px-3 py-3">Email</th>
                                         <th className="px-5 py-3 text-right">Actions</th>
                                     </tr>
                                 </thead>
@@ -442,13 +460,13 @@ export default function MunicipalCorporationsPage() {
                                             <td className="px-5 py-3 font-semibold text-gov-navy">
                                                 {corp.city}
                                             </td>
-                                            <td className="px-5 py-3 text-ink">
+                                            <td className="px-3 py-3 text-ink">
                                                 {corp.organizationName}
                                             </td>
-                                            <td className="px-5 py-3 text-ink-muted">
+                                            <td className="px-3 py-3 text-ink-muted">
                                                 {corp.phone}
                                             </td>
-                                            <td className="px-5 py-3 text-ink-muted">
+                                            <td className="px-3 py-3 text-ink-muted">
                                                 {corp.email}
                                             </td>
                                             <td className="px-5 py-3">
