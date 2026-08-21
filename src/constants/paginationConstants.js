@@ -19,6 +19,17 @@
 export const PAGE_SIZE = 10;
 
 /**
+ * Page size for the municipal review desks.
+ *
+ * A cleanup proposal is not a row to be skimmed - the officer reads each plan,
+ * compares it against the rival bids for the same site and writes remarks. Ten
+ * of those on one screen buries the comparison, so the review lists (the
+ * Proposal Review queue, and "Other proposals for this site" on a plan) page
+ * five at a time. Everything else in the portal keeps PAGE_SIZE.
+ */
+export const REVIEW_PAGE_SIZE = 5;
+
+/**
  * The slice of `items` belonging to `page`.
  *
  * Pages are 1-based, because that is what the buttons say. A page past

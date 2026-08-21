@@ -7,19 +7,19 @@ import { useCallback, useEffect, useRef, useState } from "react";
  *
  * Puts the presence notice in front of a cleanup action.
  *
- * Claiming a task and starting work on one both commit the cleaner to being
- * physically at the reported site when they photograph it, so both are held
- * behind CleanupDisclaimerDialog. This hook stores the assignment that is
+ * Proposing for a site and starting awarded work both commit the cleaner to
+ * being physically at the reported site when they record evidence, so both are
+ * held behind CleanupDisclaimerDialog. This hook stores the assignment that is
  * waiting on acknowledgement and runs the real action only once the cleaner
  * accepts, which keeps the two cleaner pages free of duplicate dialog state.
  *
- * The notice is issued on *every* claim and *every* start - it is an
+ * The notice is issued on *every* proposal and *every* start - it is an
  * undertaking about the current task, not a one-time tutorial, so nothing is
  * remembered between actions.
  *
  * Usage:
- *   const disclaimer = useCleanupDisclaimer(handleClaim);
- *   <TaskCard onClaim={disclaimer.requestAcknowledgement} … />
+ *   const disclaimer = useCleanupDisclaimer(handlePropose);
+ *   <TaskCard onPropose={disclaimer.requestAcknowledgement} … />
  *   <CleanupDisclaimerDialog
  *       open={Boolean(disclaimer.pendingAssignment)}
  *       onAccept={disclaimer.accept}
@@ -64,7 +64,7 @@ export default function useCleanupDisclaimer(onAcknowledged) {
         try {
             await actionRef.current?.(pendingAssignment);
         } finally {
-            // Closed in `finally` so a refused claim cannot leave the notice stuck open
+            // Closed in `finally` so a refused action cannot leave the notice stuck open
             setPendingAssignment(null);
         }
     }, [pendingAssignment]);

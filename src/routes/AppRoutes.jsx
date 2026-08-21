@@ -81,6 +81,17 @@ const ReportDetailPage = lazy(() => import("@/pages/reports/ReportDetailPage"));
 const AvailableTasksPage = lazy(() => import("@/pages/cleaner/AvailableTasksPage"));
 const MyTasksPage = lazy(() => import("@/pages/cleaner/MyTasksPage"));
 
+/*
+  Cleanup Proposal Pages.
+
+  Cleaners no longer take a site simply by being first to press a button.
+  They inspect it, then submit a proposal - and the municipal corporation
+  decides who does the work. These two pages are that step: one to write a
+  proposal, one to track the proposals already sent.
+*/
+const SubmitProposalPage = lazy(() => import("@/pages/cleaner/SubmitProposalPage"));
+const MyProposalsPage = lazy(() => import("@/pages/cleaner/MyProposalsPage"));
+
 // Reward Pages (Phase 9)
 const MyRewardsPage = lazy(() => import("@/pages/cleaner/MyRewardsPage"));
 
@@ -96,6 +107,25 @@ const ReportManagementPage = lazy(() => import("@/pages/admin/ReportManagementPa
 const MunicipalCorporationsPage = lazy(() => import("@/pages/admin/MunicipalCorporationsPage"));
 const CreateMunicipalCorporationPage = lazy(() => import("@/pages/admin/CreateMunicipalCorporationPage"));
 const EditMunicipalCorporationPage = lazy(() => import("@/pages/admin/EditMunicipalCorporationPage"));
+
+/*
+  Municipal Officer Console (final stage).
+
+  The corporation's own side of the workflow: who is allowed to clean a
+  site, whether the work is progressing, and whether a finished cleanup is
+  actually acceptable. These are the screens where the administrative
+  decisions are taken - the AI only advises them.
+
+  Deliberately separate from the /admin pages above. A municipal officer is
+  not a platform administrator, and none of these pages can reach the user
+  registry, the corporation registry or another city's work.
+*/
+const MunicipalDashboard = lazy(() => import("@/pages/municipal/MunicipalDashboard"));
+const ProposalQueuePage = lazy(() => import("@/pages/municipal/ProposalQueuePage"));
+const ProposalDetailPage = lazy(() => import("@/pages/municipal/ProposalDetailPage"));
+const ActiveCleanupsPage = lazy(() => import("@/pages/municipal/ActiveCleanupsPage"));
+const CompletionReviewPage = lazy(() => import("@/pages/municipal/CompletionReviewPage"));
+const AssignmentReviewPage = lazy(() => import("@/pages/municipal/AssignmentReviewPage"));
 
 /**
  * Defines all routes for the application.
@@ -228,14 +258,80 @@ export default function AppRoutes() {
                     <Route element={<RoleRoute allowedRole="ROLE_CLEANER" />}>
                         <Route path="/cleaner/dashboard" element={<CleanerDashboard />} />
 
-                        {/* Unclaimed cleanup work open to any cleaner */}
+                        {/* Unassigned cleanup work any cleaner may propose for */}
                         <Route path="/cleaner/available" element={<AvailableTasksPage />} />
 
-                        {/* Work claimed by the logged-in cleaner */}
+                        {/* Proposals submitted by the logged-in cleaner */}
+                        <Route path="/cleaner/proposals" element={<MyProposalsPage />} />
+
+                        {/*
+                          The proposal form for one assignment. Declared after
+                          /cleaner/proposals so the listing reads first, and the
+                          assignment id is carried in the path rather than in
+                          state - a cleaner may reload or bookmark mid-write.
+                        */}
+                        <Route
+                            path="/cleaner/proposals/new/:assignmentId"
+                            element={<SubmitProposalPage />}
+                        />
+
+                        {/* Work the municipal corporation has assigned to this cleaner */}
                         <Route path="/cleaner/tasks" element={<MyTasksPage />} />
 
                         {/* Points earned for AI-verified cleanups */}
                         <Route path="/cleaner/rewards" element={<MyRewardsPage />} />
+                    </Route>
+
+                    {/*
+                      Municipal-officer-only pages.
+
+                      Every page here calls /api/cleanup-approvals, which the
+                      backend restricts to ROLE_MUNICIPAL_OFFICER and then
+                      narrows again to the officer's own corporation. The
+                      guard below is the matching front-of-house rule: it
+                      keeps citizens, cleaners and administrators out of the
+                      review console, and nothing in this block is reachable
+                      from any other role's menu.
+                    */}
+                    <Route element={<RoleRoute allowedRole="ROLE_MUNICIPAL_OFFICER" />}>
+
+                        {/* Jurisdiction counts across the five workflow stages */}
+                        <Route path="/municipal/dashboard" element={<MunicipalDashboard />} />
+
+                        {/* Proposals awaiting a decision - approve & assign, reject, or ask for a revision */}
+                        <Route path="/municipal/proposals" element={<ProposalQueuePage />} />
+
+                        {/*
+                          One cleaning plan in full, on its own page rather than
+                          expanded inside the queue - an officer comparing bids
+                          needs to reload, bookmark and share a plan.
+
+                          Two ids because the backend exposes proposals per
+                          assignment, not per proposal: the site id fetches the
+                          set, the proposal id picks the bid out of it. Declared
+                          after the static queue path above for readability.
+                        */}
+                        <Route
+                            path="/municipal/proposals/:assignmentId/:proposalId"
+                            element={<ProposalDetailPage />}
+                        />
+
+                        {/* Work already assigned, shown for monitoring rather than decision */}
+                        <Route path="/municipal/active" element={<ActiveCleanupsPage />} />
+
+                        {/* Finished cleanups awaiting the officer's completion decision */}
+                        <Route path="/municipal/completions" element={<CompletionReviewPage />} />
+
+                        {/*
+                          One assignment in full: evidence, GPS verdict, the
+                          advisory AI reading, the approved plan, the activity
+                          diary and the decision trail. Declared last in the
+                          block because the id is in the path.
+                        */}
+                        <Route
+                            path="/municipal/assignments/:assignmentId"
+                            element={<AssignmentReviewPage />}
+                        />
                     </Route>
 
                     {/*

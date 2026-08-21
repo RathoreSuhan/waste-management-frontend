@@ -27,6 +27,12 @@ import background from "@/assets/background1.jpg";
  *
  * Citizens and cleaners register here. Admin accounts are not self
  * service: an existing admin promotes a citizen from the admin portal.
+ *
+ * Municipal Corporations are not self service either. A corporation is
+ * created by the admin under Municipal Bodies, and that registered official
+ * email is the only account that can open the Municipal Dashboard for its
+ * city - choosing the "Municipal Corporation" cleaner type below describes
+ * the kind of crew you are, and grants no approval powers.
  * ============================================================================
  */
 
@@ -263,6 +269,15 @@ export default function RegisterPage() {
                                     },
                                 ]}
                             />
+
+                            {/* Prevents the obvious misreading: MUNICIPAL is a crew
+                                type, not a route into the Municipal Dashboard. */}
+                            <p className="rounded-gov border border-rule border-l-4 border-l-gov-blue bg-paper px-3.5 py-2.5 text-xs leading-relaxed text-ink-muted">
+                                "Municipal Corporation" here only records that your crew
+                                belongs to a civic body. Approval powers for a city stay
+                                with the corporation account the administrator registers
+                                under Municipal Bodies.
+                            </p>
 
                             <Input
                                 label="Organization Name"

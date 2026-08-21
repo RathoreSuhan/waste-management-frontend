@@ -12,6 +12,48 @@
  */
 
 /**
+ * Signs of an internal message that should never reach a user: raw SQL,
+ * JDBC/Hibernate wrappers, database constraint names, Java stack traces.
+ *
+ * The backend now keeps these server side, but a proxy, an older deployment or
+ * a future unguarded path could still send one, and showing a whole SQL
+ * statement in a red banner is both unreadable and an information leak.
+ */
+const TECHNICAL_MESSAGE_PATTERNS = [
+    /could not execute statement/i,
+    /violates (?:check|unique|foreign key|not-null) constraint/i,
+    /constraint \[/i,
+    /\bSQL \[/i,
+    /\bSQLState\b/i,
+    /\w\s*=\s*\?/, // JDBC placeholders, e.g. "where id=?"
+    /\binsert into\b[\s\S]*\bvalues\b/i, // full statements only, not ordinary wording
+    /\bupdate\b[\s\S]*\bset\b[\s\S]*\bwhere\b/i,
+    /\bdelete from\b[\s\S]*\bwhere\b/i,
+    /org\.(?:hibernate|springframework|postgresql)\./i,
+    /java\.(?:lang|sql|util)\./i,
+    /\w+Exception:/, // Java exception class names
+];
+
+/**
+ * Decide whether a backend message is safe to display as-is.
+ *
+ * @param {string} message - message received from the backend
+ * @returns {boolean} true when the text looks like internal/technical detail
+ */
+function looksTechnical(message) {
+    if (typeof message !== "string") {
+        return false;
+    }
+
+    // A very long single blob is almost always a dumped statement or stack trace
+    if (message.length > 400) {
+        return true;
+    }
+
+    return TECHNICAL_MESSAGE_PATTERNS.some((pattern) => pattern.test(message));
+}
+
+/**
  * Extract a readable error message from an Axios error.
  *
  * @param {Object} error - error thrown by Axios
@@ -25,13 +67,19 @@ export function getErrorMessage(
     // Backend ErrorResponse message (most common case)
     const backendMessage = error?.response?.data?.message;
 
-    if (backendMessage) {
+    // Show the backend wording only while it reads like a message for a person
+    if (backendMessage && !looksTechnical(backendMessage)) {
         return backendMessage;
+    }
+
+    // Internal detail was received: replace it with the generic wording
+    if (backendMessage) {
+        return fallback;
     }
 
     // Some endpoints return a plain string body instead of JSON
     if (typeof error?.response?.data === "string" && error.response.data.trim()) {
-        return error.response.data;
+        return looksTechnical(error.response.data) ? fallback : error.response.data;
     }
 
     // Request took longer than the configured timeout

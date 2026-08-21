@@ -17,6 +17,9 @@ import {
     TrendingUp,
     Menu,
     KeyRound,
+    FileText,
+    Truck,          // active cleanups, municipal officer console
+    ClipboardCheck, // completion review, municipal officer console
 } from "lucide-react";
 
 import SiteHeader from "@/components/layout/SiteHeader";
@@ -123,29 +126,62 @@ export default function MainLayout() {
                 ACCOUNT_ITEM,
                 ...COMMUNITY_ITEMS,
             ]
-            : user?.role === "ROLE_CLEANER"
+            : user?.role === "ROLE_MUNICIPAL_OFFICER"
+                /*
+                  Municipal officers are not administrators. Their menu holds
+                  only the four jurisdiction-scoped queues of their own
+                  corporation - no user administration, no corporation
+                  registry, no platform-wide report table. Every screen behind
+                  these links is filtered server-side to the officer's city.
+                */
                 ? [
-                    { to: "/cleaner/dashboard", ...UI.sidebar.overview, icon: Brush },
-                    { to: "/cleaner/available", ...UI.sidebar.availableTasks, icon: Search },
-                    { to: "/cleaner/tasks", ...UI.sidebar.myTasks, icon: CheckSquare },
-                    { to: "/cleaner/rewards", ...UI.sidebar.myRewards, icon: Award },
-                    ACCOUNT_ITEM,
+                    { to: "/municipal/dashboard", ...UI.sidebar.municipalDashboard, icon: Building2 },
+                    { to: "/municipal/proposals", ...UI.sidebar.proposalQueue, icon: ClipboardList },
 
                     /*
-                      One leaderboard for everyone, shown inside the shell.
-                      There is no separate cleaner ranking; the earlier
-                      /cleaner/leaderboard path had no route at all.
+                      No exact match on these two: an officer opening a single
+                      assignment lands on /municipal/assignments/:id, which is
+                      a leaf reached by link rather than a menu entry of its own.
                     */
+                    { to: "/municipal/active", ...UI.sidebar.activeCleanups, icon: Truck },
+                    { to: "/municipal/completions", ...UI.sidebar.completionReview, icon: ClipboardCheck },
+
+                    ACCOUNT_ITEM,
                     ...COMMUNITY_ITEMS,
                 ]
-                : [
-                    { to: "/citizen/dashboard", ...UI.sidebar.overview, icon: LayoutDashboard },
-                    { to: "/citizen/report", ...UI.nav.fileReport, icon: FilePlus2 },
-                    { to: "/citizen/history", ...UI.sidebar.myReports, icon: History },
-                    ACCOUNT_ITEM,
+                : user?.role === "ROLE_CLEANER"
+                    ? [
+                        { to: "/cleaner/dashboard", ...UI.sidebar.overview, icon: Brush },
+                        { to: "/cleaner/available", ...UI.sidebar.availableTasks, icon: Search },
 
-                    ...COMMUNITY_ITEMS,
-                ];
+                        /*
+                          Sits between the two: a cleaner inspects an available
+                          site, proposes for it, and only then does it appear
+                          under My Tasks - if the corporation approves them.
+                          /cleaner/proposals/new/:id is a child, so no exact
+                          match here; the entry stays lit while writing one.
+                        */
+                        { to: "/cleaner/proposals", ...UI.sidebar.myProposals, icon: FileText },
+
+                        { to: "/cleaner/tasks", ...UI.sidebar.myTasks, icon: CheckSquare },
+                        { to: "/cleaner/rewards", ...UI.sidebar.myRewards, icon: Award },
+                        ACCOUNT_ITEM,
+
+                        /*
+                          One leaderboard for everyone, shown inside the shell.
+                          There is no separate cleaner ranking; the earlier
+                          /cleaner/leaderboard path had no route at all.
+                        */
+                        ...COMMUNITY_ITEMS,
+                    ]
+                    : [
+                        { to: "/citizen/dashboard", ...UI.sidebar.overview, icon: LayoutDashboard },
+                        { to: "/citizen/report", ...UI.nav.fileReport, icon: FilePlus2 },
+                        { to: "/citizen/history", ...UI.sidebar.myReports, icon: History },
+                        ACCOUNT_ITEM,
+
+                        ...COMMUNITY_ITEMS,
+                    ];
 
     // Breadcrumb trail per route. Only the trail lives here, not the page title.
     const breadcrumbMap = {
@@ -177,6 +213,10 @@ export default function MainLayout() {
             { label: "Cleaner Dashboard", to: "/cleaner/dashboard" },
             { label: "Available Tasks" },
         ],
+        "/cleaner/proposals": [
+            { label: "Cleaner Dashboard", to: "/cleaner/dashboard" },
+            { label: "My Proposals" },
+        ],
         "/cleaner/tasks": [
             { label: "Cleaner Dashboard", to: "/cleaner/dashboard" },
             { label: "My Tasks" },
@@ -185,6 +225,22 @@ export default function MainLayout() {
             { label: "Cleaner Dashboard", to: "/cleaner/dashboard" },
             { label: "My Rewards" },
         ],
+
+        /* Municipal officer console (final stage) */
+        "/municipal/dashboard": [{ label: "Municipal Dashboard" }],
+        "/municipal/proposals": [
+            { label: "Municipal Dashboard", to: "/municipal/dashboard" },
+            { label: "Proposal Review" },
+        ],
+        "/municipal/active": [
+            { label: "Municipal Dashboard", to: "/municipal/dashboard" },
+            { label: "Active Cleanups" },
+        ],
+        "/municipal/completions": [
+            { label: "Municipal Dashboard", to: "/municipal/dashboard" },
+            { label: "Completion Review" },
+        ],
+
         "/citizen/dashboard": [{ label: "Citizen Dashboard" }],
         "/citizen/report": [
             { label: "Citizen Dashboard", to: "/citizen/dashboard" },
@@ -221,6 +277,32 @@ export default function MainLayout() {
       first, since /admin/users/5 also starts with /admin.
     */
     const prefixTrails = [
+        {
+            /*
+              A single assignment file, opened from either the active list or
+              the completion queue. The id is in the path, so it is matched by
+              prefix; the trail leads back to the officer's overview.
+            */
+            prefix: "/municipal/assignments/",
+            trail: [
+                { label: "Municipal Dashboard", to: "/municipal/dashboard" },
+                { label: "Active Cleanups", to: "/municipal/active" },
+                { label: "Assignment Review" },
+            ],
+        },
+        {
+            /*
+              The proposal form carries the assignment id, so it cannot be
+              listed above. Its trail leads back to the proposal listing
+              rather than to the dashboard.
+            */
+            prefix: "/cleaner/proposals/new/",
+            trail: [
+                { label: "Cleaner Dashboard", to: "/cleaner/dashboard" },
+                { label: "My Proposals", to: "/cleaner/proposals" },
+                { label: "Submit Proposal" },
+            ],
+        },
         {
             prefix: "/admin/municipal-corporations/edit/",
             trail: [

@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import PageHeading from "@/components/common/PageHeading";
@@ -10,8 +10,8 @@ import useAssignments from "@/hooks/useAssignments";
 import useCleanupDisclaimer from "@/hooks/useCleanupDisclaimer";
 import usePagination from "@/hooks/usePagination";
 
-import { getPendingAssignments, claimAssignment } from "@/services/cleanupService";
-import { getErrorMessage } from "@/utils/errorMessage";
+import { getPendingAssignments, getMyProposals } from "@/services/cleanupService";
+import { blocksNewProposal } from "@/constants/assignmentConstants"; // withdrawn/rejected offers must not block a fresh one
 import {
     ReportListSkeleton,
     ReportListError,
@@ -20,20 +20,21 @@ import {
 
 /**
  * ============================================================================
- * Available Tasks (Phase 8)
+ * Available Tasks (Phase 14)
  * ============================================================================
  *
- * Unclaimed cleanup assignments any cleaner may take on.
+ * Open cleanup assignments a cleaner may inspect and propose for.
  *
- * The backend only lets a cleaner claim work inside their own registered city
- * and state, but the pending list is not filtered by that rule, so tasks from
- * elsewhere can appear here. Rather than hide that, a failed claim surfaces
- * the backend's explanation verbatim - it names the actual restriction.
+ * A cleaner no longer claims work here. Instead the card leads to an on-site
+ * inspection and a written cleanup proposal, which a municipal officer reviews
+ * against the proposals of other cleaners. Because nothing is taken off the
+ * list by proposing, a site stays visible to everyone until an officer approves
+ * one proposal.
  *
- * Claiming also passes through the bilingual presence notice: cleanup proof is
- * only accepted from within a fixed radius of the reported location, and a
- * cleaner who cannot reach the site should decline before taking the task off
- * the list for everyone else.
+ * The backend only accepts work inside a cleaner's own registered city and
+ * state, but the open list is not filtered by that rule, so sites from
+ * elsewhere can appear. The refusal is left to the proposal request, which
+ * names the actual restriction.
  * ============================================================================
  */
 
@@ -41,18 +42,14 @@ export default function AvailableTasksPage() {
 
     const navigate = useNavigate();
 
-    // Pending assignments, loaded once on mount
-    const { assignments, loading, error, reload, refresh } =
+    // Open assignments, loaded once on mount
+    const { assignments, loading, error, reload } =
         useAssignments(getPendingAssignments);
 
-    // Assignment currently being claimed, so only that card shows a spinner
-    const [claimingId, setClaimingId] = useState(null);
+    // Sites where this cleaner still holds a LIVE proposal, so cards can say so
+    const [proposedAssignmentIds, setProposedAssignmentIds] = useState([]);
 
-    // Result of the most recent claim attempt
-    const [actionError, setActionError] = useState("");
-    const [actionMessage, setActionMessage] = useState("");
-
-    // Ten tasks to a page
+    // Ten sites to a page
     const {
         page,
         pageItems,
@@ -66,77 +63,76 @@ export default function AvailableTasksPage() {
     // Anchor for the jump back up when the page changes
     const listTopRef = useRef(null);
 
+    /*
+      Own proposals are fetched separately because CleanupAssignmentResponse
+      carries no per-cleaner proposal flag. A failure here is deliberately
+      silent: it only costs the "already proposed" hint, and the backend still
+      rejects a duplicate proposal outright.
+
+      Only LIVE offers count. A cleaner who withdrew a proposal - or whose plan
+      was not selected - is entitled to propose again for as long as the site
+      remains unawarded, so those rows must not lock the button away.
+    */
+    useEffect(() => {
+        let active = true;
+
+        getMyProposals()
+            .then((proposals) => {
+                if (active) {
+                    setProposedAssignmentIds(
+                        proposals
+                            .filter(blocksNewProposal) // drops WITHDRAWN and REJECTED offers
+                            .map((proposal) => proposal.assignmentId)
+                    );
+                }
+            })
+            .catch(() => {
+                // Hint unavailable; the list itself is unaffected
+            });
+
+        return () => {
+            active = false;
+        };
+    }, []);
+
     /**
-     * Take ownership of a pending assignment.
+     * Move to the inspection and proposal form for one site.
+     *
+     * The assignment travels in router state so the form can show the address
+     * and measure the cleaner's distance from the reported waste - the backend
+     * has no endpoint for a single assignment.
      */
-
-    async function handleClaim(assignment) {
-
-        setClaimingId(assignment.assignmentId);
-        setActionError("");
-        setActionMessage("");
-
-        try {
-            await claimAssignment(assignment.assignmentId);
-
-            setActionMessage(
-                `"${assignment.reportTitle}" is now yours. It has moved to My Tasks, where you can start work.`
-            );
-
-            /**
-             * Quiet refresh - the claimed task drops off this list, and a
-             * visible reload would blank the page mid-read for no reason.
-             */
-            refresh();
-        } catch (requestError) {
-            setActionError(
-                getErrorMessage(
-                    requestError,
-                    "This task could not be claimed. Please try again."
-                )
-            );
-
-            /**
-             * Someone else may have claimed it first, so the list is
-             * re-fetched to drop tasks that are no longer available.
-             */
-            refresh();
-        } finally {
-            setClaimingId(null);
-        }
-    }
+    const handlePropose = useCallback(
+        (assignment) => {
+            navigate(`/cleaner/proposals/new/${assignment.assignmentId}`, {
+                state: { assignment },
+            });
+        },
+        [navigate]
+    );
 
     /*
-      The notice stands between the card's Claim button and handleClaim, so the
-      undertaking is acknowledged for this specific task before it is taken on.
+      The presence notice stands between the card and the form, so the site
+      visit requirement is acknowledged before the cleaner sets out.
     */
-    const disclaimer = useCleanupDisclaimer(handleClaim);
+    const disclaimer = useCleanupDisclaimer(handlePropose);
 
     return (
         <div>
             <PageHeading
                 title="Available Tasks"
                 titleHi="उपलब्ध कार्य"
-                subtitle="Unclaimed cleanup work reported by citizens. Claim a task to add it to your list."
+                subtitle="Open cleanup work reported by citizens. Inspect a site and submit a proposal for municipal approval."
             />
 
-            {/* Outcome of the last claim */}
-            {actionMessage && (
-                <div className="mb-4">
-                    <Alert type="success" title="Task Claimed">
-                        {actionMessage}
-                    </Alert>
-                </div>
-            )}
-
-            {/* Backend refusals land here, including the city/state rule */}
-            {actionError && (
-                <div className="mb-4">
-                    <Alert type="error" title="Could Not Claim Task">
-                        {actionError}
-                    </Alert>
-                </div>
-            )}
+            {/* Sets the expectation before a cleaner travels to a site */}
+            <div className="mb-4">
+                <Alert type="info" title="Proposals are reviewed, not first-come">
+                    Visit the site, record what you find and submit your cleanup
+                    plan. Several cleaners may propose for the same site; the
+                    municipal corporation approves one of them.
+                </Alert>
+            </div>
 
             {/* First load */}
             {loading && <ReportListSkeleton count={3} />}
@@ -150,20 +146,23 @@ export default function AvailableTasksPage() {
             {!loading && !error && assignments.length === 0 && (
                 <ReportListEmpty
                     title="No tasks waiting"
-                    description="Every reported site has been claimed. Check back later for newly reported waste in your area."
+                    description="Every reported site is already under review or in progress. Check back later for newly reported waste in your area."
                 />
             )}
 
-            {/* Claimable work */}
+            {/* Sites open for proposals */}
             {!loading && !error && assignments.length > 0 && (
                 <div ref={listTopRef} className="space-y-3">
                     {pageItems.map((assignment) => (
                         <TaskCard
                             key={assignment.assignmentId}
                             assignment={assignment}
-                            // Opens the notice; the claim itself runs on acceptance
-                            onClaim={disclaimer.requestAcknowledgement}
-                            busyId={claimingId}
+                            // Opens the notice; the form opens on acceptance
+                            onPropose={disclaimer.requestAcknowledgement}
+                            // Replaces the action with a waiting-for-review note
+                            alreadyProposed={proposedAssignmentIds.includes(
+                                assignment.assignmentId
+                            )}
                         />
                     ))}
 
@@ -178,25 +177,21 @@ export default function AvailableTasksPage() {
                         scrollTargetRef={listTopRef}
                     />
                 </div>
-
             )}
 
-            {/* Route to the claimed work, shown once something was claimed */}
-            {actionMessage && (
-                <button
-                    type="button"
-                    onClick={() => navigate("/cleaner/tasks")}
-                    className="mt-4 text-sm font-semibold text-gov-blue hover:underline"
-                >
-                    Go to My Tasks
-                </button>
-            )}
+            {/* Where the municipal decision will appear */}
+            <button
+                type="button"
+                onClick={() => navigate("/cleaner/proposals")}
+                className="mt-4 text-sm font-semibold text-gov-blue hover:underline"
+            >
+                Go to My Proposals
+            </button>
 
-            {/* Presence undertaking - shown afresh for every claim */}
+            {/* Presence undertaking - shown afresh for every site */}
             <CleanupDisclaimerDialog
                 open={Boolean(disclaimer.pendingAssignment)}
                 reportTitle={disclaimer.pendingAssignment?.reportTitle}
-                busy={claimingId !== null}
                 onAccept={disclaimer.accept}
                 onCancel={disclaimer.cancel}
             />

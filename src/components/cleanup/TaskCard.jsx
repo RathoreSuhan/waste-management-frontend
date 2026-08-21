@@ -6,13 +6,18 @@ import {
     ShieldCheck,
     ExternalLink,
     ImageIcon,
+    NotebookPen,
+    PlayCircle,
+    Hourglass,      // proof lodged, corporation yet to rule on it
+    RotateCcw,      // corporation sent the work back for rework
 } from "lucide-react";
 
 import AssignmentStatusBadge from "@/components/cleanup/AssignmentStatusBadge";
 import Button from "@/components/ui/Button";
 import { formatRelativeTime, formatDateTime } from "@/utils/formatters";
 import {
-    canClaim,
+    ASSIGNMENT_STATUS,
+    canPropose,
     canStart,
     canUpload,
     formatConfidence,
@@ -29,24 +34,52 @@ import {
  * GET /api/cleanup-assignments/{id}, so there is no assignment detail page to
  * link to - everything a cleaner needs to act must be visible here.
  *
- * Only one action is ever offered, matching the backend's strict lifecycle:
- * claim a pending task, start a claimed one, upload proof once started.
+ * Actions follow the backend's strict lifecycle: propose for an open site,
+ * start work the corporation awarded, then upload proof once started.
  * Completed tasks show the AI verdict instead of an action.
+ *
+ * Task 4 adds one secondary action alongside the proof upload - the optional
+ * activity log. It sits next to "Upload Cleanup Proof" rather than replacing
+ * it, because a work diary must never be a step on the way to finishing.
  * ============================================================================
  */
 
 export default function TaskCard({
     assignment,
     // Handlers are optional; a list omits the ones it does not support
-    onClaim,
+    onPropose,
     onStart,
     onUpload,
+    // Opens the optional work diary for an in-progress cleanup
+    onActivityLog,
+    // Set when this cleaner still holds a LIVE proposal here (withdrawn ones do not count)
+    alreadyProposed = false,
     // Id of the assignment currently mid-request, so only it shows a spinner
     busyId,
 }) {
 
     // Whether this specific card is waiting on the backend
     const busy = busyId === assignment.assignmentId;
+
+    /*
+      Two post-submission states a cleaner must be able to tell apart at a
+      glance. The AI verdict cannot say which one applies: it only advises
+      the municipal officer, who alone closes or reopens the assignment.
+    */
+    const awaitingReview =
+        assignment.assignmentStatus === ASSIGNMENT_STATUS.AWAITING_APPROVAL;
+
+    const reworkRequired =
+        assignment.assignmentStatus === ASSIGNMENT_STATUS.REWORK_REQUIRED;
+
+    /*
+      The site has been awarded: a cleaner is named on it and its status has
+      moved past the proposal stage. Nobody else may bid, and this is a very
+      different message from "your proposal is being reviewed" - one is the
+      end of the road, the other is a wait.
+    */
+    const allocatedToAnotherCleaner =
+        Boolean(assignment.cleanerId) && !canPropose(assignment);
 
     return (
         <article className="rounded-gov border border-rule bg-white">
@@ -128,6 +161,20 @@ export default function TaskCard({
                         </p>
                     )}
 
+                    {/*
+                      When the work began, recorded the moment the cleaner
+                      pressed Start on site. Useful on a multi-day cleanup,
+                      where "reported 6 days ago" says nothing about progress.
+                    */}
+                    {assignment.startedAt && (
+                        <p className="mt-1 flex items-center gap-1.5 text-xs text-ink-muted">
+                            <PlayCircle size={13} aria-hidden="true" />
+                            <span title={formatDateTime(assignment.startedAt)}>
+                                Work started {formatRelativeTime(assignment.startedAt)}
+                            </span>
+                        </p>
+                    )}
+
                     {/* ---------------- AI verdict on completed work ---------------- */}
                     {assignment.aiVerified && (
                         <p className="mt-2 flex items-start gap-1.5 rounded-gov border border-green-300 bg-green-50 px-2.5 py-1.5 text-xs text-green-900">
@@ -147,19 +194,89 @@ export default function TaskCard({
                         </p>
                     )}
 
+                    {/*
+                      Proof is lodged and with the corporation. Said plainly so
+                      an AI pass is not mistaken for sign-off - the officer's
+                      approval is what marks the assignment complete.
+                    */}
+                    {awaitingReview && (
+                        <p className="mt-2 flex items-start gap-1.5 rounded-gov border border-blue-300 bg-blue-50 px-2.5 py-1.5 text-xs text-gov-navy">
+                            <Hourglass
+                                size={13}
+                                className="mt-0.5 shrink-0 text-gov-blue"
+                                aria-hidden="true"
+                            />
+
+                            <span>
+                                Submitted for municipal review. The corporation
+                                will approve the completion or ask for rework -
+                                the AI check above is only advisory.
+                            </span>
+                        </p>
+                    )}
+
+                    {/*
+                      Rework path. Officer remarks sit behind an approval-desk
+                      endpoint this screen cannot read, so the card states what
+                      the cleaner can act on: the work is open again, logging
+                      continues, and fresh proof may be resubmitted.
+                    */}
+                    {reworkRequired && (
+                        <p className="mt-2 flex items-start gap-1.5 rounded-gov border border-rose-300 bg-rose-50 px-2.5 py-1.5 text-xs text-rose-900">
+                            <RotateCcw
+                                size={13}
+                                className="mt-0.5 shrink-0 text-rose-600"
+                                aria-hidden="true"
+                            />
+
+                            <span>
+                                The municipal corporation has asked for rework.
+                                Continue the cleanup, record what you do in the
+                                activity log, then upload fresh proof - it goes
+                                back for review automatically.
+                                {assignment.aiRemarks &&
+                                    ` Last AI note: ${assignment.aiRemarks}`}
+                            </span>
+                        </p>
+                    )}
+
                     {/* ---------------- Actions ---------------- */}
                     <div className="mt-3 flex flex-wrap items-center gap-2">
 
-                        {/* Claim - only ever offered on a pending task */}
-                        {onClaim && canClaim(assignment) && (
+                        {/* Propose - an open site is inspected and bid for, never claimed outright */}
+                        {onPropose && canPropose(assignment) && !alreadyProposed && (
                             <Button
                                 type="button"
                                 fullWidth={false}
                                 loading={busy}
-                                onClick={() => onClaim(assignment)}
+                                onClick={() => onPropose(assignment)}
                             >
-                                Claim Task
+                                Inspect &amp; Propose
                             </Button>
+                        )}
+
+                        {/*
+                          A live proposal of this cleaner's own is with the
+                          officer. Shown only while the site is still open, and
+                          only when the proposal has not been withdrawn - a
+                          withdrawn offer returns the button above instead.
+                        */}
+                        {onPropose && canPropose(assignment) && alreadyProposed && (
+                            <span className="text-xs font-semibold text-gov-blue">
+                                Proposal submitted &bull; awaiting municipal review
+                            </span>
+                        )}
+
+                        {/*
+                          Someone else won the site. Said plainly so a cleaner
+                          does not keep waiting for a decision that has already
+                          been taken against them.
+                        */}
+                        {onPropose && allocatedToAnotherCleaner && (
+                            <span className="text-xs font-semibold text-ink-muted">
+                                Allocated to another cleaner &bull; proposals
+                                closed for this site
+                            </span>
                         )}
 
                         {/* Start - the backend requires this before any upload */}
@@ -182,7 +299,31 @@ export default function TaskCard({
                                 fullWidth={false}
                                 onClick={() => onUpload(assignment)}
                             >
-                                Upload Cleanup Proof
+                                {/* Wording follows the state: a rework round is a
+                                    resubmission, not a first submission. */}
+                                {reworkRequired
+                                    ? "Resubmit Cleanup Proof"
+                                    : "Upload Cleanup Proof"}
+                            </Button>
+                        )}
+
+                        {/*
+                          Optional work diary, offered only while the cleanup is
+                          in progress. Deliberately secondary styling: it is a
+                          record, not a step towards completion.
+                        */}
+                        {onActivityLog && canUpload(assignment) && (
+                            <Button
+                                type="button"
+                                variant="secondary"
+                                fullWidth={false}
+                                onClick={() => onActivityLog(assignment)}
+                            >
+                                <NotebookPen size={14} aria-hidden="true" />
+                                Activity Log
+                                {/* Count comes from the assignment response */}
+                                {assignment.activityLogCount > 0 &&
+                                    ` (${assignment.activityLogCount})`}
                             </Button>
                         )}
 

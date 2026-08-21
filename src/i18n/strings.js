@@ -93,8 +93,20 @@ export const UI = {
         publicReports: { en: "Public Reports", hi: "सार्वजनिक रिपोर्ट" },
         myReports: { en: "My Reports", hi: "मेरी रिपोर्ट" },
         availableTasks: { en: "Available Tasks", hi: "उपलब्ध कार्य" },
+
+        // Proposals a cleaner has sent for municipal review
+        myProposals: { en: "My Proposals", hi: "मेरे प्रस्ताव" },
+
         myTasks: { en: "My Tasks", hi: "मेरे कार्य" },
         myRewards: { en: "My Rewards", hi: "मेरे पुरस्कार" },
+
+        /* Municipal officer console - scoped to one corporation's jurisdiction */
+        municipalDashboard: { en: "Municipal Overview", hi: "निगम अवलोकन" },
+        proposalQueue: { en: "Proposal Review", hi: "प्रस्ताव समीक्षा" },
+        activeCleanups: { en: "Active Cleanups", hi: "चालू सफाई" },
+        completionReview: { en: "Completion Review", hi: "पूर्णता समीक्षा" },
+        assignmentReview: { en: "Assignment Review", hi: "कार्य समीक्षा" },
+
         changePassword: { en: "Change Password", hi: "पासवर्ड बदलें" },
     },
 };

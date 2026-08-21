@@ -15,7 +15,7 @@ import useModalBehaviour from "@/hooks/useModalBehaviour";
  * CleanupDisclaimerDialog
  * ----------------------------------------------------------
  * The presence undertaking a cleaner acknowledges before
- * claiming a task or starting work on one.
+ * proposing for a site or starting work awarded to them.
  *
  * Cleanup proof is geofenced: the photograph is only accepted
  * from inside a fixed radius of the citizen's reported
@@ -37,7 +37,7 @@ export default function CleanupDisclaimerDialog({
     open,
     // Title of the report being taken on, echoed back for confirmation
     reportTitle = "",
-    // True while the claim/start request is in flight
+    // True while the propose/start request is in flight
     busy = false,
     onAccept,
     onCancel,

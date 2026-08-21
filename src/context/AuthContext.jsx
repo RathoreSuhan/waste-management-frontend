@@ -2,6 +2,7 @@ import { useState } from "react";
 
 import AuthContext from "@/context/authContextInstance";
 import * as authService from "@/services/authService";
+import { clearAllProposalDrafts } from "@/utils/proposalDraft";
 
 /**
  * ============================================================================
@@ -23,6 +24,10 @@ import * as authService from "@/services/authService";
  * nothing to wait for - and restoring it in an effect meant the very first
  * render always claimed the visitor was signed out, which flashed the login
  * page at people who were already signed in.
+ *
+ * Signing in or out also wipes any unsubmitted cleanup proposal draft. Those
+ * drafts are unsent work belonging to one person, so they must never be waiting
+ * for whoever signs in next on the same device.
  * ============================================================================
  */
 
@@ -71,6 +76,9 @@ export function AuthProvider({ children }) {
         // Call backend login API
         const response = await authService.login(loginData);
 
+        // Safety net for sessions that ended without logout, e.g. an expired token
+        clearAllProposalDrafts();
+
         const nextUser = {
             email: response.email,
             role: response.role,
@@ -100,6 +108,9 @@ export function AuthProvider({ children }) {
         localStorage.removeItem("token");
 
         localStorage.removeItem("user");
+
+        // Half-written proposals were never sent, so they leave with the session
+        clearAllProposalDrafts();
 
         // Clear React state
         setSession({ token: null, user: null });

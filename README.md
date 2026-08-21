@@ -38,7 +38,7 @@
 | **[Why this frontend exists](#why-this-frontend-exists)** | the problem the interface is solving |
 | **[The product in fifteen screens](#the-product-in-fifteen-screens)** | annotated tour, grouped by audience |
 | **[What each role can do](#what-each-role-can-do)** | capability matrix |
-| **[The life of a report, from the UI side](#the-life-of-a-report-from-the-ui-side)** | five stages, five surfaces |
+| **[The life of a report, from the UI side](#the-life-of-a-report-from-the-ui-side)** | six stages, from filing to municipal sign-off |
 | **[Engineering notes](#engineering-notes)** | the decisions worth explaining |
 | **[Project structure](#project-structure)** | annotated `src/` |
 | **[Getting started](#getting-started)** | install, configure, run |
@@ -137,7 +137,7 @@ Nine of these fifteen screens are reachable with no account at all. That is deli
 <sub>Grouped into <b>Account details → Role → Location</b>. Choosing a role reveals a plain-language description of what that role may do, and the location fields carry their own justification: <i>"used to place you on the state and city leaderboards, and to route reports to the right municipal corporation."</i> No field is asked for without a stated reason.</sub>
 </div>
 
-### Part two · Signed in — three dashboards, one shell
+### Part two · Signed in — four dashboards, one shell
 
 Once authenticated, every role gets the same chrome — breadcrumbs, a bilingual sidebar, an identity card naming the account and its role, and a helpdesk block pinned to the bottom — while the contents change completely.
 
@@ -151,7 +151,7 @@ Once authenticated, every role gets the same chrome — breadcrumbs, a bilingual
 <td width="50%" valign="top">
 <img src="docs/screenshots/screen-11.jpg" alt="Cleaner dashboard" />
 <br /><b>13 · Sanitation officer dashboard</b><br />
-<sub>The lifecycle as four counters — <i>Claimed · In progress · Completed · Reward points</i> — and an empty state that does the work of a prompt: <i>"No active tasks. Browse available tasks to get started."</i></sub>
+<sub>The lifecycle as four counters — <i>Assigned · In progress · Completed · Reward points</i> — and an empty state that does the work of a prompt: <i>"No active tasks"</i> beside a <b>Browse Available Tasks</b> action. Nothing reaches <i>Assigned</i> until the city's municipal corporation has approved that officer's proposal for the site.</sub>
 </td>
 </tr>
 <tr>
@@ -168,27 +168,48 @@ Once authenticated, every role gets the same chrome — breadcrumbs, a bilingual
 </tr>
 </table>
 
+#### The municipal corporation console
+
+A city's municipal corporation gets its own set of screens rather than a panel bolted onto somebody else's dashboard. Every call the console makes is scoped by the API to that corporation's **own city**, so a Mohali account cannot read, approve or reject anything filed for Pune.
+
+| Route | Page | What it is for |
+|---|---|---|
+| `/municipal/dashboard` | `pages/municipal/MunicipalDashboard.jsx` | Five counters — *Relevant Reports · Pending Proposals · Active Cleanups · Completion Reviews · Completed Cleanups* — rendered through `MunicipalStatGrid`. |
+| `/municipal/proposals` | `pages/municipal/ProposalQueuePage.jsx` | Proposals waiting on a decision: **Approve & Assign**, **Request Revision**, **Reject Proposal**. |
+| `/municipal/active` | `pages/municipal/ActiveCleanupsPage.jsx` | Work already authorised, with the crew's activity log as it is written. |
+| `/municipal/completions` | `pages/municipal/CompletionReviewPage.jsx` | Finished work awaiting sign-off: **Approve Completion**, **Request Rework**, **Reject Evidence**. |
+| `/municipal/assignments/:assignmentId` | `pages/municipal/AssignmentReviewPage.jsx` | One assignment in full — before/after images, GPS distance, the AI assessment, and the entire approval history. |
+
+The machine verdict is always captioned for what it is — *AI assessment — advisory only*. It never closes a cleanup by itself; a human decision recorded through `ApprovalDecisionDialog` does.
+
+**How a corporation signs in.** Municipal accounts are never self-registered. An administrator adds the city's contact row under *Municipal Bodies*, and from that point only that registered email can open the console for that city — the public sign-up form offers no municipal option at all. Picking `MUNICIPAL` as a **cleaner type** merely describes what kind of crew a sanitation account belongs to; it grants no console access whatsoever. The first-login password is issued together with the row (documented for the operator, never printed by the UI or the API) and is meant to be replaced straight away from `pages/account/ChangePasswordPage.jsx`, which posts to `PUT /api/account/password`.
+
 ---
 
 ## What each role can do
 
-| | Visitor | Citizen | Sanitation Officer | Administrator |
-|---|:---:|:---:|:---:|:---:|
-| Read reports, trending, success stories, leaderboard | ✅ | ✅ | ✅ | ✅ |
-| Read waste guidance, about, policies | ✅ | ✅ | ✅ | ✅ |
-| Appreciate / share a published cleanup | ✅ | ✅ | ✅ | ✅ |
-| File a report with photograph + verified location | — | ✅ | — | — |
-| Rate urgency (1–5) on a report | — | ✅ | — | — |
-| Comment and reply on any report | — | ✅ | ✅ | ✅ |
-| Track own reports to closure | — | ✅ | — | — |
-| Browse and claim unassigned cleanup work | — | — | ✅ | — |
-| Start work, upload after-photograph for AI verification | — | — | ✅ | — |
-| Reward points, badge tier, own leaderboard standing | — | — | ✅ | — |
-| Platform statistics dashboard | — | — | — | ✅ |
-| Search / filter users, promote, delete | — | — | — | ✅ |
-| Search / filter reports, delete with cascade | — | — | — | ✅ |
-| Maintain municipal corporation directory | — | — | — | ✅ |
-| Change own password | — | ✅ | ✅ | ✅ |
+| | Visitor | Citizen | Sanitation Officer | Municipal Corporation | Administrator |
+|---|:---:|:---:|:---:|:---:|:---:|
+| Read reports, trending, success stories, leaderboard | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Read waste guidance, about, policies | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Appreciate / share a published cleanup | ✅ | ✅ | ✅ | ✅ | ✅ |
+| File a report with photograph + verified location | — | ✅ | — | — | — |
+| Rate urgency (1–5) on a report | — | ✅ | — | — | — |
+| Comment and reply on any report | — | ✅ | ✅ | ✅ | ✅ |
+| Track own reports to closure | — | ✅ | — | — | — |
+| Inspect an open site and submit a cleanup proposal | — | — | ✅ | — | — |
+| Decide a proposal — approve and assign, request a revision, reject | — | — | — | ✅ | — |
+| Start authorised work from within ~50 m, add activity log entries | — | — | ✅ | — | — |
+| Upload the after-photograph for AI + GPS verification | — | — | ✅ | — | — |
+| Sign off, send back for rework, or reject completed work | — | — | — | ✅ | — |
+| Reward points, badge tier, own leaderboard standing | — | — | ✅ | — | — |
+| Platform statistics dashboard | — | — | — | — | ✅ |
+| Search / filter users, promote, delete | — | — | — | — | ✅ |
+| Search / filter reports, delete with cascade | — | — | — | — | ✅ |
+| Maintain municipal corporation directory | — | — | — | — | ✅ |
+| Change own password | — | ✅ | ✅ | ✅ | ✅ |
+
+Everything in the *Municipal Corporation* column is additionally scoped to the signed-in corporation's own city — the role alone is not enough.
 
 The UI never relies on this table as a security boundary. Roles are enforced by the API; the frontend simply avoids offering an action it knows will return `403`, and routes every restricted page through a `RoleRoute` guard so a hand-typed URL lands somewhere sensible instead of on a broken screen.
 
@@ -197,37 +218,39 @@ The UI never relies on this table as a security boundary. Roles are enforced by 
 ## The life of a report, from the UI side
 
 ```
-  ①  FILED                ②  VALIDATED             ③  ASSIGNED
+  ①  FILED                ②  VALIDATED             ③  ROUTED
   ┌──────────────┐        ┌──────────────┐        ┌──────────────┐
   │ File a       │        │ AI checks    │        │ Queued to a  │
   │ Report       │ ─────► │ the image is │ ─────► │ municipal    │
   │ 3 steps      │        │ real waste   │        │ corporation  │
   └──────────────┘        └──────────────┘        └──────────────┘
    photo + geo             120s upload             citizen sees
-   + draft saved           timeout, spoken         PENDING with
-   locally                 rejection reasons       officer named
-                                  │
-                                  ▼
-  ⑤  PUBLISHED            ④  CLEANED
-  ┌──────────────┐        ┌──────────────┐
-  │ Success      │ ◄───── │ Officer      │
-  │ Stories +    │        │ claims,      │
-  │ leaderboard  │        │ starts,      │
-  │ points       │        │ uploads      │
-  └──────────────┘        └──────────────┘
-   before/after            AI compares
-   with confidence         before ↔ after
+   + draft saved           timeout, spoken         PENDING and
+   locally                 rejection reasons       the city body
+                                                          │
+                                                          ▼
+  ⑥  SIGNED OFF           ⑤  CLEANED              ④  PROPOSED
+  ┌──────────────┐        ┌──────────────┐        ┌──────────────┐
+  │ Corporation  │        │ Officer      │        │ Officer      │
+  │ approves,    │ ◄───── │ starts, logs │ ◄───── │ proposes,    │
+  │ reward once  │        │ and proves   │        │ body decides │
+  └──────────────┘        └──────────────┘        └──────────────┘
+   Success Stories         AI compares             Approve & Assign
+   + leaderboard           before ↔ after          / Request Revision
+   points                  + GPS ≤ 50 m            / Reject Proposal
 ```
 
 **① Filed.** `CreateReportPage` walks three numbered sections and keeps a draft in local storage, so a dropped connection or an accidental back-navigation does not cost the reporter their description. `LocationVerificationPanel` refuses to report a coordinate it has not actually measured.
 
 **② Validated.** Submitting waits on Gemini Vision, which is why the upload client uses a **120-second** timeout while the rest of the app uses the default. A rejection comes back as a reason, not a code — *this does not appear to show waste*, *this looks like a screenshot* — and is rendered as such.
 
-**③ Assigned.** The citizen's own dashboard and `MyReportsPage` show the status chip and, once routed, the officer's name. `MunicipalContactPanel` surfaces who is responsible for that city.
+**③ Routed.** The citizen's own dashboard and `MyReportsPage` show the status chip, and `MunicipalContactPanel` names the corporation answerable for that city. Nothing is assigned yet: a report is routed to a city body, never handed straight to a crew.
 
-**④ Cleaned.** An officer claims from `AvailableTasksPage`, works it from `MyTasksPage`, and closes it through `CleanupUploadDialog`. The after-photograph is compared with the original; a rejection returns the task to the officer rather than silently failing.
+**④ Proposed.** A sanitation officer reads the open sites in `AvailableTasksPage` and submits a plan through `SubmitProposalPage` — what they intend to do, with what, and when. `MyProposalsPage` follows each verdict, and `hooks/useProposals.js` keeps the UI from offering a second proposal for a site this officer has already proposed. The corporation then decides in `ProposalQueuePage` through `ApprovalDecisionDialog`: an approval creates the assignment, a revision request returns with the reviewer's note, a rejection closes the proposal.
 
-**⑤ Published.** A verified cleanup appears in Success Stories as a before-and-after pair with its confidence score, the officer's points update, and the leaderboard — computed on demand, with no cached ranking table — reflects it on the next read.
+**⑤ Cleaned.** Only authorised work can start. `StartCleanupDialog` with `CleanupLocationCapture` demands a live fix within ~50 m of the site before the task moves to *In progress*, `ActivityLogDialog` records optional progress notes the corporation can read while the work is running, and `CleanupUploadDialog` closes the visit with a GPS-stamped after-photograph that Gemini compares against the original. Passing that check still does not finish the job — the assignment only moves to *Awaiting approval*.
+
+**⑥ Signed off, then published.** The corporation weighs the evidence in `CompletionReviewPage` and `AssignmentReviewPage` and either approves the completion, sends it back as rework, or rejects the evidence outright. Approval is the single event that resolves the report, credits the officer's reward points **exactly once**, and lets the cleanup surface in Success Stories as a before-and-after pair with its confidence score — the leaderboard, computed on demand with no cached ranking table, reflects it on the next read.
 
 ---
 
@@ -263,9 +286,10 @@ Not two implementations: one component, two surroundings. A signed-in officer wh
 Guards compose top-down rather than repeat per route:
 
 ```
-ProtectedRoute  →  MainLayout  →  RoleRoute allowedRole="ROLE_ADMIN"  →  admin pages
-                              →  RoleRoute allowedRole="ROLE_CLEANER" →  officer pages
-                              →  (no role guard)                     →  community pages
+ProtectedRoute → MainLayout → RoleRoute "ROLE_ADMIN"             → admin pages
+                            → RoleRoute "ROLE_CLEANER"           → officer pages
+                            → RoleRoute "ROLE_MUNICIPAL_OFFICER" → municipal console
+                            → (no role guard)                    → community pages
 ```
 
 </details>
@@ -278,7 +302,7 @@ ProtectedRoute  →  MainLayout  →  RoleRoute allowedRole="ROLE_ADMIN"  →  a
 - One Axios instance in `api/axiosClient.js`. A request interceptor attaches the JWT; a response interceptor is the single place an expired session is detected and cleared, so no page contains logout logic.
 - Every path lives in `constants/apiConstants.js`, documented with its backend security posture — which endpoints are `permitAll`, which fall through to `authenticated()`, which are `hasRole(...)`. A component never has to guess whether a call will work while signed out.
 - `utils/errorMessage.js` reduces the various shapes a failure can arrive in — validation envelope, plain string body, network timeout — to one human sentence, so no screen ever prints `[object Object]`.
-- Twelve thin service modules, one per domain (`reportService`, `voteService`, `commentService`, `cleanupService`, `rewardService`, `publicFeedService`, `analyticsService`, `leaderboardService`, `municipalCorporationService`, `adminService`, `authService`, `accountService`). Components call services; components never call Axios.
+- Thirteen thin service modules, one per domain (`reportService`, `voteService`, `commentService`, `cleanupService`, `rewardService`, `publicFeedService`, `analyticsService`, `leaderboardService`, `municipalCorporationService`, `municipalService`, `adminService`, `authService`, `accountService`). Components call services; components never call Axios. The split between the two municipal modules is deliberate: `municipalCorporationService` is the admin-facing city directory, `municipalService` is the console a signed-in corporation actually works in.
 
 </details>
 
@@ -287,7 +311,7 @@ ProtectedRoute  →  MainLayout  →  RoleRoute allowedRole="ROLE_ADMIN"  →  a
 
 <br />
 
-Validation rules live in `src/schemas/` (`authSchema`, `reportSchema`, `municipalCorporationSchema`) and are bound through `@hookform/resolvers`. The schema is the specification: the same rule produces the inline field error and blocks the submit, so the two can never disagree. Shared `ui/Input`, `ui/Textarea`, `ui/Button` and `ui/Alert` primitives keep error presentation identical across every form in the app.
+Validation rules live in `src/schemas/` (`authSchema`, `reportSchema`, `proposalSchema`, `approvalSchema`, `municipalCorporationSchema`) and are bound through `@hookform/resolvers`. The schema is the specification: the same rule produces the inline field error and blocks the submit, so the two can never disagree. `approvalSchema` earns its place by making the reviewer's note mandatory whenever a decision goes against the crew — a rejection without a stated reason is not a decision anybody can act on. Shared `ui/Input`, `ui/Textarea`, `ui/Button` and `ui/Alert` primitives keep error presentation identical across every form in the app.
 
 </details>
 
@@ -310,9 +334,10 @@ Validation rules live in `src/schemas/` (`authSchema`, `reportSchema`, `municipa
 | Scroll behaviour | `components/layout/ScrollManager.jsx` | Mounted **beside** the route table, not inside it, so it survives every navigation and can actually remember where each page was left. Inside a `<Route>` it would remount and forget — the one thing it exists to do. |
 | Losing a half-written report | `utils/reportDraft.js` | Persists the in-progress report locally and restores it on return. |
 | Geolocation | `hooks/useGeoLocation.js`, `utils/geo.js`, `utils/locationVerification.js` | Requests a position, reports accuracy honestly, and marks a report *location confirmed* only when it genuinely is. |
-| Offering actions that would fail | `utils/myVotes.js`, `utils/myComments.js`, `hooks/usePendingAssignmentReportIds.js` | Remember what this browser has already done, so the UI does not offer a second urgency rating or a claim that the API would reject. |
+| Offering actions that would fail | `utils/myVotes.js`, `utils/myComments.js`, `hooks/useProposals.js` | Remember what this browser and this officer have already done, so the UI does not offer a second urgency rating, or a duplicate proposal for a site the API would reject. |
 | Long lists | `hooks/usePagination.js` + `components/common/Pagination.jsx` | One pagination behaviour, reused by every list screen. |
-| Dialogs | `hooks/useModalBehaviour.js` | Focus handling, escape-to-close and scroll locking in one place, for the upload dialog, the confirmations and the login prompt. |
+| Dialogs | `hooks/useModalBehaviour.js` | Focus handling, escape-to-close and scroll locking in one place, for the start/upload dialogs, the approval decision dialog, the confirmations and the login prompt. |
+| Warning before authorised work begins | `hooks/useCleanupDisclaimer.js` + `constants/cleanupDisclaimer.js` | Shows the safety and evidence terms once per officer, and remembers the acknowledgement instead of asking again on every task. |
 | Destructive admin actions | `components/admin/ConfirmDialog.jsx` | Deleting a report also removes its image, votes, comments, assignment, reward history and feed analytics, and rolls back the officer's points. Nothing about it is undoable, so nothing about it is one click. |
 | Asking a guest to sign in | `components/auth/LoginRequiredDialog.jsx` | Prompts at the point of use — the page stays where it is, and returns the reader to what they were doing. |
 | A wrong URL | `pages/common/NotFoundPage.jsx` | A real 404 page, not a blank router outlet. |
@@ -339,16 +364,20 @@ WM Fronted/
     ├── constants/               # API paths, enums, and all editorial copy
     │                            #   apiConstants · reportConstants · badgeConstants
     │                            #   assignmentConstants · engagementConstants
+    │                            #   municipalConstants · adminConstants
+    │                            #   cleanupDisclaimer · paginationConstants
     │                            #   homeContent · aboutContent · environmentContent
     │                            #   policyContent · roleLabels · languageConstants
     ├── context/                 # Auth · Language · LayoutMode (+ split instances,
     │                            #   so provider files stay fast-refresh friendly)
     ├── hooks/                   # useAuth · useReports · useAssignments · useRewards
-    │                            #   usePagination · useGeoLocation · useLanguage
-    │                            #   useLayoutMode · useModalBehaviour
+    │                            #   useProposals · useMunicipalStats
+    │                            #   useCleanupDisclaimer · useGeoLocation
+    │                            #   usePagination · useLanguage · useLayoutMode
+    │                            #   useModalBehaviour
     ├── i18n/strings.js          # English + Hindi string pairs
     ├── schemas/                 # Zod validation, one file per form family
-    ├── services/                # one module per API domain (12 of them)
+    ├── services/                # one module per API domain (13 of them)
     ├── utils/                   # formatters · errorMessage · geo · reportDraft …
     │
     ├── layouts/
@@ -372,7 +401,15 @@ WM Fronted/
     │   │                        #   BeforeAfterImage · LocationVerificationPanel
     │   │                        #   MunicipalContactPanel · ReportListStates
     │   ├── comments/            # CommentSection · CommentItem · CommentForm
-    │   ├── cleanup/             # TaskCard · AssignmentStatusBadge · UploadDialog
+    │   ├── cleanup/             # TaskCard · AssignmentStatusBadge
+    │   │                        #   ProposalStatusBadge · StartCleanupDialog
+    │   │                        #   ActivityLogDialog · CleanupUploadDialog
+    │   │                        #   CleanupLocationCapture · DisclaimerDialog
+    │   ├── municipal/           # MunicipalStatGrid · ProposalReviewCard
+    │   │                        #   ProposalDetailPanel · ActiveCleanupCard
+    │   │                        #   CompletionReviewCard · ApprovalDecisionDialog
+    │   │                        #   ApprovalDecisionBadge · ApprovalHistoryList
+    │   │                        #   MunicipalActivityLogList
     │   ├── rewards/             # RewardSummaryCard · RewardHistoryItem
     │   ├── leaderboard/         # LeaderboardTable · MyRankCard · ScopeSelector
     │   │                        #   RankMedal · BadgePill
@@ -390,7 +427,10 @@ WM Fronted/
         ├── account/             # ChangePassword (shared by all roles)
         ├── reports/             # AllReports · TrendingReports · ReportDetail
         ├── citizen/             # Dashboard · CreateReport · MyReports
-        ├── cleaner/             # Dashboard · AvailableTasks · MyTasks · MyRewards
+        ├── cleaner/             # Dashboard · AvailableTasks · SubmitProposal
+        │                        #   MyProposals · MyTasks · MyRewards
+        ├── municipal/           # Dashboard · ProposalQueue · ActiveCleanups
+        │                        #   CompletionReview · AssignmentReview
         ├── admin/               # Dashboard · Users(+detail) · Reports
         │                        #   MunicipalCorporations(+create/edit)
         └── common/              # NotFound

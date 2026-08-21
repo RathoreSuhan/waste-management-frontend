@@ -62,8 +62,10 @@ export const COMMENTS_API = "/api/comments";
 /**
  * Cleanup Assignment APIs (Phase 8)
  *
- * Used by ROLE_CLEANER to claim pending assignments, start cleanup
- * work, upload completion proof, and list tasks by lifecycle state.
+ * Used by ROLE_CLEANER to list open sites, start work the municipal
+ * corporation has assigned, upload completion proof, and list tasks by
+ * lifecycle state. Taking a site directly is no longer possible - see
+ * CLEANUP_PROPOSALS_API below.
  *
  * Note: these endpoints are NOT role-restricted in the backend
  * SecurityConfig - they fall through to anyRequest().authenticated().
@@ -200,3 +202,63 @@ export const ADMIN_API = "/api/admin";
  * validation on the backend, so it needs more than the default 10s.
  */
 export const UPLOAD_TIMEOUT = 120000;
+
+
+/**
+ * Cleanup proposal endpoints (ROLE_CLEANER only).
+ *
+ * A cleaner inspects an open site and submits a costed cleanup proposal here
+ * instead of directly claiming the work, so several cleaners can compete for
+ * the same site and a municipal officer decides who is awarded the cleanup.
+ */
+export const CLEANUP_PROPOSALS_API = "/api/cleanup-proposals";
+
+
+/**
+ * Cleanup activity log endpoints (ROLE_CLEANER only).
+ *
+ * The optional work diary an authorised cleaner keeps while a cleanup is
+ * IN_PROGRESS. Multi-day jobs can be written up entry by entry; a small
+ * one-day cleanup can be finished without a single entry.
+ *
+ * Restricted to hasRole("CLEANER") in the backend SecurityConfig, and the
+ * service layer additionally checks that the caller is the cleaner the
+ * municipality authorised for that assignment.
+ *
+ * Backend endpoints:
+ *   POST   /api/cleanup-activity-logs/assignment/{assignmentId}  (multipart)
+ *   GET    /api/cleanup-activity-logs/assignment/{assignmentId}
+ *   DELETE /api/cleanup-activity-logs/{activityLogId}
+ */
+export const CLEANUP_ACTIVITY_LOGS_API = "/api/cleanup-activity-logs";
+
+
+/**
+ * Municipal approval endpoints (ROLE_MUNICIPAL_OFFICER only).
+ *
+ * The municipal officer's own desk: it is the corporation - not the platform
+ * administrator - that authorises a cleaner and signs off finished work. Every
+ * read and write here is scoped by the backend to the officer's own municipal
+ * corporation (matched on the officer's city), so an officer never sees or
+ * decides another city's cleanups.
+ *
+ * Restricted to hasRole("MUNICIPAL_OFFICER") in the backend SecurityConfig,
+ * and CleanupApprovalServiceImpl re-checks jurisdiction on every call.
+ *
+ * Backend endpoints:
+ *   GET  /api/cleanup-approvals/stats                              (dashboard counters)
+ *   GET  /api/cleanup-approvals/proposal-queue                     (PROPOSAL_SUBMITTED)
+ *   GET  /api/cleanup-approvals/assignment/{id}/proposals          (competing bids)
+ *   POST /api/cleanup-approvals/proposal/{proposalId}              (approve & assign / reject / revise)
+ *   GET  /api/cleanup-approvals/completion-queue                   (AWAITING_APPROVAL)
+ *   POST /api/cleanup-approvals/completion/{assignmentId}          (approve / request rework)
+ *   GET  /api/cleanup-approvals/active-cleanups                    (ASSIGNED..REWORK_REQUIRED)
+ *   GET  /api/cleanup-approvals/assignment/{id}                    (single assignment detail)
+ *   GET  /api/cleanup-approvals/assignment/{id}/activity-logs      (cleaner's work diary)
+ *   GET  /api/cleanup-approvals/assignment/{id}/history            (decision trail)
+ *
+ * Note: the AI verdict carried on these responses is advisory evidence for the
+ * officer. It never closes an assignment on its own - only an officer's
+ * APPROVED completion decision does.
+ */
+export const CLEANUP_APPROVALS_API = "/api/cleanup-approvals";

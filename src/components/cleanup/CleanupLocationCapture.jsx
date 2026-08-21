@@ -19,8 +19,9 @@ import { formatDistance } from "@/utils/geo";
  *
  * Proof-of-presence step inside the cleanup upload dialog.
  *
- * A cleaner claims work on a specific citizen report, so the photograph must
- * be taken at that report's location - not merely somewhere in the same city.
+ * A cleaner is assigned work on a specific citizen report, so the photograph
+ * must be taken at that report's location - not merely somewhere in the same
+ * city.
  * This panel reads the device position and measures it against the coordinates
  * the citizen filed, refusing to enable the upload until the cleaner is inside
  * the permitted radius.

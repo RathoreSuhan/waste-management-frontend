@@ -19,6 +19,10 @@ import { ROLE_LABELS } from "@/constants/roleLabels";
 export const ROLES = {
     CITIZEN: "ROLE_CITIZEN",
     CLEANER: "ROLE_CLEANER",
+    /* Municipal officers are civic authorities for one corporation only -
+       they approve proposals and completions inside their own city and are
+       deliberately NOT platform administrators. */
+    MUNICIPAL_OFFICER: "ROLE_MUNICIPAL_OFFICER",
     ADMIN: "ROLE_ADMIN",
 };
 
@@ -32,6 +36,9 @@ export const USER_ROLE_FILTERS = [
     { value: "ALL", label: "All Roles" },
     { value: ROLES.CITIZEN, label: ROLE_LABELS.ROLE_CITIZEN },
     { value: ROLES.CLEANER, label: ROLE_LABELS.ROLE_CLEANER },
+    /* Officers are a distinct register entry so an administrator can audit
+       who holds municipal approval powers without scanning every account. */
+    { value: ROLES.MUNICIPAL_OFFICER, label: ROLE_LABELS.ROLE_MUNICIPAL_OFFICER },
     { value: ROLES.ADMIN, label: ROLE_LABELS.ROLE_ADMIN },
 ];
 
@@ -49,6 +56,11 @@ export const ROLE_BADGE_META = {
     ROLE_CLEANER: {
         label: ROLE_LABELS.ROLE_CLEANER,
         className: "bg-cyan-50 text-civic-teal border border-civic-teal/30",
+    },
+    ROLE_MUNICIPAL_OFFICER: {
+        label: ROLE_LABELS.ROLE_MUNICIPAL_OFFICER,
+        /* Government blue: authority, but visibly separate from admin navy. */
+        className: "bg-blue-50 text-gov-blue border border-gov-blue/40",
     },
     ROLE_CITIZEN: {
         label: ROLE_LABELS.ROLE_CITIZEN,

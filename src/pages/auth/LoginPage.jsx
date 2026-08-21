@@ -25,6 +25,9 @@ import background from "@/assets/background2.jpg";
  *
  * Calls POST /api/auth/login through the auth context, which stores the
  * token and role for the rest of the session.
+ *
+ * One form serves everybody: the backend decides which kind of session an
+ * email is entitled to, so this page states no role-specific sign-in rules.
  * ============================================================================
  */
 

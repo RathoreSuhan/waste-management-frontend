@@ -5,13 +5,14 @@ import Alert from "@/components/ui/Alert";
 import TaskCard from "@/components/cleanup/TaskCard";
 import CleanupUploadDialog from "@/components/cleanup/CleanupUploadDialog";
 import CleanupDisclaimerDialog from "@/components/cleanup/CleanupDisclaimerDialog";
+import StartCleanupDialog from "@/components/cleanup/StartCleanupDialog";
+import ActivityLogDialog from "@/components/cleanup/ActivityLogDialog";
 import Pagination from "@/components/common/Pagination";
 import useAssignments from "@/hooks/useAssignments";
 import useCleanupDisclaimer from "@/hooks/useCleanupDisclaimer";
 import usePagination from "@/hooks/usePagination";
 
-import { getMyTasks, startCleanup } from "@/services/cleanupService";
-import { getErrorMessage } from "@/utils/errorMessage";
+import { getMyTasks } from "@/services/cleanupService";
 import { ASSIGNMENT_STATUS } from "@/constants/assignmentConstants";
 import {
     ReportListSkeleton,
@@ -21,40 +22,94 @@ import {
 
 /**
  * ============================================================================
- * My Tasks (Phase 8)
+ * My Tasks (Phase 8, extended in Phases 14-16)
  * ============================================================================
  *
  * Every assignment belonging to the logged-in cleaner, grouped by lifecycle
  * stage so the work that needs attention sits at the top.
  *
- * A single /my-tasks call feeds all four groups. The backend also offers
+ * A single /my-tasks call feeds all the groups. The backend also offers
  * /claimed, /in-progress and /completed, but calling one endpoint and
  * grouping locally avoids three round trips that can disagree with each
  * other when a task changes state between requests.
  *
- * Starting work is held behind the bilingual presence notice: the proof
- * photograph is only accepted from within a fixed radius of the reported
- * location, so the cleaner is reminded of that before setting out rather than
- * when the upload is refused.
+ * Nothing arrives here by being claimed any more. A task appears only once
+ * the municipal corporation has approved this cleaner's proposal for it, at
+ * which point the assignment carries ASSIGNED.
+ *
+ * Starting work is a two-step gate. The bilingual presence notice is shown
+ * first, because the proof photograph is only accepted from within a fixed
+ * radius of the reported location. Once acknowledged, StartCleanupDialog
+ * captures the position the work actually began from - the backend stores it
+ * as the start evidence for the cleanup and refuses an unapproved task.
+ *
+ * While a cleanup is in progress the cleaner may keep an optional activity
+ * log. It exists for cleanups that run over several visits or days; a small
+ * one-day job can be finished without a single entry.
+ *
+ * Uploading proof is not the end of the road. GPS and AI checks only advise
+ * the municipal corporation; the officer then approves the completion or
+ * sends the work back. A returned assignment carries REWORK_REQUIRED, which
+ * reopens exactly the same actions as IN_PROGRESS - keep logging, then submit
+ * fresh proof - so the cleaner can finish the job rather than lose it.
  * ============================================================================
  */
 
-// Groups in the order a cleaner works through them
+/*
+  Groups in the order a cleaner works through them.
+
+  Each group lists the statuses it collects rather than a single one, because
+  approved work now carries ASSIGNED while rows created before the proposal
+  workflow still carry CLAIMED. Both mean the same thing to the cleaner -
+  yours, not yet started - so they are shown together.
+*/
 const GROUPS = [
     {
-        status: ASSIGNMENT_STATUS.IN_PROGRESS,
+        /*
+          Rework sits first, above even In Progress. It is the only group that
+          the corporation is actively waiting on, and burying it under other
+          work is how a returned cleanup gets forgotten.
+        */
+        key: "rework-required",
+        statuses: [ASSIGNMENT_STATUS.REWORK_REQUIRED],
+        title: "Rework Requested",
+        description:
+            "The municipal corporation reviewed your proof and asked for more work. Continue the cleanup, record what you do, then upload fresh proof - it returns for review automatically.",
+    },
+    {
+        key: "in-progress",
+        statuses: [ASSIGNMENT_STATUS.IN_PROGRESS],
         title: "In Progress",
-        description: "Work you have started. Upload a photograph once the site is clear.",
+        description:
+            "Work you have started. Record activity entries if the job runs over several visits, and upload a photograph once the site is clear.",
     },
     {
-        status: ASSIGNMENT_STATUS.CLAIMED,
-        title: "Claimed",
-        description: "Tasks you have taken on but not yet started.",
+        key: "assigned",
+        statuses: [ASSIGNMENT_STATUS.ASSIGNED, ASSIGNMENT_STATUS.CLAIMED],
+        title: "Assigned to You",
+        description:
+            "Approved by the municipal corporation and awaiting your start.",
     },
     {
-        status: ASSIGNMENT_STATUS.COMPLETED,
+        /*
+          Proof accepted by AI but not yet signed off. Without this group the
+          card would disappear the moment the upload succeeded, leaving the
+          cleaner unsure whether the work had been recorded at all.
+        */
+        key: "awaiting-approval",
+        statuses: [ASSIGNMENT_STATUS.AWAITING_APPROVAL],
+        title: "Awaiting Municipal Approval",
+        // Wording is careful: the officer may still return the work for rework
+        description:
+            "Proof checked by AI and forwarded to the municipal corporation. Nothing is needed from you unless an officer asks for rework.",
+    },
+    {
+        key: "completed",
+        statuses: [ASSIGNMENT_STATUS.COMPLETED],
+        // Closure is a municipal decision, not an AI one - see Phase 15
         title: "Completed",
-        description: "Cleanups verified by AI and closed.",
+        description:
+            "Cleanups approved by the municipal corporation and closed.",
     },
 ];
 
@@ -64,7 +119,7 @@ const GROUPS = [
  * This is a component rather than inline JSX because each group needs its
  * own page counter, and a hook cannot be called from inside a map callback.
  */
-function TaskGroup({ group, onStart, onUpload, busyId }) {
+function TaskGroup({ group, onStart, onUpload, onActivityLog, busyId }) {
 
     // Ten tasks to a page, counted separately for each group
     const {
@@ -105,6 +160,8 @@ function TaskGroup({ group, onStart, onUpload, busyId }) {
                         assignment={assignment}
                         onStart={onStart}
                         onUpload={onUpload}
+                        // The card shows this only while the task is in progress
+                        onActivityLog={onActivityLog}
                         busyId={busyId}
                     />
                 ))}
@@ -131,45 +188,28 @@ export default function MyTasksPage() {
     const { assignments, loading, error, reload, refresh } =
         useAssignments(getMyTasks);
 
-    // Assignment currently being started
-    const [startingId, setStartingId] = useState(null);
+    // Assignment whose start dialog is open
+    const [startTarget, setStartTarget] = useState(null);
 
     // Assignment whose upload dialog is open
     const [uploadTarget, setUploadTarget] = useState(null);
 
+    // Assignment whose activity log is open
+    const [activityTarget, setActivityTarget] = useState(null);
+
     // Feedback from the most recent action
-    const [actionError, setActionError] = useState("");
     const [actionMessage, setActionMessage] = useState("");
 
     /**
-     * Move a claimed task into active work.
-     * The backend requires this before it will accept a cleanup photograph.
+     * Open the start dialog for an assignment.
+     *
+     * No request is sent from here. StartCleanupDialog captures the cleaner's
+     * position first and performs the call itself, because the backend records
+     * that position as the start evidence for the cleanup.
      */
-    async function handleStart(assignment) {
-
-        setStartingId(assignment.assignmentId);
-        setActionError("");
+    function handleStart(assignment) {
         setActionMessage("");
-
-        try {
-            await startCleanup(assignment.assignmentId);
-
-            setActionMessage(
-                `Work started on "${assignment.reportTitle}". Upload a photograph once the site is clear.`
-            );
-
-            // Quietly move the card into the In Progress group
-            refresh();
-        } catch (requestError) {
-            setActionError(
-                getErrorMessage(
-                    requestError,
-                    "This task could not be started. Please try again."
-                )
-            );
-        } finally {
-            setStartingId(null);
-        }
+        setStartTarget(assignment);
     }
 
     /*
@@ -179,12 +219,33 @@ export default function MyTasksPage() {
     const disclaimer = useCleanupDisclaimer(handleStart);
 
     /**
-     * Called only when AI accepted the cleanup, so the task can move to
-     * Completed. A rejected upload leaves everything exactly as it was.
+     * Called once the backend has moved the assignment to IN_PROGRESS.
+     */
+    function handleStarted(assignment) {
+        setStartTarget(null);
+
+        setActionMessage(
+            `Work started on "${assignment.reportTitle}". You may record activity entries as the work proceeds, and must upload a photograph once the site is clear.`
+        );
+
+        // Quietly move the card into the In Progress group
+        refresh();
+    }
+
+    /**
+     * Called only when AI accepted the cleanup photograph.
+     *
+     * The task now waits on the municipal corporation: AI verification alone
+     * neither closes the report nor releases the reward.
      */
     function handleVerified() {
+        /*
+          Deliberately does not congratulate the cleaner on finishing. The AI
+          pass only forwards the proof; an officer may still request rework,
+          in which case the task returns to the Rework Requested group above.
+        */
         setActionMessage(
-            "Cleanup verified. The report has been marked resolved and your reward recorded."
+            "Cleanup proof checked by AI and sent to the municipal corporation for review. The report is closed and your reward recorded only once an officer approves the completion - if rework is requested, the task reopens for you."
         );
 
         refresh();
@@ -193,8 +254,9 @@ export default function MyTasksPage() {
     // Split the flat list into lifecycle groups for display
     const grouped = GROUPS.map((group) => ({
         ...group,
-        items: assignments.filter(
-            (assignment) => assignment.assignmentStatus === group.status
+        // A group may cover more than one status - see GROUPS above
+        items: assignments.filter((assignment) =>
+            group.statuses.includes(assignment.assignmentStatus)
         ),
     }));
 
@@ -206,21 +268,13 @@ export default function MyTasksPage() {
             <PageHeading
                 title="My Tasks"
                 titleHi="मेरे कार्य"
-                subtitle="Cleanup work you have claimed, in progress, and completed."
+                subtitle="Cleanup work assigned to you, in progress, and completed."
             />
 
             {actionMessage && (
                 <div className="mb-4">
                     <Alert type="success" title="Updated">
                         {actionMessage}
-                    </Alert>
-                </div>
-            )}
-
-            {actionError && (
-                <div className="mb-4">
-                    <Alert type="error" title="Action Failed">
-                        {actionError}
                     </Alert>
                 </div>
             )}
@@ -233,11 +287,11 @@ export default function MyTasksPage() {
                 <ReportListError message={error} onRetry={reload} />
             )}
 
-            {/* No work claimed yet - point at where to find some */}
+            {/* Nothing assigned yet - point at where proposals begin */}
             {!loading && !error && empty && (
                 <ReportListEmpty
                     title="No tasks yet"
-                    description="You have not claimed any cleanup work. Available Tasks lists the reports waiting in your area."
+                    description="No cleanup work has been assigned to you yet. Inspect an available site and submit a proposal to be considered."
                     actionLabel="Browse Available Tasks"
                     actionTo="/cleaner/available"
                 />
@@ -255,17 +309,28 @@ export default function MyTasksPage() {
 
                         return (
                             <TaskGroup
-                                key={group.status}
+                                key={group.key}
                                 group={group}
-                                // Opens the notice; the start call runs on acceptance
+                                // Opens the notice; the start dialog follows on acceptance
                                 onStart={disclaimer.requestAcknowledgement}
                                 onUpload={setUploadTarget}
-                                busyId={startingId}
+                                onActivityLog={setActivityTarget}
+                                // The Start button stays busy while its dialog is open
+                                busyId={startTarget?.assignmentId}
                             />
                         );
                     })}
 
                 </div>
+            )}
+
+            {/* Location capture and the actual start call for the selected task */}
+            {startTarget && (
+                <StartCleanupDialog
+                    assignment={startTarget}
+                    onClose={() => setStartTarget(null)}
+                    onStarted={() => handleStarted(startTarget)}
+                />
             )}
 
             {/* AI verification dialog for the selected task */}
@@ -277,11 +342,22 @@ export default function MyTasksPage() {
                 />
             )}
 
+            {/*
+              Optional work diary. onChanged refreshes the list so the entry
+              count on the card keeps pace with what was just recorded.
+            */}
+            {activityTarget && (
+                <ActivityLogDialog
+                    assignment={activityTarget}
+                    onClose={() => setActivityTarget(null)}
+                    onChanged={refresh}
+                />
+            )}
+
             {/* Presence undertaking - shown afresh every time work is started */}
             <CleanupDisclaimerDialog
                 open={Boolean(disclaimer.pendingAssignment)}
                 reportTitle={disclaimer.pendingAssignment?.reportTitle}
-                busy={startingId !== null}
                 onAccept={disclaimer.accept}
                 onCancel={disclaimer.cancel}
             />

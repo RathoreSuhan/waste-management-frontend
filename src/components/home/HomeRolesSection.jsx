@@ -58,7 +58,9 @@ const ROLES = [
         summary:
             "Individuals, NGOs, private firms and municipal teams doing the work.",
         duties: [
-            "Claim reported sites in your area",
+            // Cleanup is awarded by the corporation, not taken - see the proposal workflow
+            "Inspect reported sites in your area and submit a cleanup proposal",
+            "Carry out the work once the municipal corporation assigns it to you",
             "Upload proof once the site is cleared",
             "Earn reward points for verified work",
             "Appear on city, state and national rankings",

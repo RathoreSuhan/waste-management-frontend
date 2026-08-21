@@ -9,10 +9,12 @@ import {
  * ----------------------------------------------------------
  * Shows where a cleanup task sits in its lifecycle:
  *
- *   Unclaimed   -> saffron
- *   Claimed     -> slate
- *   In Progress -> blue
- *   Completed   -> India green
+ *   Open         -> saffron   (no proposal received yet)
+ *   Under Review -> amber     (proposals awaiting municipal decision)
+ *   Assigned     -> indigo    (corporation awarded the work)
+ *   Claimed      -> slate     (legacy rows from before proposals existed)
+ *   In Progress  -> blue
+ *   Completed    -> India green
  *
  * Deliberately mirrors StatusBadge so the report status and
  * the assignment status read as the same family of marker.

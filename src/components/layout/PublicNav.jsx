@@ -8,6 +8,7 @@ import BiText from "@/components/common/BiText";
 import { useAuthContext } from "@/hooks/useAuthContext";
 
 import { UI } from "@/i18n/strings";
+import { getDashboardPath } from "@/utils/roleRedirect"; // one place decides each role's landing page
 
 
 
@@ -45,13 +46,12 @@ export default function PublicNav() {
     const [drawerOpen, setDrawerOpen] = useState(false);
 
 
-    // Dashboard path differs per role
-    const dashboardPath =
-        user?.role === "ROLE_ADMIN"
-            ? "/admin/dashboard"
-            : user?.role === "ROLE_CLEANER"
-              ? "/cleaner/dashboard"
-              : "/citizen/dashboard";
+    /*
+      Dashboard path differs per role. This reuses the same helper the login
+      redirect uses, so a municipal officer reaches /municipal/dashboard here
+      instead of being sent to the citizen desk and bounced by RoleRoute.
+    */
+    const dashboardPath = getDashboardPath(user?.role);
 
     /**
      * Send the user to the reporting form, if they are allowed to use it.

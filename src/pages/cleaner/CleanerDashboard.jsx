@@ -7,6 +7,7 @@ import {
     ArrowRight,
     Search,
     Award,
+    FileText,
 } from "lucide-react";
 
 import PageHeading from "@/components/common/PageHeading";
@@ -83,8 +84,15 @@ export default function CleanerDashboard() {
         // Guard against a non-array response
         const list = Array.isArray(assignments) ? assignments : [];
 
-        const claimed = list.filter(
-            (task) => task.assignmentStatus === ASSIGNMENT_STATUS.CLAIMED
+        /*
+          Work the municipal corporation has awarded to this cleaner but
+          which has not been started. CLAIMED is counted alongside ASSIGNED
+          because rows created before the proposal workflow still carry it.
+        */
+        const assigned = list.filter(
+            (task) =>
+                task.assignmentStatus === ASSIGNMENT_STATUS.ASSIGNED ||
+                task.assignmentStatus === ASSIGNMENT_STATUS.CLAIMED
         ).length;
 
         const inProgress = list.filter(
@@ -95,13 +103,13 @@ export default function CleanerDashboard() {
             (task) => task.assignmentStatus === ASSIGNMENT_STATUS.COMPLETED
         ).length;
 
-        return { claimed, inProgress, completed };
+        return { assigned, inProgress, completed };
     }, [assignments]);
 
     /**
      * Tasks still to be finished, newest first.
      *
-     * In-progress work is listed before claimed work because it is closer to
+     * In-progress work is listed before assigned work because it is closer to
      * completion and only needs a photograph to close.
      */
     const activeTasks = useMemo(() => {
@@ -112,6 +120,8 @@ export default function CleanerDashboard() {
             .filter(
                 (task) =>
                     task.assignmentStatus === ASSIGNMENT_STATUS.IN_PROGRESS ||
+                    task.assignmentStatus === ASSIGNMENT_STATUS.ASSIGNED ||
+                    // Legacy rows from before the proposal workflow
                     task.assignmentStatus === ASSIGNMENT_STATUS.CLAIMED
             )
             .sort((a, b) => {
@@ -142,10 +152,10 @@ export default function CleanerDashboard() {
                 {/* Key figures */}
                 <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                     <StatCard
-                        title="Claimed"
+                        title="Assigned"
                         // Dash while the request is running
-                        value={loading ? "—" : String(stats.claimed)}
-                        description="Tasks you have taken but not yet started."
+                        value={loading ? "—" : String(stats.assigned)}
+                        description="Awarded to you by the corporation, not yet started."
                         accent="saffron"
                         icon={ClipboardList}
                     />
@@ -180,19 +190,38 @@ export default function CleanerDashboard() {
                             Find cleanup work in your area
                         </h2>
 
+                        {/*
+                          Reworded for the proposal workflow: a site is no
+                          longer taken by pressing a button first. The cleaner
+                          inspects it, proposes for it, and the municipal
+                          corporation decides.
+                        */}
                         <p className="mt-1 text-sm text-ink-muted">
-                            Citizens report uncollected waste every day. Claim a task
-                            to add it to your list and begin work.
+                            Citizens report uncollected waste every day. Inspect a site,
+                            submit a cleanup proposal, and the municipal corporation
+                            decides who carries out the work.
                         </p>
                     </div>
 
-                    <Link
-                        to="/cleaner/available"
-                        className="inline-flex items-center gap-2 rounded-gov border border-gov-blue bg-gov-blue px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-gov-blue-dark"
-                    >
-                        <Search size={15} aria-hidden="true" />
-                        Browse Available Tasks
-                    </Link>
+                    {/* Two steps of the same path, so both are offered here */}
+                    <div className="flex flex-wrap items-center gap-3">
+                        <Link
+                            to="/cleaner/available"
+                            className="inline-flex items-center gap-2 rounded-gov border border-gov-blue bg-gov-blue px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-gov-blue-dark"
+                        >
+                            <Search size={15} aria-hidden="true" />
+                            Browse Available Tasks
+                        </Link>
+
+                        {/* Where a submitted proposal can be tracked or withdrawn */}
+                        <Link
+                            to="/cleaner/proposals"
+                            className="inline-flex items-center gap-2 rounded-gov border border-rule bg-white px-5 py-2.5 text-sm font-semibold text-gov-navy transition hover:bg-paper"
+                        >
+                            <FileText size={15} aria-hidden="true" />
+                            My Proposals
+                        </Link>
+                    </div>
                 </section>
 
                 {/* Work still open */}
@@ -237,7 +266,7 @@ export default function CleanerDashboard() {
                             ) : (
                                 <ReportListEmpty
                                     title="No active tasks"
-                                    description="You have no cleanup work in hand. Claim a task to get started."
+                                    description="You have no cleanup work in hand. Inspect an available site and submit a proposal to be considered for one."
                                     actionLabel="Browse Available Tasks"
                                     actionTo="/cleaner/available"
                                 />
