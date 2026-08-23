@@ -1,12 +1,13 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import {
     X,
     NotebookPen,
     Plus,
-    Trash2,
     MapPin,
     Crosshair,
-    Clock,
+    History,        // the record kept on its own page
+    ArrowRight,     // leaving the dialog for that page
 } from "lucide-react";
 
 import Button from "@/components/ui/Button";
@@ -15,14 +16,9 @@ import Textarea from "@/components/ui/Textarea";
 import ImageUploadField from "@/components/reports/ImageUploadField";
 import useModalBehaviour from "@/hooks/useModalBehaviour";
 import useGeoLocation from "@/hooks/useGeoLocation";
-import {
-    addActivityLog,
-    deleteActivityLog,
-    getActivityLogs,
-} from "@/services/cleanupService";
+import { addActivityLog } from "@/services/cleanupService";
 import { getErrorMessage } from "@/utils/errorMessage";
-import { formatCoordinates, formatDateTime } from "@/utils/formatters";
-import { formatDistance } from "@/utils/geo";
+import { formatCoordinates } from "@/utils/formatters";
 import {
     ALLOWED_IMAGE_TYPES,
     MAX_IMAGE_SIZE_BYTES,
@@ -31,19 +27,33 @@ import {
 
 /**
  * ============================================================================
- * Activity Log Dialog (Task 4)
+ * Activity Log Dialog — writing only
  * ============================================================================
  *
- * The cleaner's optional work diary for a cleanup that is under way.
+ * Records one entry in the cleaner's optional work diary for a cleanup that is
+ * under way.
  *
  * Large sites are not cleared in one visit, and the Municipal Corporation
  * reviewing the final proof has no way of knowing what happened in between.
  * Entries fill that gap: a line of text, when it happened, and optionally a
  * photograph or a position.
  *
- * Optional is the operative word. Nothing here gates the final proof upload,
- * so a bin cleared in twenty minutes never needs an entry. The dialog says so
- * explicitly rather than leaving the cleaner guessing.
+ * Why this dialog no longer lists anything
+ * ----------------------------------------
+ * It used to do both jobs - show every entry recorded so far and take the next
+ * one. On a cleanup that ran across several visits the list grew until the
+ * form it was meant to introduce sat below the fold, and each entry carried a
+ * delete button that had to be locked while any other write was in flight.
+ * One dialog, two concerns, and a lot of state holding them apart.
+ *
+ * The record now lives on its own page - /cleaner/tasks/:assignmentId/activity
+ * - which can afford to page through the entries and expand them. This dialog
+ * keeps the single job it is opened for: write the next entry. A link at the
+ * top leads to the record for anyone who came here to read it.
+ *
+ * Optional is still the operative word. Nothing here gates the final proof
+ * upload, so a bin cleared in twenty minutes never needs an entry. The dialog
+ * says so explicitly rather than leaving the cleaner guessing.
  *
  * Because entries can be back-dated, a multi-day cleanup can be written up
  * from memory at the end of the day - the date-time field is the only thing
@@ -61,15 +71,6 @@ export default function ActivityLogDialog({
     onChanged,
     canEdit = true,        // False once the cleanup has left IN_PROGRESS
 }) {
-
-    // Entries already recorded against this assignment, oldest first
-    const [entries, setEntries] = useState([]);
-
-    // True until the first load settles
-    const [loading, setLoading] = useState(true);
-
-    // Failure while reading the diary, kept apart from write failures
-    const [loadError, setLoadError] = useState("");
 
     // ---- Add-entry form state ----
 
@@ -97,8 +98,14 @@ export default function ActivityLogDialog({
     // Failure from the save request
     const [saveError, setSaveError] = useState("");
 
-    // Id of the entry currently being removed, so only its button spins
-    const [deletingId, setDeletingId] = useState(null);
+    /*
+      How many entries this sitting has added.
+
+      With the list gone, a saved entry no longer appears anywhere in the
+      dialog, so the form would otherwise just empty itself and say nothing.
+      This drives an explicit confirmation instead.
+    */
+    const [savedCount, setSavedCount] = useState(0);
 
     // Browser geolocation plumbing, shared with the other cleanup dialogs
     const {
@@ -113,50 +120,20 @@ export default function ActivityLogDialog({
       ignored during a write so a stray keypress cannot hide its outcome.
     */
     const panelRef = useModalBehaviour(true, onClose, {
-        closeOnEscape: !saving && deletingId === null,
+        closeOnEscape: !saving,
     });
 
     // Upper bound for the date-time field: work cannot be logged in the future
     const nowLocalValue = useMemo(() => toLocalInputValue(new Date()), []);
 
-    /**
-     * Load the diary once per assignment.
-     *
-     * Entries are held locally afterwards and patched from each write
-     * response, which keeps the dialog responsive without re-fetching.
-     */
-    useEffect(() => {
+    /*
+      Entries on record, counting what this sitting has just added.
 
-        // Prevents state updates from an outdated request
-        let ignore = false;
-
-        getActivityLogs(assignment.assignmentId)
-            .then((data) => {
-                if (!ignore) {
-                    setEntries(data);
-                    setLoadError("");
-                }
-            })
-            .catch((requestError) => {
-                if (!ignore) {
-                    setLoadError(
-                        getErrorMessage(
-                            requestError,
-                            "The activity entries could not be loaded."
-                        )
-                    );
-                }
-            })
-            .finally(() => {
-                if (!ignore) {
-                    setLoading(false);
-                }
-            });
-
-        return () => {
-            ignore = true;
-        };
-    }, [assignment.assignmentId]);
+      activityLogCount comes from the task listing and is only refreshed when
+      the parent re-fetches, so the local additions are added on top to keep
+      the number honest while the dialog stays open.
+    */
+    const recordedCount = (assignment.activityLogCount ?? 0) + savedCount;
 
     /**
      * Attach the cleaner's current position to the entry being written.
@@ -252,7 +229,8 @@ export default function ActivityLogDialog({
         setSaveError("");
 
         try {
-            const created = await addActivityLog(
+            // The saved entry is not held here any more - the record page reads it
+            await addActivityLog(
                 assignment.assignmentId,
                 {
                     description: trimmed,
@@ -263,10 +241,10 @@ export default function ActivityLogDialog({
                 file                                  // Optional photograph
             );
 
-            // Appended rather than re-fetched: the list is already ordered
-            setEntries((current) => [...current, created]);
-
             resetForm();
+
+            // Drives the confirmation, since nothing is listed here
+            setSavedCount((count) => count + 1);
 
             // Keeps the entry count on the task card honest
             onChanged?.();
@@ -279,38 +257,6 @@ export default function ActivityLogDialog({
             );
         } finally {
             setSaving(false);
-        }
-    }
-
-    /**
-     * Remove one of the cleaner's own entries.
-     *
-     * Kept simple deliberately: an entry is a note, not evidence the
-     * municipality has acted on, and the backend allows removal only while
-     * the cleanup is still in progress.
-     */
-    async function handleDelete(activityLogId) {
-        setDeletingId(activityLogId);
-        setSaveError("");
-
-        try {
-            await deleteActivityLog(activityLogId);
-
-            // Drop it locally instead of reloading the whole diary
-            setEntries((current) =>
-                current.filter((entry) => entry.activityLogId !== activityLogId)
-            );
-
-            onChanged?.();
-        } catch (requestError) {
-            setSaveError(
-                getErrorMessage(
-                    requestError,
-                    "The activity entry could not be removed."
-                )
-            );
-        } finally {
-            setDeletingId(null);
         }
     }
 
@@ -345,7 +291,7 @@ export default function ActivityLogDialog({
                             className="flex items-center gap-2 font-serif text-lg font-bold text-gov-navy"
                         >
                             <NotebookPen size={18} aria-hidden="true" />
-                            Cleanup Activity Log
+                            Record Cleanup Activity
                         </h2>
 
                         {/* Which task this diary belongs to */}
@@ -359,7 +305,7 @@ export default function ActivityLogDialog({
                         onClick={onClose}
                         aria-label="Close"
                         // Blocked mid-write so the outcome is not hidden
-                        disabled={saving || deletingId !== null}
+                        disabled={saving}
                         // p-2 rather than p-1: a 16px hit area is not usable on a phone
                         className="shrink-0 rounded-gov p-2 text-ink-muted transition hover:bg-slate-100 hover:text-ink disabled:opacity-50"
                     >
@@ -378,51 +324,50 @@ export default function ActivityLogDialog({
                         photograph without any entries.
                     </Alert>
 
-                    {/* ---------------- Existing entries ---------------- */}
-                    <section>
-                        <h3 className="mb-2 text-sm font-semibold text-ink">
-                            Recorded Activity
-                            {/* Count is meaningful only once loading finishes */}
-                            {!loading && entries.length > 0 && (
-                                <span className="ml-1 font-normal text-ink-muted">
-                                    ({entries.length})
-                                </span>
-                            )}
-                        </h3>
+                    {/*
+                      The way through to the record.
 
-                        {loading && (
-                            <p className="text-sm text-ink-muted">
-                                Loading activity entries…
+                      This dialog writes; the page reads. Whoever opened the
+                      Activity Log to check what was already recorded needs one
+                      obvious way out to it, and this is it.
+                    */}
+                    <div className="flex flex-col gap-2 rounded-gov border border-rule bg-paper px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+
+                        <div className="min-w-0">
+                            <p className="flex items-center gap-2 text-sm font-semibold text-ink">
+                                <History size={15} aria-hidden="true" />
+                                Already recorded
                             </p>
-                        )}
 
-                        {!loading && loadError && (
-                            <Alert type="error">{loadError}</Alert>
-                        )}
-
-                        {/* An empty diary is normal, not an error */}
-                        {!loading && !loadError && entries.length === 0 && (
-                            <p className="rounded-gov border border-dashed border-rule bg-paper px-4 py-3 text-sm text-ink-muted">
-                                No activity recorded yet.
+                            <p className="mt-0.5 text-xs text-ink-muted">
+                                {recordedCount === 0
+                                    // An empty diary is normal, not a warning
+                                    ? "Nothing has been recorded for this cleanup yet."
+                                    : `${recordedCount} ${recordedCount === 1 ? "entry" : "entries"} on record, earliest first.`}
                             </p>
-                        )}
+                        </div>
 
-                        {!loading && !loadError && entries.length > 0 && (
-                            <ol className="space-y-3">
-                                {entries.map((entry) => (
-                                    <ActivityEntry
-                                        key={entry.activityLogId}
-                                        entry={entry}
-                                        canEdit={canEdit}
-                                        deleting={deletingId === entry.activityLogId}
-                                        // One write at a time keeps the list truthful
-                                        disabled={saving || deletingId !== null}
-                                        onDelete={handleDelete}
-                                    />
-                                ))}
-                            </ol>
-                        )}
-                    </section>
+                        <Link
+                            to={`/cleaner/tasks/${assignment.assignmentId}/activity`}
+                            // The record page has no way to look a report up by id
+                            state={{
+                                reportTitle: assignment.reportTitle,
+                                reportId: assignment.reportId,
+                            }}
+                            // Closes the dialog as well, so the parent is not left holding it open
+                            onClick={onClose}
+                            /*
+                              Neutralised mid-save. Navigating away during a
+                              write would abandon the entry being submitted.
+                            */
+                            aria-disabled={saving}
+                            tabIndex={saving ? -1 : undefined}
+                            className={`inline-flex shrink-0 items-center gap-1.5 text-sm font-semibold text-gov-blue hover:underline ${saving ? "pointer-events-none opacity-50" : ""}`}
+                        >
+                            View Activity Log
+                            <ArrowRight size={14} aria-hidden="true" />
+                        </Link>
+                    </div>
 
                     {/* ---------------- Add entry ---------------- */}
                     {canEdit && (
@@ -561,7 +506,24 @@ export default function ActivityLogDialog({
                                 </div>
                             </div>
 
-                            {/* Write failure, distinct from the load failure above */}
+                            {/*
+                              Confirmation of the write.
+
+                              The entry is not shown here any longer, so it is
+                              stated instead - with the way to go and read it.
+                            */}
+                            {savedCount > 0 && !saving && !saveError && (
+                                <Alert type="success" title="Entry recorded">
+                                    {savedCount === 1
+                                        ? "Your entry has been added to the activity log."
+                                        : `${savedCount} entries have been added to the activity log.`}
+                                    {" "}
+                                    Add another below, or open the activity log to
+                                    read the full record.
+                                </Alert>
+                            )}
+
+                            {/* Write failure, kept next to the button that caused it */}
                             {saveError && <Alert type="error">{saveError}</Alert>}
 
                             <div className="flex flex-col gap-2 sm:flex-row">
@@ -574,7 +536,7 @@ export default function ActivityLogDialog({
                                     type="button"
                                     variant="secondary"
                                     onClick={onClose}
-                                    disabled={saving || deletingId !== null}
+                                    disabled={saving}
                                 >
                                     Close
                                 </Button>
@@ -583,14 +545,15 @@ export default function ActivityLogDialog({
                     )}
 
                     {/*
-                      Once the proof has been submitted the diary is read-only:
-                      the municipality is reviewing exactly what is shown here.
+                      Once the proof has been submitted the diary is closed:
+                      the municipality is reviewing exactly what is on record.
                     */}
                     {!canEdit && (
                         <div className="border-t border-rule pt-5">
                             <Alert type="info">
                                 This cleanup is no longer in progress, so entries
-                                can no longer be added or removed.
+                                can no longer be added. The record itself remains
+                                available to read.
                             </Alert>
 
                             <div className="mt-3">
@@ -607,83 +570,6 @@ export default function ActivityLogDialog({
                 </div>
             </div>
         </div>
-    );
-}
-
-/**
- * ----------------------------------------------------------
- * Activity Entry
- * ----------------------------------------------------------
- * One line of the diary: what happened, when, and whatever
- * evidence the cleaner chose to attach.
- * ----------------------------------------------------------
- */
-function ActivityEntry({ entry, canEdit, deleting, disabled, onDelete }) {
-
-    return (
-        <li className="rounded-gov border border-rule bg-white px-4 py-3">
-
-            <div className="flex items-start justify-between gap-3">
-
-                <div className="min-w-0">
-                    {/* When comes first: the timeline is the point of the diary */}
-                    <p className="flex items-center gap-1.5 text-xs font-medium text-ink-muted">
-                        <Clock size={13} aria-hidden="true" />
-                        {formatDateTime(entry.activityAt)}
-                    </p>
-
-                    {/* whitespace-pre-line keeps the cleaner's own line breaks */}
-                    <p className="mt-1 whitespace-pre-line text-sm leading-relaxed text-ink">
-                        {entry.description}
-                    </p>
-                </div>
-
-                {/* Removal is offered only while the cleanup is in progress */}
-                {canEdit && (
-                    <Button
-                        type="button"
-                        variant="secondary"
-                        onClick={() => onDelete(entry.activityLogId)}
-                        loading={deleting}
-                        // Blocked while any other write is in flight
-                        disabled={disabled && !deleting}
-                        // An icon action must not stretch across the entry
-                        fullWidth={false}
-                        aria-label="Delete this activity entry"
-                        className="shrink-0"
-                    >
-                        <Trash2 size={14} aria-hidden="true" />
-                    </Button>
-                )}
-            </div>
-
-            {/* Optional progress photograph */}
-            {entry.imageUrl && (
-                <img
-                    src={entry.imageUrl}
-                    alt="Photograph attached to this activity entry"
-                    className="mt-3 h-40 w-full rounded-gov border border-rule object-cover"
-                />
-            )}
-
-            {/* Optional position, with the measured distance when available */}
-            {entry.latitude !== null && entry.latitude !== undefined && (
-                <p className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-ink-muted">
-                    <MapPin size={13} aria-hidden="true" />
-
-                    {formatCoordinates(entry.latitude, entry.longitude)}
-
-                    {/* Informational only - entries are never rejected on distance */}
-                    {entry.distanceMeters !== null &&
-                        entry.distanceMeters !== undefined && (
-                            <span>
-                                • {formatDistance(entry.distanceMeters)} from the
-                                reported site
-                            </span>
-                        )}
-                </p>
-            )}
-        </li>
     );
 }
 

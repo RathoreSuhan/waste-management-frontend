@@ -11,6 +11,7 @@ import { LOCATION_STATUS } from "@/utils/locationVerification";
 import { CLEANUP_PROOF_RADIUS_METRES } from "@/constants/assignmentConstants";
 import { MIN_ACCEPTABLE_ACCURACY_METRES } from "@/constants/reportConstants";
 import { formatDistance } from "@/utils/geo";
+import { formatRelativeTime } from "@/utils/formatters"; // dates the inspection already on file
 
 /**
  * ============================================================================
@@ -32,6 +33,12 @@ import { formatDistance } from "@/utils/geo";
  * The measurement is repeated by the backend on upload, so this panel is about
  * telling the cleaner what to do before a large file is sent - it is not the
  * safeguard itself.
+ *
+ * One caller - a proposal being revised - already holds a position that passed
+ * this same check on the first visit. It hands that reading in through the
+ * `saved*` props, and the panel then presents it as the position on file while
+ * leaving Capture in place, so a fresh reading stays optional rather than
+ * mandatory. Callers that have nothing on file simply omit those props.
  * ============================================================================
  */
 
@@ -99,11 +106,31 @@ export default function CleanupLocationCapture({
     locationError,
     onCapture,
     disabled = false,
+
+    // A reading accepted on an earlier visit, passed in only when one exists
+    savedLatitude = null,
+    savedLongitude = null,
+    savedDistanceMetres = null,
+    savedInspectedAt = null,
 }) {
 
+    // Half a coordinate pair is unusable, so both must be real numbers
+    const hasSavedFix =
+        Number.isFinite(savedLatitude) && Number.isFinite(savedLongitude);
+
+    // The stored reading stands until the cleaner chooses to take a new one
+    const showingSavedFix = hasSavedFix && !position;
+
     // Too-far copy carries the measured distance, so it cannot live in a table
-    const meta =
-        status === LOCATION_STATUS.TOO_FAR
+    const meta = showingSavedFix
+        ? {
+            title: "Position Already Verified For This Site",
+            description:
+                "The reading from your earlier inspection is on file and was accepted, so a fresh one is not required. Capture again only if you inspected the site from a different spot - the new reading would then replace this one.",
+            tone: "success",
+            Icon: MapPinCheck,
+        }
+        : status === LOCATION_STATUS.TOO_FAR
             ? {
                 title: "You Are Away From The Reported Site",
                 description: `Your position is ${formatDistance(distanceMetres)} from the location the citizen reported. Move to within ${CLEANUP_PROOF_RADIUS_METRES} m of the waste and capture again.`,
@@ -182,6 +209,51 @@ export default function CleanupLocationCapture({
                         </dl>
                     )}
 
+                    {/* ---------------- The inspection already on file ---------------- */}
+                    {showingSavedFix && (
+                        /* Same shape as a fresh reading, so the two are read alike */
+                        <dl className="mt-3 grid gap-x-6 gap-y-1 text-xs text-ink sm:grid-cols-2">
+
+                            <div className="flex gap-1.5">
+                                <dt className="font-semibold text-ink-muted">
+                                    Latitude
+                                </dt>
+                                <dd className="font-mono">
+                                    {savedLatitude.toFixed(6)}
+                                </dd>
+                            </div>
+
+                            <div className="flex gap-1.5">
+                                <dt className="font-semibold text-ink-muted">
+                                    Longitude
+                                </dt>
+                                <dd className="font-mono">
+                                    {savedLongitude.toFixed(6)}
+                                </dd>
+                            </div>
+
+                            {/* The distance that was measured and accepted at the time */}
+                            {Number.isFinite(savedDistanceMetres) && (
+                                <div className="flex gap-1.5">
+                                    <dt className="font-semibold text-ink-muted">
+                                        From Report
+                                    </dt>
+                                    <dd>{formatDistance(savedDistanceMetres)}</dd>
+                                </div>
+                            )}
+
+                            {/* Age of the reading, so a very old inspection is obvious */}
+                            {savedInspectedAt && (
+                                <div className="flex gap-1.5">
+                                    <dt className="font-semibold text-ink-muted">
+                                        Inspected
+                                    </dt>
+                                    <dd>{formatRelativeTime(savedInspectedAt)}</dd>
+                                </div>
+                            )}
+                        </dl>
+                    )}
+
                     {/* ---------------- Device or permission failure ---------------- */}
                     {locationError && (
                         <p
@@ -205,7 +277,9 @@ export default function CleanupLocationCapture({
                             <Crosshair size={14} aria-hidden="true" />
 
                             {/* Wording changes once a reading exists, so a retry is obvious */}
-                            {position ? "Capture Position Again" : "Capture My Position"}
+                            {position || showingSavedFix
+                                ? "Capture Position Again"
+                                : "Capture My Position"}
                         </Button>
                     </div>
                 </div>

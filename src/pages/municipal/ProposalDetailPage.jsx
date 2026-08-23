@@ -7,6 +7,7 @@ import Alert from "@/components/ui/Alert";
 import Button from "@/components/ui/Button";
 import BiText from "@/components/common/BiText";
 import AssignmentStatusBadge from "@/components/cleanup/AssignmentStatusBadge";
+import ProposalStatusBadge from "@/components/cleanup/ProposalStatusBadge"; // this bid's own state, named like the site line
 import ProposalDetailPanel from "@/components/municipal/ProposalDetailPanel";
 import ApprovalDecisionDialog from "@/components/municipal/ApprovalDecisionDialog";
 import Pagination from "@/components/common/Pagination";
@@ -19,9 +20,12 @@ import {
     APPROVAL_STAGE,
     getCleanerTypeLabel,
     getDecisionActions,
+    isAwaitingRevision,   // same rule as the queue card, so the lock cannot be bypassed here
+    isRevisionAnswered,
 } from "@/constants/municipalConstants";
 import { REVIEW_PAGE_SIZE } from "@/constants/paginationConstants"; // five rival bids to a page
 import { getErrorMessage } from "@/utils/errorMessage";
+import { formatRelativeTime } from "@/utils/formatters";
 
 /**
  * ============================================================================
@@ -167,6 +171,20 @@ export default function ProposalDetailPage() {
     // Only a live proposal may still be decided; a decided one is read-only here.
     const decidable = proposal ? isProposalEditable(proposal) : false;
 
+    /*
+      The revision lock, read from the same ledger field the queue card uses.
+
+      A proposal that has been sent back is still "editable" in the queue sense -
+      the officer may rule on it again once the cleaner answers - so without this
+      the full-plan page would happily offer all three verdicts and let an officer
+      reject a cleaner they had already told to resubmit. The backend refuses that
+      request, so the button could only produce a failed call.
+    */
+    const awaitingRevision = isAwaitingRevision(proposal);
+
+    // The corrected plan is back, so the figures above are the new ones.
+    const revisionAnswered = isRevisionAnswered(proposal);
+
     /** A verdict was pressed - collect the officer's remarks before sending. */
     function handleDecisionRequest(decision) {
         setDecisionError("");
@@ -277,7 +295,22 @@ export default function ProposalDetailPage() {
                                 </p>
                             </div>
 
-                            <AssignmentStatusBadge status={proposal.assignmentStatus} />
+                            {/*
+                              Two labelled pills instead of one bare badge: the officer
+                              was left guessing WHAT was "Under Review" - this proposal
+                              or the site itself. Mirrors the queue card wording.
+                            */}
+                            <div className="flex flex-col items-end gap-1.5">
+                                <span className="flex items-center gap-1.5 text-[11px] text-ink-muted">
+                                    <BiText en="Proposal" hi="प्रस्ताव" />
+                                    <ProposalStatusBadge status={proposal.status} />
+                                </span>
+
+                                <span className="flex items-center gap-1.5 text-[11px] text-ink-muted">
+                                    <BiText en="Site" hi="स्थल" />
+                                    <AssignmentStatusBadge status={proposal.assignmentStatus} />
+                                </span>
+                            </div>
                         </div>
 
                         {/* Cleaner identity, repeated here because rival bids share the title */}
@@ -345,6 +378,48 @@ export default function ProposalDetailPage() {
 
                         {decidable ? (
                             <>
+                                {/*
+                                  Waiting band: says why every button below is grey,
+                                  because a disabled control on its own explains nothing.
+                                */}
+                                {awaitingRevision ? (
+                                    <div className="mt-2 rounded-gov border border-orange-200 bg-orange-50 px-3 py-2.5">
+                                        <p className="text-[11px] font-semibold tracking-[0.15em] text-orange-800 uppercase">
+                                            <BiText
+                                                en="Waiting for the revised proposal"
+                                                hi="संशोधित प्रस्ताव की प्रतीक्षा"
+                                            />
+                                        </p>
+                                        <p className="mt-0.5 text-sm text-orange-900">
+                                            You have already asked{" "}
+                                            {proposal.cleanerName || "this cleaner"} to revise this
+                                            plan, so all three decisions stay locked until the
+                                            revised plan arrives. This prevents a second, conflicting
+                                            reply to the same request.
+                                        </p>
+                                    </div>
+                                ) : null}
+
+                                {/* The mirror image: the answer is in, the desk is open again */}
+                                {revisionAnswered ? (
+                                    <div className="mt-2 rounded-gov border border-blue-200 bg-blue-50 px-3 py-2.5">
+                                        <p className="text-[11px] font-semibold tracking-[0.15em] text-gov-blue uppercase">
+                                            <BiText
+                                                en="Revised proposal received"
+                                                hi="संशोधित प्रस्ताव प्राप्त"
+                                            />
+                                        </p>
+                                        <p className="mt-0.5 text-sm text-gov-navy">
+                                            {proposal.cleanerName || "The cleaner"} answered your
+                                            revision request
+                                            {proposal.latestDecisionAt
+                                                ? ` ${formatRelativeTime(proposal.latestDecisionAt)}`
+                                                : ""}
+                                            . The plan above is the updated one.
+                                        </p>
+                                    </div>
+                                ) : null}
+
                                 <p className="mt-1 text-sm text-ink-muted">
                                     Approving this plan authorises {proposal.cleanerName} to
                                     clean the site. Any other proposal for the same site is
@@ -358,8 +433,15 @@ export default function ProposalDetailPage() {
                                             type="button"
                                             variant={action.variant}
                                             fullWidth={false}
-                                            disabled={decisionBusy}
+
+                                            // One lock for the whole row while the revision is unanswered
+                                            disabled={decisionBusy || awaitingRevision}
                                             className="px-3 py-2 text-sm"
+                                            title={
+                                                awaitingRevision
+                                                    ? "Locked until the cleaner submits the revised proposal"
+                                                    : undefined
+                                            }
                                             onClick={() =>
                                                 handleDecisionRequest(action.decision)
                                             }

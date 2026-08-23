@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { MapPin, Users, Clock, Layers, FileText, Pencil } from "lucide-react"; // Pencil marks the revise/edit actions
+import { MapPin, Users, Clock, Layers, FileText, Pencil, CheckCircle2 } from "lucide-react"; // Pencil marks the revise/edit actions, CheckCircle2 the resubmitted revision
 
 import PageHeading from "@/components/common/PageHeading";
 import Alert from "@/components/ui/Alert";
@@ -8,11 +8,14 @@ import Button from "@/components/ui/Button";
 import Pagination from "@/components/common/Pagination";
 import ProposalStatusBadge from "@/components/cleanup/ProposalStatusBadge";
 import usePagination from "@/hooks/usePagination";
+import { CLEANER_PAGE_SIZE } from "@/constants/paginationConstants";
 import useProposals from "@/hooks/useProposals";
 
 import { withdrawProposal } from "@/services/cleanupService";
 import { isProposalEditable, PROPOSAL_STATUS } from "@/constants/assignmentConstants"; // PROPOSAL_STATUS separates "asked to revise" from "still waiting"
+import { isRevisionAnswered } from "@/constants/municipalConstants"; // reads the approval ledger, the same field the officer's desk uses
 import { getErrorMessage } from "@/utils/errorMessage";
+import { formatRelativeTime } from "@/utils/formatters"; // "3 hours ago", so the receipt feels immediate
 import {
     clearProposalDraft,     // throws one unfinished draft away
     countFilledDraftFields, // powers the "N answers saved" line
@@ -83,7 +86,7 @@ export default function MyProposalsPage() {
     const [actionError, setActionError] = useState("");
     const [actionMessage, setActionMessage] = useState("");
 
-    // Ten proposals to a page
+    // Five proposals to a page, latest first as the backend already sends them
     const {
         page,
         pageItems,
@@ -92,7 +95,10 @@ export default function MyProposalsPage() {
         rangeStart,
         rangeEnd,
         goToPage,
-    } = usePagination(proposals);
+        // Five to a page, not the portal-wide ten. The list mixes the bid still
+        // under review with every decision already taken, and the live one has
+        // to stay visible rather than sink under its own history.
+    } = usePagination(proposals, CLEANER_PAGE_SIZE);
 
     // Anchor for the jump back up when the page changes
     const listTopRef = useRef(null);
@@ -285,6 +291,18 @@ export default function MyProposalsPage() {
                         const revisionRequested =
                             proposal.status === PROPOSAL_STATUS.REVISION_REQUIRED;
 
+                        /*
+                          The revised plan has been handed back.
+
+                          On resubmission the status returns to SUBMITTED, which alone
+                          looks identical to a first-time bid - so a cleaner who had just
+                          worked through a revision had no confirmation that their answer
+                          actually left the building. The approval ledger records the
+                          moment as REVISION_SUBMITTED, and that is what this receipt
+                          reads.
+                        */
+                        const revisionResubmitted = isRevisionAnswered(proposal);
+
                         return (
                             <article
                                 key={proposal.proposalId}
@@ -295,7 +313,24 @@ export default function MyProposalsPage() {
                                         {proposal.reportTitle}
                                     </h2>
 
-                                    <ProposalStatusBadge status={proposal.status} />
+                                    <div className="flex flex-wrap items-center gap-2">
+                                        {/*
+                                          Sits beside the status pill rather than replacing it:
+                                          the proposal really is back under review, and this only
+                                          adds why it is there.
+                                        */}
+                                        {revisionResubmitted && (
+                                            <span className="inline-flex items-center gap-1.5 rounded-gov border border-india-green/30 bg-emerald-50 px-2 py-1 text-xs font-semibold text-india-green">
+                                                <CheckCircle2 size={12} aria-hidden="true" />
+                                                Revision Resubmitted
+                                                <span className="font-normal">
+                                                    {" \u2022 "}संशोधन पुनः प्रस्तुत
+                                                </span>
+                                            </span>
+                                        )}
+
+                                        <ProposalStatusBadge status={proposal.status} />
+                                    </div>
                                 </div>
 
                                 <p className="mt-1 flex items-center gap-1.5 text-sm text-ink-muted">
@@ -358,13 +393,39 @@ export default function MyProposalsPage() {
                                         ` \u2022 proposed start ${formatDate(proposal.proposedStartDate)}`}
                                 </p>
 
-                                {/* An officer asked for changes, so say so plainly */}
-                                {proposal.status === "REVISION_REQUIRED" && (
+                                {/*
+                                  An officer asked for changes, so say so plainly. Never shown
+                                  next to the resubmitted receipt: the moment the revised plan
+                                  is filed the backend returns the status to SUBMITTED, so the
+                                  two states cannot both be true.
+                                */}
+                                {revisionRequested && (
                                     <div className="mt-3">
                                         <Alert type="warning" title="Revision requested">
                                             The municipal corporation has asked you to
                                             revise this proposal before it can be approved.
                                         </Alert>
+                                    </div>
+                                )}
+
+                                {/* The receipt itself: what was sent, when, and what happens next */}
+                                {revisionResubmitted && (
+                                    <div className="mt-3 rounded-gov border border-india-green/30 bg-emerald-50 p-3">
+                                        <p className="flex items-center gap-1.5 text-sm font-semibold text-india-green">
+                                            <CheckCircle2 size={14} aria-hidden="true" />
+                                            Revised proposal submitted
+                                            <span className="font-normal text-ink-muted">
+                                                {" \u2022 "}संशोधित प्रस्ताव प्रस्तुत
+                                            </span>
+                                        </p>
+                                        <p className="mt-1 text-sm leading-relaxed text-ink">
+                                            Your updated plan reached the municipal corporation
+                                            {proposal.latestDecisionAt
+                                                ? ` ${formatRelativeTime(proposal.latestDecisionAt)}`
+                                                : ""}
+                                            {" "}and is now waiting for their decision. No further
+                                            action is needed from you.
+                                        </p>
                                     </div>
                                 )}
 
@@ -403,6 +464,24 @@ export default function MyProposalsPage() {
                                             {busy ? "Please wait..." : "Withdraw Proposal"}
                                         </Button>
                                     )}
+
+                                    {/*
+                                      The proposal itself, readable at every status.
+
+                                      Once the corporation has ruled, isProposalEditable()
+                                      turns false and the Edit link disappears - which used
+                                      to leave the cleaner with no way back into their own
+                                      filed plan even though the record is still there. This
+                                      opens it read-only, so an approved or rejected bid can
+                                      always be re-read.
+                                    */}
+                                    <Link
+                                        to={`/cleaner/proposals/${proposal.proposalId}`}
+                                        className="inline-flex items-center gap-2 rounded-gov border border-rule bg-white px-5 py-2.5 text-sm font-semibold text-gov-navy transition hover:bg-paper"
+                                    >
+                                        <FileText size={14} aria-hidden="true" />
+                                        View Proposal
+                                    </Link>
 
                                     <Link
                                         to={`/reports/${proposal.reportId}`}

@@ -7,6 +7,7 @@ import {
     ExternalLink,
     ImageIcon,
     NotebookPen,
+    History,        // the activity already on record, on its own page
     PlayCircle,
     Hourglass,      // proof lodged, corporation yet to rule on it
     RotateCcw,      // corporation sent the work back for rework
@@ -308,9 +309,12 @@ export default function TaskCard({
                         )}
 
                         {/*
-                          Optional work diary, offered only while the cleanup is
-                          in progress. Deliberately secondary styling: it is a
-                          record, not a step towards completion.
+                          Write an entry in the optional work diary. Offered only
+                          while the cleanup is in progress, since the backend
+                          refuses entries after that. Deliberately secondary
+                          styling: it is a record, not a step towards completion.
+
+                          The dialog only writes - reading is the link below.
                         */}
                         {onActivityLog && canUpload(assignment) && (
                             <Button
@@ -320,11 +324,33 @@ export default function TaskCard({
                                 onClick={() => onActivityLog(assignment)}
                             >
                                 <NotebookPen size={14} aria-hidden="true" />
-                                Activity Log
-                                {/* Count comes from the assignment response */}
-                                {assignment.activityLogCount > 0 &&
-                                    ` (${assignment.activityLogCount})`}
+                                Add Activity
                             </Button>
+                        )}
+
+                        {/*
+                          Read what has been recorded so far.
+
+                          Independent of canUpload: a cleaner is entitled to the
+                          record of their own work after the proof has gone in,
+                          when there is nothing left to add. Hidden when the
+                          count is zero, so a task with no diary carries no
+                          link to an empty page.
+                        */}
+                        {assignment.activityLogCount > 0 && (
+                            <Link
+                                to={`/cleaner/tasks/${assignment.assignmentId}/activity`}
+                                // The log page cannot look a report up by id
+                                state={{
+                                    reportTitle: assignment.reportTitle,
+                                    reportId: assignment.reportId,
+                                }}
+                                className="inline-flex items-center gap-1.5 text-sm font-semibold text-gov-blue hover:underline"
+                            >
+                                <History size={14} aria-hidden="true" />
+                                {/* Count comes from the assignment response */}
+                                View Activity ({assignment.activityLogCount})
+                            </Link>
                         )}
 
                         {/* The report itself is always viewable for full context */}

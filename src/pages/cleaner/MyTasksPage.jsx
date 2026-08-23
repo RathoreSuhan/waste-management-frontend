@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 
 import PageHeading from "@/components/common/PageHeading";
 import Alert from "@/components/ui/Alert";
@@ -14,6 +14,7 @@ import usePagination from "@/hooks/usePagination";
 
 import { getMyTasks } from "@/services/cleanupService";
 import { ASSIGNMENT_STATUS } from "@/constants/assignmentConstants";
+import { CLEANER_PAGE_SIZE } from "@/constants/paginationConstants";
 import {
     ReportListSkeleton,
     ReportListError,
@@ -114,6 +115,38 @@ const GROUPS = [
 ];
 
 /**
+ * The moment a task was last touched, as a sortable number.
+ *
+ * /my-tasks carries no "assigned at" column, so there is no single field to
+ * order by. Completion, then start, then the date the citizen reported the
+ * site is the sequence a cleaner actually experiences, so the newest of
+ * whichever timestamps exist is the honest measure of recency.
+ *
+ * Falls back to the assignment id, which is monotonic, so rows with no usable
+ * timestamp still land in a stable order rather than shuffling per render.
+ */
+function lastTouchedAt(assignment) {
+
+    // Latest first: a finished task is newer than the day it was started
+    const stamps = [
+        assignment.completedAt,
+        assignment.startedAt,
+        assignment.reportCreatedAt,
+    ];
+
+    for (const stamp of stamps) {
+        const parsed = stamp ? new Date(stamp).getTime() : Number.NaN;
+
+        if (!Number.isNaN(parsed)) {
+            return parsed;   // first usable stamp wins, in the order above
+        }
+    }
+
+    // Nothing parseable - keep ids in sequence without pretending they are dates
+    return assignment.assignmentId ?? 0;
+}
+
+/**
  * One lifecycle group, with its own pager.
  *
  * This is a component rather than inline JSX because each group needs its
@@ -121,7 +154,22 @@ const GROUPS = [
  */
 function TaskGroup({ group, onStart, onUpload, onActivityLog, busyId }) {
 
-    // Ten tasks to a page, counted separately for each group
+    /*
+      Newest task at the top, oldest at the bottom.
+
+      /my-tasks returns one flat list in no guaranteed order, and grouping it
+      locally does not impose one either. Sorting here rather than at the page
+      level keeps each group independently ordered - Rework Requested reads
+      newest-first just as Completed does.
+
+      Sorted on a copy: group.items belongs to the caller's grouped array.
+    */
+    const orderedItems = useMemo(
+        () => [...group.items].sort((a, b) => lastTouchedAt(b) - lastTouchedAt(a)),
+        [group.items]
+    );
+
+    // Five tasks to a page, counted separately for each group
     const {
         page,
         pageItems,
@@ -130,7 +178,9 @@ function TaskGroup({ group, onStart, onUpload, onActivityLog, busyId }) {
         rangeStart,
         rangeEnd,
         goToPage,
-    } = usePagination(group.items);
+        // Five rather than the portal-wide ten: a task card is tall, carries a
+        // photograph and up to three actions, so ten of them buried the pager.
+    } = usePagination(orderedItems, CLEANER_PAGE_SIZE);
 
     // Anchor for the jump back up when the page changes
     const groupTopRef = useRef(null);

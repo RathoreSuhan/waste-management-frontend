@@ -107,6 +107,15 @@ function toFormValues(proposal) {
     };
 }
 
+/*
+  A stored value is only usable when the server really sent a number.
+  Number(null) is 0, which would read as a valid position on the equator, so
+  the type is checked rather than the coerced value.
+*/
+function toStoredNumber(value) {
+    return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
 export default function SubmitProposalPage() {
 
     // Exactly one of the two is present, which is how the mode is decided
@@ -312,10 +321,45 @@ export default function SubmitProposalPage() {
     // Only a good reading inside the platform radius may be submitted
     const locationVerified = canSubmitLocation(locationStatus);
 
+    /*
+      Revision mode inherits the inspection already on the proposal.
+
+      The cleaner walked to this waste once, that reading was measured against
+      the 50 m rule and accepted, and the server still holds it. Demanding a
+      second visit merely to re-answer the officer's questions would be a
+      pointless journey, so the stored position stands unless a new one is
+      captured - and capturing one remains available at any time.
+    */
+    const savedLatitude = isEditing
+        ? toStoredNumber(filedProposal?.inspectionLatitude)
+        : null;
+
+    const savedLongitude = isEditing
+        ? toStoredNumber(filedProposal?.inspectionLongitude)
+        : null;
+
+    const savedDistanceMetres = isEditing
+        ? toStoredNumber(filedProposal?.inspectionDistanceMeters)
+        : null;
+
+    const savedInspectedAt = isEditing ? filedProposal?.inspectedAt || null : null;
+
+    // Half a pair proves nothing, so both coordinates must be present
+    const hasSavedFix = savedLatitude !== null && savedLongitude !== null;
+
+    /*
+      The stored fix counts only while nothing new has been captured. Once the
+      cleaner takes a fresh reading it is that reading which must pass, so a
+      position outside the radius cannot be waved through by the old one.
+    */
+    const usingSavedFix = hasSavedFix && !position;
+
+    const locationSatisfied = usingSavedFix || locationVerified;
+
     const onSubmit = async (values) => {
         setSubmitError("");
 
-        if (!locationVerified) {
+        if (!locationSatisfied) {
             setSubmitError(
                 `Capture your location at the site before submitting. Clean Bharat accepts an inspection only within ${INSPECTION_RADIUS_METRES} m of the reported waste.`
             );
@@ -335,8 +379,18 @@ export default function SubmitProposalPage() {
             formData.append("inspectionImage", inspectionImage);
         }
 
-        formData.append("inspectionLatitude", position.latitude);
-        formData.append("inspectionLongitude", position.longitude);
+        /*
+          Coordinates travel only when a fresh reading was taken. Omitting them
+          tells the backend to keep the inspection already on the record, which
+          is exactly what a revision without a new capture means. The 50 m rule
+          is re-measured there against whichever position is used, so leaving
+          them out skips no check.
+        */
+        if (position) {
+            formData.append("inspectionLatitude", position.latitude);
+            formData.append("inspectionLongitude", position.longitude);
+        }
+
         formData.append("siteObservations", values.siteObservations);
         formData.append("estimatedDurationDays", values.estimatedDurationDays);
         formData.append("manpowerCount", values.manpowerCount);
@@ -554,11 +608,12 @@ export default function SubmitProposalPage() {
                     </h2>
 
                     <p className="mt-1 text-sm text-ink-muted">
-                        {isEditing
-                            ? "Capture your location again at the waste site. A revision is a fresh inspection, so a fresh reading is required."
+                        {hasSavedFix
+                            ? "The position from your earlier inspection of this site is kept, so a fresh reading is not required. Capture again only if you inspected from a different spot."
                             : "Capture your location at the waste site. A photograph of the site as you found it is optional but strengthens your proposal."}
                     </p>
 
+                    {/* The saved* props are null for a first proposal, so the panel asks for a reading */}
                     <div className="mt-3">
                         <CleanupLocationCapture
                             status={locationStatus}
@@ -567,6 +622,10 @@ export default function SubmitProposalPage() {
                             detecting={detecting}
                             locationError={locationError}
                             onCapture={handleCaptureLocation}
+                            savedLatitude={savedLatitude}
+                            savedLongitude={savedLongitude}
+                            savedDistanceMetres={savedDistanceMetres}
+                            savedInspectedAt={savedInspectedAt}
                         />
                     </div>
 
@@ -700,8 +759,10 @@ export default function SubmitProposalPage() {
                         type="submit"
                         fullWidth={false}
                         loading={isSubmitting}
-                        // Location is proof of a real inspection, so it gates submission
-                        disabled={!locationVerified}
+                        // Location is proof of a real inspection, so it gates
+                        // submission - satisfied by a fresh reading or by the
+                        // one already verified for this proposal
+                        disabled={!locationSatisfied}
                     >
                         {isEditing ? "Resubmit Proposal" : "Submit Proposal"}
                     </Button>

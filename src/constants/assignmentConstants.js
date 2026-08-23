@@ -92,7 +92,11 @@ export const ASSIGNMENT_STATUS_META = {
         dotClassName: "bg-saffron",
     },
     PROPOSAL_SUBMITTED: {
-        label: "Under Review",
+        // "Proposals Open" describes the SITE, not the paper: offers are in and
+        // more are still welcome. The proposal's own chip already says
+        // "Under Review", so reusing that wording here printed it twice on the
+        // municipal review card.
+        label: "Proposals Open",
         // Amber = offers received, municipal decision pending
         className: "bg-amber-50 text-amber-800 border border-amber-300",
         dotClassName: "bg-amber-500",

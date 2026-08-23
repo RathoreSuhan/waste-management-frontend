@@ -46,10 +46,11 @@ import AssignmentStatusBadge from "@/components/cleanup/AssignmentStatusBadge";
 import ProposalStatusBadge from "@/components/cleanup/ProposalStatusBadge";
 import { INSPECTION_RADIUS_METRES, PROPOSAL_STATUS } from "@/constants/assignmentConstants";
 import {
-    APPROVAL_DECISION,
     APPROVAL_STAGE,
     getCleanerTypeLabel,
     getDecisionActions,
+    isAwaitingRevision,   // shared with the full-plan page, so one rule locks both
+    isRevisionAnswered,
 } from "@/constants/municipalConstants";
 import { formatRelativeTime } from "@/utils/formatters";
 
@@ -105,21 +106,6 @@ const PROPOSAL_HEADER_CLASS = {
  */
 function canRecordDecision(status) {
     return !CLOSED_PROPOSAL_STATUSES.includes(status);
-}
-
-/**
- * Is this particular verdict temporarily out of reach?
- *
- * Once a revision has been requested the ball is with the cleaner: approving a
- * plan the officer has just called inadequate, or asking twice for the same
- * changes, would both be meaningless. Rejecting it outright still is not, so
- * that one verdict stays live.
- */
-function isDecisionLocked(status, decision) {
-    return (
-        status === PROPOSAL_STATUS.REVISION_REQUIRED &&
-        decision !== APPROVAL_DECISION.REJECTED
-    );
 }
 
 /**
@@ -199,8 +185,20 @@ export default function ProposalReviewCard({
       a proposal the officer had already sent back look untouched.
     */
     const status = proposal.status;
-    const isRevisionPending = status === PROPOSAL_STATUS.REVISION_REQUIRED;
     const showDecisions = canRecordDecision(status); // decided papers get no verdict buttons
+
+    /*
+      While the officer's revision request is unanswered every verdict is frozen,
+      so the same cleaner cannot be sent two conflicting replies to one request.
+      It reopens on its own when the ledger records REVISION_SUBMITTED, and the
+      backend refuses a second decision meanwhile, so a live button here could
+      only produce a failed call.
+    */
+    const awaitingRevision = isAwaitingRevision(proposal);
+
+    // The cleaner has answered: worth flagging, because the plan on screen has
+    // changed since the officer last read it.
+    const revisionAnswered = isRevisionAnswered(proposal);
 
     /*
       A revision keeps its original submittedAt on purpose (the audit trail must
@@ -247,8 +245,15 @@ export default function ProposalReviewCard({
 
                     <div className="flex shrink-0 flex-col items-start gap-2 sm:items-end">
 
-                        {/* Headline badge: the state of THIS proposal, not of the site */}
-                        <ProposalStatusBadge status={status} />
+                        {/*
+                          Headline badge: the state of THIS proposal, not of the site.
+                          Named like the site line below, because a bare "Under Review"
+                          left the officer guessing WHAT was under review.
+                        */}
+                        <span className="flex items-center gap-1.5 text-[11px] text-ink-muted">
+                            <BiText en="Proposal" hi="प्रस्ताव" />
+                            <ProposalStatusBadge status={status} />
+                        </span>
 
                         {/* Site state kept as a quieter second line, still useful context */}
                         <span className="flex items-center gap-1.5 text-[11px] text-ink-muted">
@@ -279,14 +284,33 @@ export default function ProposalReviewCard({
               back with the cleaner, and nothing is expected of the officer until
               a revised plan arrives.
             */}
-            {isRevisionPending ? (
+            {awaitingRevision ? (
                 <div className="border-b border-orange-200 bg-orange-50 px-4 py-2.5">
                     <p className="text-[11px] font-semibold tracking-[0.15em] text-orange-800 uppercase">
-                        <BiText en="Revision requested" hi="संशोधन मांगा गया" />
+                        <BiText en="Waiting for the revised proposal" hi="संशोधित प्रस्ताव की प्रतीक्षा" />
                     </p>
                     <p className="mt-0.5 text-sm text-orange-900">
-                        Waiting for {proposal.cleanerName || "the cleaner"} to submit a revised plan. Your
-                        instructions are on the full plan page, with the decision trail.
+                        Your revision request is with {proposal.cleanerName || "the cleaner"}, so all three
+                        decisions are locked until the revised plan arrives. Your instructions are on the full
+                        plan page, with the decision trail.
+                    </p>
+                </div>
+            ) : null}
+
+            {/*
+              The mirror image: the cleaner has answered, the desk is unlocked
+              again, and the figures below are the NEW ones - said plainly so an
+              officer does not re-read the plan they already rejected.
+            */}
+            {revisionAnswered ? (
+                <div className="border-b border-blue-200 bg-blue-50 px-4 py-2.5">
+                    <p className="text-[11px] font-semibold tracking-[0.15em] text-gov-blue uppercase">
+                        <BiText en="Revised proposal received" hi="संशोधित प्रस्ताव प्राप्त" />
+                    </p>
+                    <p className="mt-0.5 text-sm text-gov-navy">
+                        {proposal.cleanerName || "The cleaner"} answered your revision request
+                        {proposal.latestDecisionAt ? ` ${formatRelativeTime(proposal.latestDecisionAt)}` : ""}.
+                        The plan below is the updated one and is ready for your decision.
                     </p>
                 </div>
             ) : null}
@@ -427,7 +451,7 @@ export default function ProposalReviewCard({
                     */}
                     {showDecisions
                         ? PROPOSAL_ACTIONS.map((action) => {
-                            const locked = isDecisionLocked(status, action.decision);
+                            const locked = awaitingRevision; // one lock for the whole row
 
                             return (
                                 <Button
@@ -441,7 +465,7 @@ export default function ProposalReviewCard({
                                     // Hover text explains the lock, since a greyed button alone does not
                                     title={
                                         locked
-                                            ? "Unlocks once the cleaner submits the revised plan"
+                                            ? "Locked until the cleaner submits the revised proposal"
                                             : undefined
                                     }
                                     onClick={() => onDecision?.(action.decision, proposal)}

@@ -8,7 +8,7 @@
  *
  * Two backend enums are mirrored here:
  *   ApprovalStage    -> PROPOSAL | COMPLETION
- *   ApprovalDecision -> APPROVED | REJECTED | REVISION_REQUIRED
+ *   ApprovalDecision -> APPROVED | REJECTED | REVISION_REQUIRED | REVISION_SUBMITTED
  *
  * The same three decisions mean very different things at the two stages, which
  * is why the action buttons are described per stage instead of per decision:
@@ -40,6 +40,11 @@ export const APPROVAL_DECISION = {
     APPROVED: "APPROVED",
     REJECTED: "REJECTED",
     REVISION_REQUIRED: "REVISION_REQUIRED",
+
+    // Written by the system, never by an officer: it marks the moment the
+    // cleaner handed the corrected plan back, which is what re-opens the
+    // three decision buttons the REVISION_REQUIRED row had locked.
+    REVISION_SUBMITTED: "REVISION_SUBMITTED",
 };
 
 /**
@@ -62,7 +67,78 @@ export const APPROVAL_DECISION_META = {
         labelHi: "संशोधन आवश्यक",
         className: "bg-amber-50 text-amber-800 border border-amber-300",
     },
+    REVISION_SUBMITTED: {
+        label: "Revision Submitted",
+        labelHi: "संशोधन प्रस्तुत",
+        // Blue, not green: the plan is back on the officer's desk, not approved
+        className: "bg-blue-50 text-gov-blue border border-gov-blue/30",
+    },
 };
+
+/**
+ * Is this proposal still waiting for the cleaner's revised plan?
+ *
+ * The officer asked for changes, so all three verdicts must stay locked until
+ * the corrected plan actually arrives - otherwise a second click could reject a
+ * cleaner who was already told to resubmit.
+ *
+ * `latestDecision` is the last row of the append-only cleanup_approvals ledger,
+ * which is the authority here. Rows filed before that field existed fall back to
+ * the proposal's own status; ProposalStatus and ApprovalDecision happen to share
+ * the name REVISION_REQUIRED, so one constant covers both.
+ *
+ * @param {object} [proposal] CleanupProposalResponse row
+ * @returns {boolean} true while the revision request is unanswered
+ */
+export function isAwaitingRevision(proposal) {
+    const latest = proposal?.latestDecision;
+
+    if (latest === APPROVAL_DECISION.REVISION_REQUIRED) {
+        // The plan was edited after the request was raised, so the answer is already in:
+        // this rescues proposals resubmitted before the REVISION_SUBMITTED row existed.
+        return !wasEditedAfterDecision(proposal);
+    }
+
+    if (latest) {
+        return false; // some other verdict stands, so nothing is being waited for
+    }
+
+    return proposal?.status === APPROVAL_DECISION.REVISION_REQUIRED; // pre-ledger fallback
+}
+
+/**
+ * Did the cleaner touch this proposal after the officer's last decision?
+ *
+ * A resubmission bumps `updatedAt`, so a stamp newer than `latestDecisionAt`
+ * means the corrected plan is already on the desk even when the ledger carries
+ * no REVISION_SUBMITTED row for it.
+ *
+ * @param {object} [proposal] CleanupProposalResponse row
+ * @returns {boolean} true when the edit is newer than the decision
+ */
+function wasEditedAfterDecision(proposal) {
+    const decidedAt = Date.parse(proposal?.latestDecisionAt ?? "");
+    const editedAt = Date.parse(proposal?.updatedAt ?? proposal?.submittedAt ?? "");
+
+    if (Number.isNaN(decidedAt) || Number.isNaN(editedAt)) {
+        return false; // no reliable stamps: keep the buttons locked, the safer default
+    }
+
+    return editedAt > decidedAt;
+}
+
+/**
+ * Has the cleaner already handed the corrected plan back?
+ *
+ * Written by the system on resubmission, so it is what re-opens the buttons the
+ * REVISION_REQUIRED row had locked.
+ *
+ * @param {object} [proposal] CleanupProposalResponse row
+ * @returns {boolean} true when the revised plan is back on the officer's desk
+ */
+export function isRevisionAnswered(proposal) {
+    return proposal?.latestDecision === APPROVAL_DECISION.REVISION_SUBMITTED;
+}
 
 /** Fallback so an unknown decision string still renders as a neutral pill. */
 export const DEFAULT_APPROVAL_DECISION_META = {

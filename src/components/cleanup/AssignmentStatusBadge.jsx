@@ -9,9 +9,9 @@ import {
  * ----------------------------------------------------------
  * Shows where a cleanup task sits in its lifecycle:
  *
- *   Open         -> saffron   (no proposal received yet)
- *   Under Review -> amber     (proposals awaiting municipal decision)
- *   Assigned     -> indigo    (corporation awarded the work)
+ *   Open           -> saffron (no proposal received yet)
+ *   Proposals Open -> amber   (offers received, site still open to more)
+ *   Assigned       -> indigo  (corporation awarded the work)
  *   Claimed      -> slate     (legacy rows from before proposals existed)
  *   In Progress  -> blue
  *   Completed    -> India green

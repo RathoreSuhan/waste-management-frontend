@@ -92,6 +92,26 @@ const MyTasksPage = lazy(() => import("@/pages/cleaner/MyTasksPage"));
 const SubmitProposalPage = lazy(() => import("@/pages/cleaner/SubmitProposalPage"));
 const MyProposalsPage = lazy(() => import("@/pages/cleaner/MyProposalsPage"));
 
+/*
+  One filed proposal, read-only.
+
+  Once the corporation has ruled, the Edit route below closes and the cleaner
+  used to lose every way back into their own plan even though the record is
+  still on file. This page reopens it - approved, rejected or revision-asked.
+
+  Aliased on import: /pages/municipal/ProposalDetailPage is the officer's
+  review screen and already owns the plain name in this file.
+*/
+const CleanerProposalDetailPage = lazy(() => import("@/pages/cleaner/ProposalDetailPage"));
+
+/*
+  The activity trail for one assignment.
+
+  The write form stays in the dialog on My Tasks; reading the history is a
+  page of its own so a long cleanup does not turn that dialog into a scroll.
+*/
+const ActivityLogPage = lazy(() => import("@/pages/cleaner/ActivityLogPage"));
+
 // Reward Pages (Phase 9)
 const MyRewardsPage = lazy(() => import("@/pages/cleaner/MyRewardsPage"));
 
@@ -265,6 +285,19 @@ export default function AppRoutes() {
                         <Route path="/cleaner/proposals" element={<MyProposalsPage />} />
 
                         {/*
+                          One proposal, read-only, at any status.
+
+                          Declared before the two form routes below purely for
+                          readability - React Router ranks the static "new" and
+                          "edit" segments above this bare parameter regardless
+                          of order, so neither of them is shadowed.
+                        */}
+                        <Route
+                            path="/cleaner/proposals/:proposalId"
+                            element={<CleanerProposalDetailPage />}
+                        />
+
+                        {/*
                           The proposal form for one assignment. Declared after
                           /cleaner/proposals so the listing reads first, and the
                           assignment id is carried in the path rather than in
@@ -298,6 +331,22 @@ export default function AppRoutes() {
 
                         {/* Work the municipal corporation has assigned to this cleaner */}
                         <Route path="/cleaner/tasks" element={<MyTasksPage />} />
+
+                        {/*
+                          The activity trail already recorded against one
+                          assignment - oldest entry first, so it reads as the
+                          story of the cleanup rather than a reversed feed.
+
+                          Keyed by assignment id because that is what
+                          /api/cleanup-activity-logs is keyed by; the report
+                          title travels in router state when the cleaner
+                          arrives from a task card, and the page copes without
+                          it on a cold reload.
+                        */}
+                        <Route
+                            path="/cleaner/tasks/:assignmentId/activity"
+                            element={<ActivityLogPage />}
+                        />
 
                         {/* Points earned for AI-verified cleanups */}
                         <Route path="/cleaner/rewards" element={<MyRewardsPage />} />
