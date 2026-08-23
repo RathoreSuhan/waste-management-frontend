@@ -13,7 +13,11 @@ import ImageUploadField from "@/components/reports/ImageUploadField";
 import CleanupLocationCapture from "@/components/cleanup/CleanupLocationCapture";
 import useGeoLocation from "@/hooks/useGeoLocation";
 import { proposalSchema } from "@/schemas/proposalSchema";
-import { submitProposal } from "@/services/cleanupService";
+import {
+    getProposal,      // reads the proposal being revised, so the form can be prefilled
+    submitProposal,
+    updateProposal,   // PUT, which also replaces the inspection photograph
+} from "@/services/cleanupService";
 import { getErrorMessage } from "@/utils/errorMessage";
 import {
     clearProposalDraft,
@@ -21,11 +25,16 @@ import {
     getProposalLocation,
     hasProposalDraftContent,
     loadProposalDraft,
+    proposalEditDraftId, // keeps a revision draft apart from an unfinished new one
     saveProposalDraft,
     setProposalFile,
     setProposalLocation,
 } from "@/utils/proposalDraft";
-import { INSPECTION_RADIUS_METRES } from "@/constants/assignmentConstants";
+import {
+    INSPECTION_RADIUS_METRES,
+    isProposalEditable,
+    PROPOSAL_STATUS,
+} from "@/constants/assignmentConstants";
 import {
     LOCATION_STATUS,
     canSubmitLocation,
@@ -34,7 +43,7 @@ import {
 
 /**
  * ============================================================================
- * Submit Proposal Page (Phase 14)
+ * Submit Proposal Page (Phase 14, revision mode added in Phase 16)
  * ============================================================================
  *
  * A cleaner inspects an open site in person and submits a cleanup proposal.
@@ -44,20 +53,66 @@ import {
  * officer decides who is assigned. That is stated plainly on the page so a
  * cleaner does not travel expecting the work to already be theirs.
  *
- * The assignment is passed through router state from the available-tasks list,
- * because the backend exposes no GET /api/cleanup-assignments/{id}. If the page
- * is opened directly (refresh, shared link) the site coordinates are unknown,
- * so the inspection proximity check is skipped here and left entirely to the
- * backend, which always re-verifies it.
+ * The same form serves two routes:
+ *
+ *   /cleaner/proposals/new/:assignmentId  - a first proposal for a site
+ *   /cleaner/proposals/:proposalId/edit   - revising one already filed
+ *
+ * They are one component on purpose. The questions, the 50 m inspection rule
+ * and the photograph requirement are identical; only the destination differs
+ * (POST for the site, PUT for the proposal). Two copies would drift apart.
+ *
+ * Revision matters because a municipal officer can send a proposal back with
+ * "Request Revision" instead of rejecting it. Without this route that decision
+ * left the cleaner with nothing to act on: the bid sat in the queue, editable
+ * by the rules but unreachable from the interface.
+ *
+ * For a new proposal the assignment is passed through router state from the
+ * available-tasks list, because the backend exposes no
+ * GET /api/cleanup-assignments/{id}. If the page is opened directly (refresh,
+ * shared link) the site coordinates are unknown, so the proximity reading is
+ * shown without a distance and the check is left entirely to the backend,
+ * which always re-verifies it.
  *
  * The form is long and is filled in on a phone at the waste site, so every
- * answer is kept in a per-assignment draft (see utils/proposalDraft). A stray
- * tap on the sidebar no longer throws the work away.
+ * answer is kept in a draft (see utils/proposalDraft). A stray tap on the
+ * sidebar no longer throws the work away.
  * ============================================================================
  */
 
+/*
+  Server record -> form fields.
+
+  Only the answers the cleaner may change are copied; ids, status and the
+  inspection coordinates are the server's business. Optional text becomes ""
+  rather than undefined, because an uncontrolled input given undefined keeps
+  whatever React put there first and the field would look stale.
+*/
+function toFormValues(proposal) {
+    return {
+        siteObservations: proposal.siteObservations || "",
+        estimatedDurationDays: proposal.estimatedDurationDays ?? 1,
+        manpowerCount: proposal.manpowerCount ?? 1,
+        equipment: proposal.equipment || "",
+        cleaningMethod: proposal.cleaningMethod || "",
+        wasteHandlingPlan: proposal.wasteHandlingPlan || "",
+        estimatedWasteVolume: proposal.estimatedWasteVolume || "",
+
+        // LocalDate arrives as 2026-08-25, which is what <input type="date"> wants
+        proposedStartDate: proposal.proposedStartDate
+            ? String(proposal.proposedStartDate).slice(0, 10)
+            : "",
+
+        remarks: proposal.remarks || "",
+    };
+}
+
 export default function SubmitProposalPage() {
-    const { assignmentId } = useParams();
+
+    // Exactly one of the two is present, which is how the mode is decided
+    const { assignmentId, proposalId } = useParams();
+    const isEditing = Boolean(proposalId);
+
     const navigate = useNavigate();
 
     // Passed by AvailableTasksPage so the site details can be shown and checked
@@ -65,15 +120,22 @@ export default function SubmitProposalPage() {
 
     const { detecting, locationError, detectLocation } = useGeoLocation();
 
+    /*
+      Drafts are keyed by what is being written, not by the site: a cleaner
+      revising proposal 12 must not overwrite an unfinished new proposal for
+      the same waste, and the listing must not offer a revision as a "draft".
+    */
+    const draftId = isEditing ? proposalEditDraftId(proposalId) : assignmentId;
+
     // Whatever was typed before the cleaner navigated away, read once on mount
-    const [savedDraft] = useState(() => loadProposalDraft(assignmentId));
+    const [savedDraft] = useState(() => loadProposalDraft(draftId));
 
     // The GPS reading saved with that draft, so a verified inspection survives too
-    const [savedLocation] = useState(() => getProposalLocation(assignmentId));
+    const [savedLocation] = useState(() => getProposalLocation(draftId));
 
     // Inspection evidence: an optional photograph of the site as found
     const [inspectionImage, setInspectionImage] = useState(
-        () => getProposalFile(assignmentId) // kept for the tab, lost on a reload
+        () => getProposalFile(draftId) // kept for the tab, lost on a reload
     );
 
     // GPS proof that the cleaner actually visited the site
@@ -90,10 +152,16 @@ export default function SubmitProposalPage() {
     // Said once, so refilled answers do not look like a glitch
     const [draftRestored] = useState(() => hasProposalDraftContent(savedDraft));
 
+    // Revision mode only: the proposal on file, and how the fetch went
+    const [filedProposal, setFiledProposal] = useState(null);
+    const [loadingProposal, setLoadingProposal] = useState(isEditing);
+    const [loadError, setLoadError] = useState("");
+
     const {
         register,
         handleSubmit,
         watch,
+        reset, // fills the form from the server copy once it arrives
         formState: { errors, isSubmitting },
     } = useForm({
         resolver: zodResolver(proposalSchema),
@@ -103,6 +171,53 @@ export default function SubmitProposalPage() {
             ...savedDraft, // a saved draft takes precedence over these starting values
         },
     });
+
+    /*
+      Revision mode: fetch the proposal being changed.
+
+      The cleaner may have opened this from a link or a reload, so nothing is
+      assumed to have been handed over in router state. A draft, if there is
+      one, is newer than the server copy and is left alone - overwriting it
+      would silently discard the answers being worked on.
+    */
+    useEffect(() => {
+
+        if (!isEditing) {
+            return; // the new-proposal route has nothing to load
+        }
+
+        let active = true; // a reply arriving after the page closed is ignored
+
+        (async () => {
+            try {
+                const data = await getProposal(proposalId);
+
+                if (!active) {
+                    return;
+                }
+
+                setFiledProposal(data);
+
+                if (!hasProposalDraftContent(savedDraft)) {
+                    reset(toFormValues(data)); // prefill only when nothing is in progress
+                }
+            } catch (error) {
+                if (active) {
+                    // 403 and 404 both land here: not yours, or no longer there
+                    setLoadError(getErrorMessage(error));
+                }
+            } finally {
+                if (active) {
+                    setLoadingProposal(false);
+                }
+            }
+        })();
+
+        return () => {
+            active = false;
+        };
+
+    }, [isEditing, proposalId, reset, savedDraft]);
 
     /*
       Keep the draft in step with the form.
@@ -115,7 +230,11 @@ export default function SubmitProposalPage() {
     */
     useEffect(() => {
 
-        // Only known when the form was opened from Available Tasks
+        /*
+          Known either from Available Tasks (new proposal) or from the record
+          being revised. The proposal response carries no report coordinates,
+          so a revision keeps the site name only.
+        */
         const site = assignment
             ? {
                 reportTitle: assignment.reportTitle,          // heading on the draft card
@@ -125,22 +244,29 @@ export default function SubmitProposalPage() {
                 reportLatitude: assignment.reportLatitude,    // so a resumed draft can still
                 reportLongitude: assignment.reportLongitude,  // check the inspection distance
             }
-            : null;
+            : filedProposal
+                ? {
+                    reportTitle: filedProposal.reportTitle,
+                    address: filedProposal.address,
+                    city: filedProposal.city,
+                    reportId: filedProposal.reportId,
+                }
+                : null;
 
         const subscription = watch((values) => {
 
-            saveProposalDraft(assignmentId, values, site);
+            saveProposalDraft(draftId, values, site);
 
         });
 
         return () => subscription.unsubscribe();
 
-    }, [assignment, assignmentId, watch]);
+    }, [assignment, draftId, filedProposal, watch]);
 
     // Hold the chosen photograph with the draft, so leaving the page keeps it
     const handleInspectionImageChange = (file) => {
         setInspectionImage(file);
-        setProposalFile(assignmentId, file);
+        setProposalFile(draftId, file);
     };
 
     // Read the device position and check it against the reported waste location
@@ -155,10 +281,20 @@ export default function SubmitProposalPage() {
 
         setPosition(reading);
 
+        /*
+          Reference point for the distance shown on screen.
+
+          A new proposal compares against the citizen's reported coordinates.
+          A revision has no report coordinates to hand, so it falls back to the
+          inspection the backend already accepted for this proposal - close
+          enough to tell the cleaner whether they are at the right place.
+          Either way the backend measures again against the report itself, so
+          this reading only ever advises.
+        */
         const verdict = evaluateCleanupLocation(
             reading,
-            assignment?.reportLatitude,
-            assignment?.reportLongitude,
+            assignment?.reportLatitude ?? filedProposal?.inspectionLatitude,
+            assignment?.reportLongitude ?? filedProposal?.inspectionLongitude,
             INSPECTION_RADIUS_METRES
         );
 
@@ -166,7 +302,7 @@ export default function SubmitProposalPage() {
         setDistanceMetres(verdict.distanceMetres);
 
         // Stored with the draft, so returning to the form is still verified
-        setProposalLocation(assignmentId, {
+        setProposalLocation(draftId, {
             position: reading,
             status: verdict.status,
             distanceMetres: verdict.distanceMetres,
@@ -189,6 +325,12 @@ export default function SubmitProposalPage() {
         // Multipart, because the inspection photograph travels with the plan
         const formData = new FormData();
 
+        /*
+          Revision mode: an empty upload box means "keep the photograph on
+          file". Sending nothing leaves the stored Cloudinary asset untouched;
+          sending a file makes the backend delete the old one and store the
+          new URL, so the change is deliberate rather than accidental.
+        */
         if (inspectionImage) {
             formData.append("inspectionImage", inspectionImage);
         }
@@ -216,50 +358,174 @@ export default function SubmitProposalPage() {
         }
 
         try {
-            await submitProposal(assignmentId, formData);
+            if (isEditing) {
+                await updateProposal(proposalId, formData); // back into the review queue
+            } else {
+                await submitProposal(assignmentId, formData);
+            }
 
-            clearProposalDraft(assignmentId); // the plan now lives on the server
+            clearProposalDraft(draftId); // the plan now lives on the server
 
             // The proposal list is where the municipal decision will appear
             navigate("/cleaner/proposals", { replace: true });
         } catch (error) {
+            /*
+              Everything the backend refuses is shown here rather than swallowed:
+              the site was awarded to another cleaner while this was being
+              written, the inspection is outside the 50 m radius, the proposal
+              is no longer editable, or the image was rejected.
+            */
             setSubmitError(getErrorMessage(error));
         }
     };
+
+    /*
+      Revision mode, still fetching. The form is deliberately withheld: shown
+      empty it would look like the plan had been lost, and anything typed
+      would be overwritten the moment the record arrived.
+    */
+    if (isEditing && loadingProposal) {
+        return (
+            <div className="mx-auto max-w-3xl">
+                <PageHeading
+                    title="Revise Cleanup Proposal"
+                    titleHi="सफाई प्रस्ताव संशोधित करें"
+                    subtitle="Opening the proposal you filed."
+                />
+
+                <div className="mt-4 space-y-3" aria-hidden="true">
+                    <div className="h-24 animate-pulse rounded-gov border border-rule bg-white" />
+                    <div className="h-64 animate-pulse rounded-gov border border-rule bg-white" />
+                </div>
+            </div>
+        );
+    }
+
+    // Someone else's proposal, a deleted one, or the network gave way
+    if (isEditing && loadError) {
+        return (
+            <div className="mx-auto max-w-3xl">
+                <PageHeading
+                    title="Revise Cleanup Proposal"
+                    titleHi="सफाई प्रस्ताव संशोधित करें"
+                    subtitle="This proposal could not be opened."
+                />
+
+                <div className="mt-4">
+                    <Alert type="error" title="Proposal unavailable">
+                        {loadError} You can only revise proposals you filed yourself.
+                    </Alert>
+                </div>
+
+                <div className="mt-4">
+                    <Button
+                        type="button"
+                        variant="secondary"
+                        fullWidth={false}
+                        onClick={() => navigate("/cleaner/proposals")}
+                    >
+                        Back to My Proposals
+                    </Button>
+                </div>
+            </div>
+        );
+    }
+
+    /*
+      Decided already, or withdrawn. The backend refuses the update, so the
+      form is replaced by an explanation instead of letting a cleaner rewrite
+      a plan that can no longer be sent.
+    */
+    // isProposalEditable reads .status off the object, so pass the whole proposal
+    if (isEditing && filedProposal && !isProposalEditable(filedProposal)) {
+        return (
+            <div className="mx-auto max-w-3xl">
+                <PageHeading
+                    title="Revise Cleanup Proposal"
+                    titleHi="सफाई प्रस्ताव संशोधित करें"
+                    subtitle={filedProposal.reportTitle}
+                />
+
+                <div className="mt-4">
+                    <Alert type="warning" title="This proposal can no longer be changed">
+                        {filedProposal.status === PROPOSAL_STATUS.APPROVED
+                            ? "The corporation has approved this proposal, so the plan is now fixed. The site appears under My Tasks."
+                            : "A decision has already been recorded for this proposal, so it is closed. Check My Proposals for the outcome."}
+                    </Alert>
+                </div>
+
+                <div className="mt-4">
+                    <Button
+                        type="button"
+                        variant="secondary"
+                        fullWidth={false}
+                        onClick={() => navigate("/cleaner/proposals")}
+                    >
+                        Back to My Proposals
+                    </Button>
+                </div>
+            </div>
+        );
+    }
+
+    // Site details come from the list for a new proposal, from the record for a revision
+    const site = assignment || filedProposal;
 
     return (
         <div className="mx-auto max-w-3xl">
 
             <PageHeading
-                title="Submit Cleanup Proposal"
-                titleHi="सफाई प्रस्ताव जमा करें"
-                subtitle="Inspect the site, then send your cleanup plan to the municipal corporation for approval."
+                title={isEditing ? "Revise Cleanup Proposal" : "Submit Cleanup Proposal"}
+                titleHi={isEditing ? "सफाई प्रस्ताव संशोधित करें" : "सफाई प्रस्ताव जमा करें"}
+                subtitle={
+                    isEditing
+                        ? "Update your plan and send it back to the municipal corporation for a fresh decision."
+                        : "Inspect the site, then send your cleanup plan to the municipal corporation for approval."
+                }
             />
 
             {/* The single most important expectation to set for a cleaner */}
-            <Alert type="info" title="Submitting a proposal does not assign the work">
-                Other cleaners may propose for the same site. A municipal officer
-                compares the proposals and approves one. You will see the decision
-                under My Proposals.
-            </Alert>
+            {isEditing ? (
+                <Alert type="info" title="Resubmitting starts the review again">
+                    Your revised plan returns to the corporation as awaiting a
+                    decision. Other cleaners may still be proposing for the same
+                    site, so a revision is not a promise of the work.
+                </Alert>
+            ) : (
+                <Alert type="info" title="Submitting a proposal does not assign the work">
+                    Other cleaners may propose for the same site. A municipal officer
+                    compares the proposals and approves one. You will see the decision
+                    under My Proposals.
+                </Alert>
+            )}
 
-            {/* Which site this proposal is for, when the list handed it over */}
-            {assignment && (
+            {/* The corporation asked for changes, which is why this form is open */}
+            {isEditing && filedProposal?.status === PROPOSAL_STATUS.REVISION_REQUIRED && (
+                <div className="mt-4">
+                    <Alert type="warning" title="Revision requested by the corporation">
+                        The officer sent this proposal back rather than rejecting it.
+                        Address what they asked for, then resubmit.
+                    </Alert>
+                </div>
+            )}
+
+            {/* Which site this proposal is for */}
+            {site && (
                 <section className="mt-4 rounded-gov border border-rule bg-white p-4">
                     <h2 className="flex items-center gap-2 font-serif text-base font-bold text-gov-navy">
                         <ClipboardList size={16} aria-hidden="true" />
-                        {assignment.reportTitle}
+                        {site.reportTitle}
                     </h2>
 
                     <p className="mt-1 text-sm text-ink-muted">
-                        {assignment.address || "Address not recorded"}
-                        {assignment.city && ` \u2022 ${assignment.city}`}
+                        {site.address || "Address not recorded"}
+                        {site.city && ` \u2022 ${site.city}`}
                     </p>
                 </section>
             )}
 
             {/* Opened directly, so the site coordinates were never loaded */}
-            {!assignment && (
+            {!site && (
                 <div className="mt-4">
                     <Alert type="warning" title="Site details unavailable">
                         Open this form from Available Tasks so your distance from the
@@ -288,8 +554,9 @@ export default function SubmitProposalPage() {
                     </h2>
 
                     <p className="mt-1 text-sm text-ink-muted">
-                        Capture your location at the waste site. A photograph of the
-                        site as you found it is optional but strengthens your proposal.
+                        {isEditing
+                            ? "Capture your location again at the waste site. A revision is a fresh inspection, so a fresh reading is required."
+                            : "Capture your location at the waste site. A photograph of the site as you found it is optional but strengthens your proposal."}
                     </p>
 
                     <div className="mt-3">
@@ -302,6 +569,33 @@ export default function SubmitProposalPage() {
                             onCapture={handleCaptureLocation}
                         />
                     </div>
+
+                    {/*
+                      The photograph already on file, with the consequence of
+                      replacing it stated before the file picker rather than
+                      after: the old image is deleted from storage and cannot
+                      be brought back.
+                    */}
+                    {isEditing && filedProposal?.inspectionImageUrl && (
+                        <div className="mt-4 rounded-gov border border-rule bg-paper p-3">
+                            <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted">
+                                Photograph on file
+                            </p>
+
+                            <img
+                                src={filedProposal.inspectionImageUrl}
+                                alt="Site as recorded in the proposal already filed"
+                                className="mt-2 h-32 w-full max-w-xs rounded-gov border border-rule object-cover"
+                                loading="lazy"
+                            />
+
+                            <p className="mt-2 text-xs text-ink-muted">
+                                Leave the upload box empty to keep this photograph.
+                                Attaching a new one replaces it permanently - the old
+                                file is deleted and cannot be recovered.
+                            </p>
+                        </div>
+                    )}
 
                     <div className="mt-4">
                         <ImageUploadField
@@ -398,7 +692,7 @@ export default function SubmitProposalPage() {
                     />
                 </section>
 
-                {/* Backend rejections, e.g. inspection too far or duplicate proposal */}
+                {/* Backend rejections, e.g. inspection too far or the site already awarded */}
                 {submitError && <Alert type="error">{submitError}</Alert>}
 
                 <div className="flex flex-wrap gap-2">
@@ -409,7 +703,7 @@ export default function SubmitProposalPage() {
                         // Location is proof of a real inspection, so it gates submission
                         disabled={!locationVerified}
                     >
-                        Submit Proposal
+                        {isEditing ? "Resubmit Proposal" : "Submit Proposal"}
                     </Button>
 
                     <Button
@@ -418,7 +712,7 @@ export default function SubmitProposalPage() {
                         fullWidth={false}
                         // Cancel is a deliberate abandon, so the draft goes with it
                         onClick={() => {
-                            clearProposalDraft(assignmentId);
+                            clearProposalDraft(draftId);
                             navigate(-1);
                         }}
                     >

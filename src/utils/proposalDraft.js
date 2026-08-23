@@ -37,6 +37,23 @@
 // Shared by the single-draft key builder and the "list every draft" scan
 const DRAFT_KEY_PREFIX = "proposalDraft:";
 
+// Marks a draft that revises an ALREADY FILED proposal, not a new bid
+const EDIT_DRAFT_PREFIX = "edit:";
+
+/**
+ * Draft id for revising a filed proposal.
+ *
+ * A revision is keyed by proposalId, not assignmentId: the same cleaner can be
+ * revising one plan while drafting a fresh bid for another site, and the two
+ * must never overwrite each other.
+ *
+ * @param {number|string} proposalId the proposal being revised
+ * @returns {string} draft id understood by every function in this module
+ */
+export function proposalEditDraftId(proposalId) {
+    return `${EDIT_DRAFT_PREFIX}${proposalId}`;
+}
+
 // One sessionStorage entry per assignment being proposed for
 function draftKey(assignmentId) {
     return `${DRAFT_KEY_PREFIX}${assignmentId}`;
@@ -150,6 +167,15 @@ export function listProposalDrafts() {
             }
 
             const assignmentId = key.slice(DRAFT_KEY_PREFIX.length);
+
+            // Revision drafts belong to a proposal that is already filed, and
+            // My Proposals lists it from the server - so it is not an
+            // "unfinished new proposal" and must not appear twice.
+            if (assignmentId.startsWith(EDIT_DRAFT_PREFIX)) {
+
+                continue;
+
+            }
 
             const envelope = readDraftEnvelope(assignmentId);
 

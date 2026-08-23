@@ -304,6 +304,21 @@ export default function MainLayout() {
             ],
         },
         {
+            /*
+              Revising a proposal already filed - /cleaner/proposals/12/edit.
+
+              Declared after the "new" entry above because the match is a
+              plain startsWith and this prefix would otherwise swallow it,
+              labelling a fresh proposal as a revision.
+            */
+            prefix: "/cleaner/proposals/",
+            trail: [
+                { label: "Cleaner Dashboard", to: "/cleaner/dashboard" },
+                { label: "My Proposals", to: "/cleaner/proposals" },
+                { label: "Revise Proposal" },
+            ],
+        },
+        {
             prefix: "/admin/municipal-corporations/edit/",
             trail: [
                 { label: "Admin Dashboard", to: "/admin/dashboard" },

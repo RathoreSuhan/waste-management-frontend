@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { MapPin, Users, Clock, Layers, FileText } from "lucide-react";
+import { MapPin, Users, Clock, Layers, FileText, Pencil } from "lucide-react"; // Pencil marks the revise/edit actions
 
 import PageHeading from "@/components/common/PageHeading";
 import Alert from "@/components/ui/Alert";
@@ -11,7 +11,7 @@ import usePagination from "@/hooks/usePagination";
 import useProposals from "@/hooks/useProposals";
 
 import { withdrawProposal } from "@/services/cleanupService";
-import { isProposalEditable } from "@/constants/assignmentConstants";
+import { isProposalEditable, PROPOSAL_STATUS } from "@/constants/assignmentConstants"; // PROPOSAL_STATUS separates "asked to revise" from "still waiting"
 import { getErrorMessage } from "@/utils/errorMessage";
 import {
     clearProposalDraft,     // throws one unfinished draft away
@@ -280,6 +280,11 @@ export default function MyProposalsPage() {
                         // SUBMITTED or REVISION_REQUIRED may still be changed
                         const editable = isProposalEditable(proposal);
 
+                        // An officer has already read this one and wants changes,
+                        // so revising is the expected next step, not an optional one
+                        const revisionRequested =
+                            proposal.status === PROPOSAL_STATUS.REVISION_REQUIRED;
+
                         return (
                             <article
                                 key={proposal.proposalId}
@@ -364,7 +369,29 @@ export default function MyProposalsPage() {
                                 )}
 
                                 <div className="mt-4 flex flex-wrap items-center gap-3">
-                                    {/* Editing reuses the submit form, prefilled by the caller */}
+                                    {/*
+                                      Both links open the same form at
+                                      /cleaner/proposals/<id>/edit, which loads the
+                                      filed proposal and sends a PUT instead of a POST.
+                                      Only the wording and weight differ: a revision was
+                                      asked for, an edit was not.
+                                    */}
+                                    {editable && (
+                                        <Link
+                                            to={`/cleaner/proposals/${proposal.proposalId}/edit`}
+                                            className={
+                                                revisionRequested
+                                                    ? "inline-flex items-center gap-2 rounded-gov border border-gov-blue bg-gov-blue px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-gov-blue-dark"
+                                                    : "inline-flex items-center gap-2 rounded-gov border border-rule bg-white px-5 py-2.5 text-sm font-semibold text-gov-navy transition hover:bg-paper"
+                                            }
+                                        >
+                                            <Pencil size={14} aria-hidden="true" />
+                                            {revisionRequested
+                                                ? "Revise & Resubmit"
+                                                : "Edit Proposal"}
+                                        </Link>
+                                    )}
+
                                     {editable && (
                                         <Button
                                             type="button"

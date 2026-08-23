@@ -14,6 +14,8 @@ import {
     loadPendingProposals,
     countProposalSites,
     countLiveProposalsBySite,
+    countAwaitingRevision,
+    countUnavailableSites,
 } from "@/utils/municipalQueue";
 import { APPROVAL_STAGE, APPROVAL_DECISION } from "@/constants/municipalConstants";
 import { REVIEW_PAGE_SIZE } from "@/constants/paginationConstants"; // review desks page 5 at a time
@@ -144,6 +146,33 @@ export default function ProposalQueuePage() {
     );
 
     /**
+     * Bids parked with the cleaner after a revision request.
+     *
+     * They still hold their site open, but the officer cannot decide on them
+     * until the cleaner resubmits - so the intro line states them separately
+     * from the plans genuinely waiting on this desk.
+     */
+    const awaitingRevision = useMemo(
+        () => countAwaitingRevision(proposals),
+        [proposals]
+    );
+
+    // What is left once the parked ones are set aside: the real workload
+    const awaitingDecision = proposals.length - awaitingRevision;
+
+    /**
+     * Sites whose competing bids could not be fetched on the last load.
+     *
+     * The queue is assembled from two endpoints, so a single failing site is
+     * skipped rather than allowed to blank the desk - but the officer is told,
+     * because a silently short queue looks like an empty one.
+     */
+    const unavailableSites = useMemo(
+        () => countUnavailableSites(proposals),
+        [proposals]
+    );
+
+    /**
      * Position of each bid within its own site: proposalId -> 1, 2, 3...
      *
      * Read together with the live count it becomes "Proposal 2 of 3 for this
@@ -238,6 +267,11 @@ export default function ProposalQueuePage() {
                     "This decision could not be recorded. Please try again."
                 )
             );
+
+            // A refusal usually means this card is out of date - the site was
+            // awarded elsewhere or the cleaner already resubmitted. Re-read the
+            // queue behind the dialog so the retry is made against the truth.
+            refresh();
         } finally {
             setDecisionBusy(false);
         }
@@ -276,17 +310,41 @@ export default function ProposalQueuePage() {
                 />
             )}
 
+            {/* Part of the queue is missing - said plainly, at every stage */}
+            {!loading && unavailableSites > 0 && (
+                <div className="mb-4">
+                    <Alert type="warning" title="Some sites could not be loaded">
+                        {unavailableSites} site{unavailableSites === 1 ? "" : "s"} in this
+                        queue could not be read just now, so {unavailableSites === 1 ? "its" : "their"}{" "}
+                        proposals are not listed below. Everything else is shown as usual -
+                        reload to try the missing {unavailableSites === 1 ? "site" : "sites"} again.
+                    </Alert>
+                </div>
+            )}
+
             {!loading && !error && proposals.length > 0 && (
                 <>
                     {/* Reminds the officer that one site can carry several bids */}
                     <div className="mb-4">
                         <Alert type="info" title="One decision per proposal">
-                            {proposals.length} proposal{proposals.length === 1 ? "" : "s"}{" "}
-                            {proposals.length === 1 ? "is" : "are"} awaiting your decision
+                            {awaitingDecision} proposal{awaitingDecision === 1 ? "" : "s"}{" "}
+                            {awaitingDecision === 1 ? "is" : "are"} awaiting your decision
                             across {siteCount} site{siteCount === 1 ? "" : "s"}. Where
                             several cleaners have bid for the same site, compare their
                             plans and approve only one - the rest are rejected
                             automatically.
+
+                            {/* Parked bids are still listed, so say why they cannot be decided */}
+                            {awaitingRevision > 0 && (
+                                <span className="mt-1 block">
+                                    {awaitingRevision} further proposal
+                                    {awaitingRevision === 1 ? " has" : "s have"} been sent
+                                    back for revision and {awaitingRevision === 1 ? "is" : "are"}{" "}
+                                    waiting on the cleaner. {awaitingRevision === 1 ? "It stays" : "They stay"}{" "}
+                                    listed because the site cannot be awarded while{" "}
+                                    {awaitingRevision === 1 ? "it is" : "they are"} open.
+                                </span>
+                            )}
                         </Alert>
                     </div>
 

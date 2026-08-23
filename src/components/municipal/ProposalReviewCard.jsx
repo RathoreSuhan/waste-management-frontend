@@ -39,12 +39,18 @@
  */
 
 import { Link } from "react-router-dom";
-import { Building2, CalendarClock, CalendarDays, FileText, MapPin, Ruler, Users } from "lucide-react";
+import { Building2, CalendarClock, CalendarDays, FileText, History, MapPin, Ruler, Users } from "lucide-react";
 import BiText from "@/components/common/BiText";
 import Button from "@/components/ui/Button";
 import AssignmentStatusBadge from "@/components/cleanup/AssignmentStatusBadge";
-import { INSPECTION_RADIUS_METRES } from "@/constants/assignmentConstants";
-import { APPROVAL_STAGE, getCleanerTypeLabel, getDecisionActions } from "@/constants/municipalConstants";
+import ProposalStatusBadge from "@/components/cleanup/ProposalStatusBadge";
+import { INSPECTION_RADIUS_METRES, PROPOSAL_STATUS } from "@/constants/assignmentConstants";
+import {
+    APPROVAL_DECISION,
+    APPROVAL_STAGE,
+    getCleanerTypeLabel,
+    getDecisionActions,
+} from "@/constants/municipalConstants";
 import { formatRelativeTime } from "@/utils/formatters";
 
 /*
@@ -55,6 +61,66 @@ import { formatRelativeTime } from "@/utils/formatters";
   rather than retyped, so wording and variants stay in one place.
 */
 const PROPOSAL_ACTIONS = [...getDecisionActions(APPROVAL_STAGE.PROPOSAL)].reverse();
+
+/*
+  Proposal states in which the paper is closed: the officer has already ruled on
+  it, or the cleaner pulled it back. No further verdict can be recorded, so the
+  card shows the plan and nothing else.
+*/
+const CLOSED_PROPOSAL_STATUSES = [
+    PROPOSAL_STATUS.APPROVED,
+    PROPOSAL_STATUS.REJECTED,
+    PROPOSAL_STATUS.WITHDRAWN,
+];
+
+/*
+  Left rail colour per PROPOSAL state - the fastest way for an officer scrolling
+  the desk to separate bids they have never touched (saffron) from bids they
+  have already acted on. Deliberately reuses the badge palette in
+  PROPOSAL_STATUS_META so rail and pill can never disagree.
+*/
+const PROPOSAL_RAIL_CLASS = {
+    [PROPOSAL_STATUS.SUBMITTED]: "border-l-saffron", // untouched: still awaiting a first verdict
+    [PROPOSAL_STATUS.REVISION_REQUIRED]: "border-l-orange-500", // sent back, waiting on the cleaner
+    [PROPOSAL_STATUS.APPROVED]: "border-l-india-green",
+    [PROPOSAL_STATUS.REJECTED]: "border-l-rose-500",
+    [PROPOSAL_STATUS.WITHDRAWN]: "border-l-ink-muted",
+};
+
+/* Matching header wash, kept faint so the plan figures stay the loudest thing. */
+const PROPOSAL_HEADER_CLASS = {
+    [PROPOSAL_STATUS.SUBMITTED]: "bg-paper",
+    [PROPOSAL_STATUS.REVISION_REQUIRED]: "bg-orange-50",
+    [PROPOSAL_STATUS.APPROVED]: "bg-emerald-50",
+    [PROPOSAL_STATUS.REJECTED]: "bg-rose-50",
+    [PROPOSAL_STATUS.WITHDRAWN]: "bg-slate-50",
+};
+
+/**
+ * May this verdict still be recorded against a proposal in this state?
+ *
+ * Mirrors the backend guard: CleanupApprovalServiceImpl refuses a second
+ * decision on a proposal it has already approved or rejected, so offering the
+ * button would only produce a failed request.
+ */
+function canRecordDecision(status) {
+    return !CLOSED_PROPOSAL_STATUSES.includes(status);
+}
+
+/**
+ * Is this particular verdict temporarily out of reach?
+ *
+ * Once a revision has been requested the ball is with the cleaner: approving a
+ * plan the officer has just called inadequate, or asking twice for the same
+ * changes, would both be meaningless. Rejecting it outright still is not, so
+ * that one verdict stays live.
+ */
+function isDecisionLocked(status, decision) {
+    return (
+        status === PROPOSAL_STATUS.REVISION_REQUIRED &&
+        decision !== APPROVAL_DECISION.REJECTED
+    );
+}
 
 /**
  * Date-only formatter for the proposed start date.
@@ -126,15 +192,40 @@ export default function ProposalReviewCard({
     // Initial disc stands in for a photograph the platform deliberately does not hold.
     const cleanerInitial = (proposal.cleanerName || "?").trim().charAt(0).toUpperCase();
 
+    /*
+      The proposal's OWN state, which is what this card is about. The site status
+      (proposal.assignmentStatus) reads "Under Review" for every bid on a site
+      the moment any one cleaner offers, so showing it as the headline badge made
+      a proposal the officer had already sent back look untouched.
+    */
+    const status = proposal.status;
+    const isRevisionPending = status === PROPOSAL_STATUS.REVISION_REQUIRED;
+    const showDecisions = canRecordDecision(status); // decided papers get no verdict buttons
+
+    /*
+      A revision keeps its original submittedAt on purpose (the audit trail must
+      remember when the cleaner first bid), so a plan revised minutes ago would
+      otherwise still read "Submitted 3 days ago". updatedAt is only surfaced
+      once it actually moves ahead of submittedAt.
+    */
+    const revisedAt =
+        proposal.updatedAt && proposal.submittedAt && new Date(proposal.updatedAt) > new Date(proposal.submittedAt)
+            ? proposal.updatedAt
+            : null;
+
     return (
         <article
-            className="overflow-hidden rounded-gov border border-rule border-l-4 border-l-saffron bg-white shadow-sm"
+            className={`overflow-hidden rounded-gov border border-rule border-l-4 bg-white shadow-sm ${
+                PROPOSAL_RAIL_CLASS[status] || "border-l-saffron"
+            }`}
         >
             {/*
               Header band. Tinted and ruled off, so a stack of bids for the same
-              site reads as separate documents rather than one long column.
+              site reads as separate documents rather than one long column. The
+              wash follows the proposal status, so touched and untouched bids are
+              distinguishable before a single word is read.
             */}
-            <div className="border-b border-rule bg-paper px-4 py-3">
+            <div className={`border-b border-rule px-4 py-3 ${PROPOSAL_HEADER_CLASS[status] || "bg-paper"}`}>
                 <div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-2">
                     <div className="min-w-0">
 
@@ -155,7 +246,15 @@ export default function ProposalReviewCard({
                     </div>
 
                     <div className="flex shrink-0 flex-col items-start gap-2 sm:items-end">
-                        <AssignmentStatusBadge status={proposal.assignmentStatus} />
+
+                        {/* Headline badge: the state of THIS proposal, not of the site */}
+                        <ProposalStatusBadge status={status} />
+
+                        {/* Site state kept as a quieter second line, still useful context */}
+                        <span className="flex items-center gap-1.5 text-[11px] text-ink-muted">
+                            <BiText en="Site" hi="स्थल" />
+                            <AssignmentStatusBadge status={proposal.assignmentStatus} />
+                        </span>
 
                         {/* Where this bid sits in the contest for the site */}
                         <span className="rounded-gov border border-gov-blue/30 bg-blue-50 px-2 py-0.5 text-[11px] font-semibold text-gov-navy">
@@ -173,6 +272,24 @@ export default function ProposalReviewCard({
                     </div>
                 </div>
             </div>
+
+            {/*
+              Revision band. Without it an officer returning to the desk cannot
+              tell why a bid they already handled is still listed - the paper is
+              back with the cleaner, and nothing is expected of the officer until
+              a revised plan arrives.
+            */}
+            {isRevisionPending ? (
+                <div className="border-b border-orange-200 bg-orange-50 px-4 py-2.5">
+                    <p className="text-[11px] font-semibold tracking-[0.15em] text-orange-800 uppercase">
+                        <BiText en="Revision requested" hi="संशोधन मांगा गया" />
+                    </p>
+                    <p className="mt-0.5 text-sm text-orange-900">
+                        Waiting for {proposal.cleanerName || "the cleaner"} to submit a revised plan. Your
+                        instructions are on the full plan page, with the decision trail.
+                    </p>
+                </div>
+            ) : null}
 
             {/* Who is offering. Named first, because the officer is choosing a party. */}
             <div className="flex items-start gap-3 px-4 py-3">
@@ -275,10 +392,20 @@ export default function ProposalReviewCard({
 
             {/* Footer: submission age, the full plan, then the three verdicts */}
             <div className="flex flex-col gap-3 border-t border-rule bg-paper px-4 py-3 lg:flex-row lg:items-center lg:justify-between">
-                <p className="text-xs text-ink-muted">
-                    <BiText en="Submitted" hi="प्रस्तुत" />{" "}
-                    {proposal.submittedAt ? formatRelativeTime(proposal.submittedAt) : "-"}
-                </p>
+                <div className="text-xs text-ink-muted">
+                    <p>
+                        <BiText en="Submitted" hi="प्रस्तुत" />{" "}
+                        {proposal.submittedAt ? formatRelativeTime(proposal.submittedAt) : "-"}
+                    </p>
+
+                    {/* Only appears on a plan the cleaner has actually changed since */}
+                    {revisedAt ? (
+                        <p className="mt-0.5 flex items-center gap-1.5 font-semibold text-gov-navy">
+                            <History className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                            <BiText en="Revised" hi="संशोधित" /> {formatRelativeTime(revisedAt)}
+                        </p>
+                    ) : null}
+                </div>
 
                 <div className="flex flex-wrap items-center gap-2">
 
@@ -293,20 +420,42 @@ export default function ProposalReviewCard({
                         </Link>
                     ) : null}
 
-                    {/* Decision buttons are data-driven so wording stays identical everywhere */}
-                    {PROPOSAL_ACTIONS.map((action) => (
-                        <Button
-                            key={action.decision}
-                            type="button"
-                            variant={action.variant}
-                            fullWidth={false}
-                            disabled={busy}
-                            className="px-3 py-2 text-sm"
-                            onClick={() => onDecision?.(action.decision, proposal)}
-                        >
-                            {action.label}
-                        </Button>
-                    ))}
+                    {/*
+                      Decision buttons are data-driven so wording stays identical
+                      everywhere, and gated on the proposal's own state so the
+                      officer is never offered a verdict the backend would refuse.
+                    */}
+                    {showDecisions
+                        ? PROPOSAL_ACTIONS.map((action) => {
+                            const locked = isDecisionLocked(status, action.decision);
+
+                            return (
+                                <Button
+                                    key={action.decision}
+                                    type="button"
+                                    variant={action.variant}
+                                    fullWidth={false}
+                                    disabled={busy || locked}
+                                    className="px-3 py-2 text-sm"
+
+                                    // Hover text explains the lock, since a greyed button alone does not
+                                    title={
+                                        locked
+                                            ? "Unlocks once the cleaner submits the revised plan"
+                                            : undefined
+                                    }
+                                    onClick={() => onDecision?.(action.decision, proposal)}
+                                >
+                                    {action.label}
+                                </Button>
+                            );
+                        })
+                        : (
+                            // Closed paper: state the outcome instead of dead buttons
+                            <span className="text-xs font-semibold text-ink-muted">
+                                Decision already recorded - this proposal is closed.
+                            </span>
+                        )}
                 </div>
             </div>
         </article>

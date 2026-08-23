@@ -275,6 +275,27 @@ export default function AppRoutes() {
                             element={<SubmitProposalPage />}
                         />
 
+                        {/*
+                          Revising a proposal already on file - usually because
+                          the corporation asked for changes.
+
+                          Same component as the route above: the fields, the
+                          50 m inspection rule and the photo requirement are
+                          identical, only the destination differs (PUT one
+                          proposal instead of POST a new one). The page tells
+                          the two apart by which parameter is present, so
+                          there is one form to maintain rather than two that
+                          drift apart.
+
+                          Keyed by proposal id, not assignment id - a cleaner
+                          may hold several bids and only one of them is under
+                          revision.
+                        */}
+                        <Route
+                            path="/cleaner/proposals/:proposalId/edit"
+                            element={<SubmitProposalPage />}
+                        />
+
                         {/* Work the municipal corporation has assigned to this cleaner */}
                         <Route path="/cleaner/tasks" element={<MyTasksPage />} />
 

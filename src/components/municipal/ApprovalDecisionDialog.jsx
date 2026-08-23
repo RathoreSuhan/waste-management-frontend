@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { X } from "lucide-react";
@@ -77,6 +77,19 @@ export default function ApprovalDecisionDialog({
         defaultValues: APPROVAL_DECISION_DEFAULTS,
     });
 
+    /*
+      A refusal describes the attempt that produced it. Once the officer edits
+      their remarks the banner is stale, so it is put away rather than left
+      contradicting the text on screen.
+    */
+    const [errorDismissed, setErrorDismissed] = useState(false);
+
+    // Scroll target: the banner sits below the remarks box, often off-screen
+    const errorRef = useRef(null);
+
+    // Remarks field, so the change handler can be extended below
+    const remarksField = register("remarks");
+
     // Wording for the pressed button (label, tone, whether remarks are required)
     const action = getDecisionAction(stage, decision);
 
@@ -93,6 +106,38 @@ export default function ApprovalDecisionDialog({
             reset({ decision: decision || "", remarks: "" });
         }
     }, [open, decision, reset]);
+
+    // A fresh answer from the server always deserves to be seen again
+    useEffect(() => {
+        setErrorDismissed(false);
+    }, [error, open]);
+
+    // Only shown while it still matches what is in the remarks box
+    const showError = Boolean(error) && !errorDismissed;
+
+    /*
+      Bring the refusal into view and hand it the focus.
+
+      Three buttons sit at the bottom of a tall card, so the banner can appear
+      well outside the visible area - an officer would otherwise press the same
+      button again believing nothing happened.
+    */
+    useEffect(() => {
+        if (!showError) {
+            return;
+        }
+
+        const node = errorRef.current;
+
+        if (!node) {
+            return;
+        }
+
+        node.scrollIntoView({ block: "center", behavior: "smooth" });
+
+        // preventScroll: the smooth scroll above is already on its way
+        node.focus({ preventScroll: true });
+    }, [showError, error]);
 
     // Live counter so a long instruction does not silently hit the column limit
     const remarksValue = watch("remarks") || "";
@@ -189,7 +234,17 @@ export default function ApprovalDecisionDialog({
                                 : "Recorded in the approval history."
                         }
                         error={errors.remarks}
-                        {...register("remarks")}
+                        {...remarksField}
+                        onChange={(event) => {
+
+                            // Keep react-hook-form's own tracking intact
+                            remarksField.onChange(event);
+
+                            // Editing the text answers the refusal, so retire it
+                            if (showError) {
+                                setErrorDismissed(true);
+                            }
+                        }}
                     />
 
                     {/* Character budget, mirrors the backend column size */}
@@ -197,11 +252,23 @@ export default function ApprovalDecisionDialog({
                         {remarksValue.length}/{REMARKS_MAX_LENGTH}
                     </p>
 
-                    {/* Backend refusal - remarks stay in the box so nothing is retyped */}
-                    {error && (
-                        <Alert type="error" title="Decision not recorded">
-                            {error}
-                        </Alert>
+                    {/*
+                      Backend refusal - remarks stay in the box so nothing is
+                      retyped. Announced assertively: the officer is looking at
+                      the button they just pressed, not at this spot.
+                    */}
+                    {showError && (
+                        <div
+                            ref={errorRef}
+                            tabIndex={-1}
+                            role="alert"
+                            aria-live="assertive"
+                            className="outline-none"
+                        >
+                            <Alert type="error" title="Decision not recorded">
+                                {error}
+                            </Alert>
+                        </div>
                     )}
 
                     {/* Actions - cancel first so the reversible choice reads first */}
@@ -222,9 +289,14 @@ export default function ApprovalDecisionDialog({
                             // Tone comes from the action config: success / secondary / danger
                             variant={action?.variant || "primary"}
                             fullWidth={false}
-                            loading={busy}
+                            // Named busy state instead of a generic "please wait"
+                            disabled={busy}
                         >
-                            {action ? action.label : "Record decision"}
+                            {busy
+                                ? "Recording decision..."
+                                : action
+                                    ? action.label
+                                    : "Record decision"}
                         </Button>
                     </div>
                 </form>
