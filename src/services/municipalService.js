@@ -25,6 +25,7 @@ import { CLEANUP_APPROVALS_API } from "@/constants/apiConstants";
  *   GET  /api/cleanup-approvals/completion-queue             -> finished work awaiting sign-off
  *   POST /api/cleanup-approvals/completion/{assignmentId}    -> approve completion / request rework
  *   GET  /api/cleanup-approvals/active-cleanups              -> awarded work in execution
+ *   GET  /api/cleanup-approvals/completed-cleanups           -> work already signed off (history)
  *   GET  /api/cleanup-approvals/assignment/{id}              -> one assignment, review projection
  *   GET  /api/cleanup-approvals/assignment/{id}/activity-logs-> cleaner's work diary (read only)
  *   GET  /api/cleanup-approvals/assignment/{id}/history      -> audit trail of past decisions
@@ -158,6 +159,22 @@ export async function decideCompletion(assignmentId, payload) {
  */
 export async function getActiveCleanups() {
     const response = await axiosClient.get(`${CLEANUP_APPROVALS_API}/active-cleanups`);
+
+    return response.data || [];
+}
+
+/**
+ * Cleanups this city has already signed off, newest approval first.
+ *
+ * The closed end of the same workflow: only assignments in COMPLETED, which is
+ * a state reached exclusively through decideCompletion(). Ordered by the backend
+ * on completedAt, so the list reads as the corporation's decision history rather
+ * than the order the reports happened to be filed in.
+ *
+ * @returns CleanupAssignmentResponse[]
+ */
+export async function getCompletedCleanups() {
+    const response = await axiosClient.get(`${CLEANUP_APPROVALS_API}/completed-cleanups`);
 
     return response.data || [];
 }

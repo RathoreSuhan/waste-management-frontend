@@ -129,7 +129,7 @@ export default function MainLayout() {
             : user?.role === "ROLE_MUNICIPAL_OFFICER"
                 /*
                   Municipal officers are not administrators. Their menu holds
-                  only the four jurisdiction-scoped queues of their own
+                  only the five jurisdiction-scoped desks of their own
                   corporation - no user administration, no corporation
                   registry, no platform-wide report table. Every screen behind
                   these links is filtered server-side to the officer's city.
@@ -139,12 +139,20 @@ export default function MainLayout() {
                     { to: "/municipal/proposals", ...UI.sidebar.proposalQueue, icon: ClipboardList },
 
                     /*
-                      No exact match on these two: an officer opening a single
+                      No exact match on these three: an officer opening a single
                       assignment lands on /municipal/assignments/:id, which is
                       a leaf reached by link rather than a menu entry of its own.
                     */
                     { to: "/municipal/active", ...UI.sidebar.activeCleanups, icon: Truck },
                     { to: "/municipal/completions", ...UI.sidebar.completionReview, icon: ClipboardCheck },
+
+                    /*
+                      The closed end of the workflow. Approving a completion
+                      takes the card out of every other desk, so without this
+                      entry the corporation's own signed-off work has no route
+                      back from the menu.
+                    */
+                    { to: "/municipal/history", ...UI.sidebar.cleanupHistory, icon: History },
 
                     ACCOUNT_ITEM,
                     ...COMMUNITY_ITEMS,
@@ -239,6 +247,10 @@ export default function MainLayout() {
         "/municipal/completions": [
             { label: "Municipal Dashboard", to: "/municipal/dashboard" },
             { label: "Completion Review" },
+        ],
+        "/municipal/history": [
+            { label: "Municipal Dashboard", to: "/municipal/dashboard" },
+            { label: "Cleanup History" },
         ],
 
         "/citizen/dashboard": [{ label: "Citizen Dashboard" }],

@@ -38,9 +38,11 @@
  * public record, which is linked at the foot of the section.
  *
  * `ai` marks the two points where Google Gemini looks at a photograph:
- * once to confirm the reported waste is real, once to confirm it is
- * gone. Those two checks are the reason the record can be trusted, so
- * they stay marked even in a summary this short.
+ * once to confirm the reported waste is real, once to compare the cleared
+ * site against the original. Both are advisory - they put evidence in
+ * front of the municipal officer, who is the one who authorises a cleaner
+ * and signs the finished work off. The copy never lets the AI close a
+ * report, because the backend does not either.
  *
  * `icon` is deliberately absent. Icons are components, not content, and
  * resolving them here would drag lucide-react into a constants file.
@@ -59,20 +61,22 @@ export const HOME_PROCESS_STAGES = [
         ai: true,
     },
     {
+        // Cleaners bid for the site; the corporation decides who gets it
         id: "assigned",
-        title: "Assignment Created",
-        caption: "Routed to the municipal body, claimed by a cleaner",
+        title: "Municipal Authorisation",
+        caption: "Cleaners propose, the corporation awards the work",
     },
     {
         id: "verified",
-        title: "Cleanup Verified",
-        caption: "Before and after photographs compared",
+        title: "Cleanup & AI Check",
+        caption: "Proof uploaded on site, compared with the original",
         ai: true,
     },
     {
+        // The officer's approval is what closes the report, not the AI verdict
         id: "rewarded",
         title: "Reward Awarded",
-        caption: "Points credited, report closed and published",
+        caption: "Signed off by the officer, then credited and published",
     },
 ];
 
@@ -157,7 +161,8 @@ export const HOME_PLEDGE_BAND = {
     marks: [
         { label: "One photograph", caption: "Taken where you stand" },
         { label: "One minute", caption: "To file it on the record" },
-        { label: "One less site", caption: "Once a cleaner claims it" },
+        // A site closes on the corporation's sign-off, so the pledge says that
+        { label: "One less site", caption: "Once the work is signed off" },
     ],
 };
 
@@ -166,20 +171,21 @@ export const HOME_PLEDGE_BAND = {
  * Frequently asked questions
  * ----------------------------------------------------------------------------
  *
- * Four questions closing the landing page, reached directly from the
+ * Five questions closing the landing page, reached directly from the
  * footer's FAQ link at /#faq.
  *
- * Which four, and why these
+ * Which five, and why these
  * -------------------------
  * A visitor who has read this far has one thing left standing between them
  * and filing a report, and it is nearly always one of these: whether they
  * are allowed to, what will happen next, why the site refused their
- * photograph, or whether it is worth reporting a heap somebody else has
- * already complained about. Questions the page has answered already - what
+ * photograph, whether it is worth reporting a heap somebody else has
+ * already complained about, or who it is that finally decides a site has
+ * been cleared. Questions the page has answered already - what
  * the platform is, why waste matters - are deliberately not repeated; an
  * FAQ that restates the page above it is padding.
  *
- * The same rules the About page follows apply, and two of them bit while
+ * The same rules the About page follows apply, and three of them bit while
  * writing these:
  *
  * 1. No claims the backend does not implement. Notifications are
@@ -191,6 +197,13 @@ export const HOME_PLEDGE_BAND = {
  *    reasons in `rejected` are the six values of ImageRejectionReason, in
  *    the enum's own order, rewritten from its `guidance` strings - not a
  *    plausible-sounding list of reasons an image validator might give.
+ *
+ * 3. The AI is never given a decision it does not make. A cleaner is
+ *    authorised by the municipal corporation out of the proposals it
+ *    receives, and the same corporation approves the completion; the
+ *    Gemini comparison is evidence placed in front of that officer. Both
+ *    `after-filing` and `who-decides` are written to that division,
+ *    because it is the one readers most often get wrong.
  *
  * On the figures in `duplicate`: 100 metres and 30 days are the shipped
  * defaults of app.duplicate.radius-meters and app.duplicate.max-age-days,
@@ -219,12 +232,16 @@ export const HOME_FAQS = [
         question: "What happens after I file a report?",
         answer:
             "Your photograph is checked, then the report is routed to the " +
-            "municipal body for that city, where a cleaner can claim it. " +
-            "When they finish they upload a photograph of the cleared site, " +
-            "which is compared against your original before the report is " +
-            "closed and published. Every one of those changes is visible on " +
-            "the report itself, so you can follow it to the end without " +
-            "having to ask anybody how it is going.",
+            "municipal corporation for that city. Cleaners registered there " +
+            "inspect the site and submit costed proposals for it, and an " +
+            "officer at the corporation authorises one of them - nobody can " +
+            "simply take the work. The authorised cleaner starts on site, " +
+            "then uploads a photograph of the cleared site, which is " +
+            "compared against your original. That comparison is evidence, " +
+            "not the verdict: the officer reviews the proof and either signs " +
+            "the cleanup off or sends it back for rework. Every one of those " +
+            "changes is visible on the report itself, so you can follow it " +
+            "to the end without having to ask anybody how it is going.",
     },
     {
         id: "rejected",
@@ -252,6 +269,21 @@ export const HOME_FAQS = [
             "your urgency rating and comments are added to it. That is what " +
             "makes a site rise: one report carrying the weight of everybody " +
             "who has noticed it, instead of four thin records competing.",
+    },
+    {
+        id: "who-decides",
+        question: "Who decides a site has actually been cleared?",
+        answer:
+            "The municipal corporation for that city - not the AI, and not " +
+            "the cleaner who did the work. Google Gemini compares the before " +
+            "and after photographs and puts a confidence figure in front of " +
+            "an officer, but it cannot close anything on its own. Until an " +
+            "officer approves the completion the cleanup sits in a review " +
+            "queue, and if the proof does not hold up it goes back to the " +
+            "cleaner for rework instead. Points are credited to the cleaner, " +
+            "the report is marked resolved and the cleared site is published " +
+            "only after that approval - which is also why the same cleanup " +
+            "can never be rewarded twice.",
     },
 ];
 

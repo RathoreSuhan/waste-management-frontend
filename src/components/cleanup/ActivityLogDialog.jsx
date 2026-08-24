@@ -441,6 +441,7 @@ export default function ActivityLogDialog({
                                     file={file}
                                     onFileChange={handleFileChange}
                                     error={fileError}
+                                    required={false}   // A diary entry may be text only
                                 />
 
                                 <p className="mt-1 text-xs text-ink-muted">

@@ -25,7 +25,8 @@ import { HOME_PROCESS_STAGES } from "@/constants/homeContent";
  * a landing page has a few seconds to explain itself, and a fourteen-item
  * specification spends them on storage providers and triage rules. What a
  * visitor needs is the shape of the thing - somebody reports it, the
- * photograph is checked, someone is sent, the result is checked again,
+ * photograph is checked, the city's corporation authorises a cleaner from
+ * the proposals it receives, the finished work is checked and signed off,
  * the work is credited.
  *
  * So the section now names five stages and nothing else. The detail is
@@ -140,10 +141,12 @@ export default function HomeProcessSection({
 
                     <p className="mt-2 max-w-3xl text-sm leading-relaxed text-ink-muted">
                         Five stages between a photograph being uploaded and a
-
                         leaderboard being updated. Two of them ask Google Gemini
                         to look at the picture - once to confirm the waste is
-                        real, once to confirm it is gone.
+                        real, once to compare the cleared site with the
+                        original - and two of them are decisions taken by the
+                        city's municipal corporation: which cleaner is
+                        authorised, and whether the finished work passes.
                     </p>
                 </div>
 
@@ -225,11 +228,14 @@ export default function HomeProcessSection({
                                         {stage.title}
 
                                         {/*
-                                          The AI stages are marked. In a
-                                          summary this short they are the
-                                          only thing worth annotating -
-                                          they are why the record is worth
-                                          trusting at all.
+                                          The AI stages are marked, so a
+                                          reader can see exactly where a
+                                          machine looked at a photograph
+                                          and where it did not. Both are
+                                          advisory - the corporation takes
+                                          the decisions - and saying which
+                                          is which is the point of the
+                                          badge.
                                         */}
                                         {stage.ai && (
                                             <span className="inline-flex items-center gap-1 rounded-gov bg-plum-soft px-1.5 py-0.5 text-[10px] font-semibold tracking-wide text-civic-plum uppercase">

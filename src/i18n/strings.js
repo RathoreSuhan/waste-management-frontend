@@ -105,6 +105,7 @@ export const UI = {
         proposalQueue: { en: "Proposal Review", hi: "प्रस्ताव समीक्षा" },
         activeCleanups: { en: "Active Cleanups", hi: "चालू सफाई" },
         completionReview: { en: "Completion Review", hi: "पूर्णता समीक्षा" },
+        cleanupHistory: { en: "Cleanup History", hi: "सफाई इतिहास" },
         assignmentReview: { en: "Assignment Review", hi: "कार्य समीक्षा" },
 
         changePassword: { en: "Change Password", hi: "पासवर्ड बदलें" },

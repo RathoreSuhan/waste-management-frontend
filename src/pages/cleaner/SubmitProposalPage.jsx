@@ -660,6 +660,7 @@ export default function SubmitProposalPage() {
                         <ImageUploadField
                             file={inspectionImage}
                             onFileChange={handleInspectionImageChange}
+                            required={false}   // Inspection evidence strengthens a proposal, it is not demanded
                         />
                     </div>
                 </section>

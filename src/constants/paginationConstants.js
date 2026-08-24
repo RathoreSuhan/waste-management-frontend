@@ -25,7 +25,9 @@ export const PAGE_SIZE = 10;
  * compares it against the rival bids for the same site and writes remarks. Ten
  * of those on one screen buries the comparison, so the review lists (the
  * Proposal Review queue, and "Other proposals for this site" on a plan) page
- * five at a time. Everything else in the portal keeps PAGE_SIZE.
+ * five at a time. Cleanup History uses the same figure for the same reason -
+ * every card there carries a before/after photograph pair, so five is already a
+ * tall page. Everything else in the portal keeps PAGE_SIZE.
  */
 export const REVIEW_PAGE_SIZE = 5;
 

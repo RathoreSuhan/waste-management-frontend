@@ -116,8 +116,11 @@ export const ABOUT_APPROACH = {
     paragraphs: [
         "Clean Bharat is a public register of neighbourhood waste. A " +
         "resident photographs a site and files it; the platform checks the " +
-        "photograph, routes it to the municipal body for that city, and " +
-        "keeps it open until somebody clears it and proves they did.",
+        "photograph and routes it to the municipal corporation for that " +
+        "city. Cleaners registered there propose to take the site on, the " +
+        "corporation authorises one of them, and the report stays open " +
+        "until that cleaner proves the work is done and the corporation " +
+        "accepts the proof.",
 
         "The difference from a complaint form is that nothing here is " +
         "private. The report, the discussion under it, the urgency the " +
@@ -125,10 +128,12 @@ export const ABOUT_APPROACH = {
         "are all readable without an account. A report that is ignored " +
         "stays visible, and so does one that is answered.",
 
-        "Two points in that sequence are checked by Google Gemini rather " +
+        "Two points in that sequence are put to Google Gemini rather " +
         "than taken on trust - once when the waste is reported, once when " +
-        "it is claimed to be gone. Those two checks are what make the rest " +
-        "of the record worth reading.",
+        "it is claimed to be gone. Neither of them closes anything on its " +
+        "own. What the machine reads is evidence placed in front of a " +
+        "municipal officer, and it is the officer's decision that " +
+        "authorises a cleaner and signs the finished work off.",
     ],
 };
 
@@ -171,14 +176,30 @@ export const ABOUT_SAFEGUARDS = [
         ai: false,
     },
     {
+        // The proposal stage: a site is awarded, never taken
+        id: "authorisation",
+        title: "Nobody clears a site without being authorised",
+        body:
+            "A reported site cannot be taken by whichever cleaner reaches " +
+            "it first. Cleaners submit costed proposals for it, and the " +
+            "municipal corporation for that city approves one of them, asks " +
+            "for a revision, or rejects it. Only the approved cleaner can " +
+            "then start the work, record it or upload proof - and the " +
+            "platform keeps who decided, and when, on the record.",
+        ai: false,
+    },
+    {
         id: "verification",
         title: "The cleanup is checked before it counts",
         body:
             "A cleaner finishing a site uploads a photograph of it cleared. " +
             "That image is compared against the original: same location, " +
             "same surroundings, waste actually gone. A picture of a " +
-            "different clean street does not pass. Only after it does are " +
-            "points credited and the report closed.",
+            "different clean street does not pass. The comparison is " +
+            "evidence rather than the verdict, though - it goes to the " +
+            "municipal corporation, which either signs the cleanup off or " +
+            "sends it back for rework. Points are credited and the report " +
+            "closed only on that approval.",
         ai: true,
     },
     {
@@ -219,8 +240,8 @@ export const ABOUT_CAPABILITIES = [
         id: "track",
         title: "Follow it to the end",
         body:
-            "Every report keeps its status in the open - filed, assigned, " +
-            "in progress, resolved - and the person who filed it can see " +
+            "Every report keeps its status in the open - filed, in " +
+            "progress, resolved - and the person who filed it can see " +
             "each change without asking anybody.",
     },
     {
@@ -240,20 +261,22 @@ export const ABOUT_CAPABILITIES = [
             "who else has tried - stays attached to the site it concerns.",
     },
     {
-        id: "claim",
-        title: "Claim and clear",
+        id: "propose",
+        title: "Propose, then clear",
         body:
-            "Cleaners see unclaimed sites in their area, take one, and " +
-            "close it by uploading proof. Nobody is assigned work they did " +
-            "not accept.",
+            "Cleaners inspect open sites in their area and submit a costed " +
+            "proposal for one. Once the municipal corporation authorises " +
+            "them they carry out the work, record it as they go if they " +
+            "wish, and upload proof for the corporation to accept. Nobody " +
+            "is assigned work they did not offer to do.",
     },
     {
         id: "recognise",
         title: "Be credited for the work",
         body:
-            "Verified cleanups earn points and a place on the city, state " +
-            "and national rankings, with a full history of what was earned " +
-            "for which site.",
+            "A cleanup the corporation has signed off earns points and a " +
+            "place on the city, state and national rankings, with a full " +
+            "history of what was earned for which site.",
     },
     {
         id: "public",

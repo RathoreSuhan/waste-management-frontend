@@ -1,4 +1,12 @@
-import { ScanEye, MapPinCheck, CheckCheck, Star, Sparkle, ShieldCheck } from "lucide-react";
+import {
+    ScanEye,
+    MapPinCheck,
+    Landmark,       // the corporation that authorises and signs off
+    CheckCheck,
+    Star,
+    Sparkle,
+    ShieldCheck,
+} from "lucide-react";
 
 import { ABOUT_SAFEGUARDS } from "@/constants/aboutContent";
 
@@ -11,12 +19,14 @@ import { ABOUT_SAFEGUARDS } from "@/constants/aboutContent";
  *
  * The stage rail above says what happens; this says why any of it can be
  * believed. Kept as a separate section rather than folded into the rail
- * because the rail's whole value is that it fits in one glance, and four
+ * because the rail's whole value is that it fits in one glance, and five
  * paragraphs hung off it would destroy that.
  *
  * The two AI checks carry the same plum badge the process rail uses, so a
  * reader moving down the page recognises them as the same two stages
- * rather than four new claims.
+ * rather than new claims. The badge is also what keeps the AI in its
+ * place: the checks it is absent from are the ones a municipal officer
+ * takes, and those are the ones that actually decide anything.
  * ============================================================================
  */
 
@@ -28,6 +38,7 @@ import { ABOUT_SAFEGUARDS } from "@/constants/aboutContent";
 const SAFEGUARD_ICONS = {
     validation: ScanEye,
     duplicates: MapPinCheck,
+    authorisation: Landmark,
     verification: CheckCheck,
     priority: Star,
 };
@@ -52,10 +63,12 @@ export default function AboutSafeguardsSection() {
 
                     <p className="mt-2 max-w-3xl text-sm leading-relaxed text-ink-muted">
                         A public register is only worth reading if what is in
-                        it is true. Four checks sit around the five stages
+                        it is true. Five checks sit around the five stages
                         above - two of them ask Google Gemini to look at the
-                        photograph, and two of them are the neighbourhood
-                        doing the deciding.
+                        photograph, two are decisions the city's municipal
+                        corporation has to take, and the rest is the
+                        neighbourhood and the platform keeping one site to
+                        one report.
                     </p>
                 </div>
 

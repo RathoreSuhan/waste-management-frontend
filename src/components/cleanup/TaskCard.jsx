@@ -45,6 +45,15 @@ import {
  * ============================================================================
  */
 
+/*
+  The action row mixes padded buttons with plain text links. Without a shared
+  height the links float against the buttons, so both links carry a min-height
+  equal to a Button's own (py-2.5 + text-sm + 1px border = 2.625rem). All four
+  controls then share one centre line and one uniform gap.
+*/
+const ROW_LINK_CLASS =
+    "inline-flex min-h-[2.625rem] items-center gap-1.5 text-sm font-semibold text-gov-blue hover:underline";
+
 export default function TaskCard({
     assignment,
     // Handlers are optional; a list omits the ones it does not support
@@ -242,7 +251,8 @@ export default function TaskCard({
                     )}
 
                     {/* ---------------- Actions ---------------- */}
-                    <div className="mt-3 flex flex-wrap items-center gap-2">
+                    {/* gap-x-3 separates the controls, gap-y-2 spaces them once they wrap */}
+                    <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-2">
 
                         {/* Propose - an open site is inspected and bid for, never claimed outright */}
                         {onPropose && canPropose(assignment) && !alreadyProposed && (
@@ -345,7 +355,7 @@ export default function TaskCard({
                                     reportTitle: assignment.reportTitle,
                                     reportId: assignment.reportId,
                                 }}
-                                className="inline-flex items-center gap-1.5 text-sm font-semibold text-gov-blue hover:underline"
+                                className={ROW_LINK_CLASS}
                             >
                                 <History size={14} aria-hidden="true" />
                                 {/* Count comes from the assignment response */}
@@ -356,7 +366,7 @@ export default function TaskCard({
                         {/* The report itself is always viewable for full context */}
                         <Link
                             to={`/reports/${assignment.reportId}`}
-                            className="inline-flex items-center gap-1.5 text-sm font-semibold text-gov-blue hover:underline"
+                            className={ROW_LINK_CLASS}
                         >
                             View Report
                             <ExternalLink size={13} aria-hidden="true" />

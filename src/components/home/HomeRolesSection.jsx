@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { User, Truck, ArrowRight } from "lucide-react";
+import { User, Truck, Landmark, ArrowRight } from "lucide-react";
 
 /**
  * ============================================================================
@@ -8,19 +8,27 @@ import { User, Truck, ArrowRight } from "lucide-react";
  *
  * Who the platform is for, and what each of them does here.
  *
- * The backend models three roles with genuinely different portals behind
+ * The backend models four roles with genuinely different portals behind
  * them, and a visitor choosing on the registration form has no way to
  * know which one they are. Stating it on the landing page is cheaper
  * than an account created under the wrong role, which cannot be changed
  * without an administrator.
  *
- * Only the two registerable roles are shown. The administrator card was
- * removed from this section deliberately: nobody can sign up as one, so
- * on a page whose job is to route a visitor to the right registration it
- * described a door that does not open. Listing the moderation powers -
- * removing reports, managing accounts - also told every reader what an
- * administrator can do to their report, which is not a landing page's
- * business. The admin portal documents itself to the people who have it.
+ * Three of the four are shown. The municipal corporation is named even
+ * though nobody can register as one, because it is not a back-office
+ * role: it decides which cleaner is authorised for a site and whether
+ * the finished work passes, so a citizen reading the page is owed the
+ * fact that a public body - not the platform, and not the AI - takes
+ * those decisions. Its card ends in a note instead of a register link.
+ *
+ * The administrator card was removed from this section deliberately, on
+ * different grounds: nobody can sign up as one and it decides nothing
+ * about an individual cleanup, so on a page whose job is to route a
+ * visitor to the right registration it described a door that does not
+ * open. Listing the moderation powers - removing reports, managing
+ * accounts - also told every reader what an administrator can do to
+ * their report, which is not a landing page's business. The admin portal
+ * documents itself to the people who have it.
  *
  * The role itself still exists and still works. Nothing here changes
  * ROLE_ADMIN, its routes, or its permissions - this is presentation only.
@@ -72,13 +80,31 @@ const ROLES = [
         tint: "bg-green-soft",
         iconClass: "text-india-green",
     },
+    {
+        icon: Landmark,
+        title: "Municipalities",
+        titleHindi: "नगर निगम",
+        summary:
+            "The municipal corporation for a city, and the officers who act for it.",
+        duties: [
+            "Read the cleanup proposals submitted for a reported site",
+            "Authorise one cleaner, ask for a revision, or reject a proposal",
+            "Follow the authorised cleanup and its activity log",
+            "Sign the finished work off, or send it back for rework",
+        ],
+        // Municipal accounts are issued to a corporation, never self-registered,
+        // so this card ends in a note rather than a register link
+        note: "Issued to a city's municipal corporation. Not open for public registration.",
+        tint: "bg-saffron-soft",
+        iconClass: "text-civic-amber",
+    },
 
     /*
       The administrator card, withdrawn from the public page.
 
       Kept here so the decision is visible and reversible: restoring it
       means uncommenting this entry, adding Building2 back to the lucide
-      import, and returning the grid below to three columns.
+      import, and taking the grid below to four columns.
 
           {
               icon: Building2,
@@ -113,25 +139,32 @@ export default function HomeRolesSection() {
                     <div className="mt-1.5 h-0.5 w-12 bg-saffron" />
 
                     <p className="mt-2 max-w-2xl text-sm text-ink-muted">
-                        Two roles, each with its own portal. Choose the one that
-                        describes you before registering.
+                        Three roles, each with its own portal. Choose the one
+                        that describes you before registering - municipal
+                        accounts are issued by the corporation itself.
                     </p>
                 </div>
 
                 {/*
-                  Two columns across the page's full measure.
+                  Three columns across the page's full measure.
 
                   These were previously capped at max-w-4xl, on the
-                  argument that two cards stretched wide would each read
+                  argument that cards stretched wide would each read
                   as a paragraph floating in space. In place that was the
-                  wrong trade: the pair sat visibly narrower than every
+                  wrong trade: they sat visibly narrower than every
                   other section and read as an afterthought at the foot of
                   the page, which is the opposite of what a section asking
                   people to register should do. The cap is gone and the
                   extra room is absorbed by larger type and heavier
                   interior padding rather than left as blank card.
+
+                  The third column arrives at lg, not md. Three cards in
+                  the md band leave about 230px each, which is too narrow
+                  for a serif heading and a p-7 duty list - so the md
+                  layout is left as the two columns it already was, and
+                  the municipal card wraps to its own row there.
                 */}
-                <div className="mt-8 grid gap-6 md:grid-cols-2">
+                <div className="mt-8 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
 
                     {ROLES.map((role) => (
                         <article
@@ -160,7 +193,7 @@ export default function HomeRolesSection() {
                                 </div>
                             </header>
 
-                            {/* flex-1 so the actions align across both cards */}
+                            {/* flex-1 so the actions align across the cards */}
                             <div className="flex flex-1 flex-col p-7">
 
                                 <p className="text-base leading-relaxed text-ink">

@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { Building2, ClipboardList, Truck, ClipboardCheck } from "lucide-react";
+import { Building2, ClipboardList, Truck, ClipboardCheck, History } from "lucide-react";
 
 import PageHeading from "@/components/common/PageHeading";
 import Alert from "@/components/ui/Alert";
@@ -22,7 +22,7 @@ import { AI_ADVISORY_NOTICE } from "@/constants/municipalConstants";
  * The dashboard answers three questions in order:
  *   1. Which corporation am I acting for?          -> corporation header
  *   2. How much work is waiting on my desk?        -> MunicipalStatGrid
- *   3. Where do I go next?                         -> the three queue links
+ *   3. Where do I go next?                         -> the four desk links
  *
  * It also states the governing principle of the whole workflow: Gemini AI and
  * GPS only *assist* the officer. The assignment is closed by the officer's
@@ -30,7 +30,8 @@ import { AI_ADVISORY_NOTICE } from "@/constants/municipalConstants";
  * ============================================================================
  */
 
-// The three desks an officer works through, in workflow order.
+// The four desks an officer works through, in workflow order - the last of
+// which is the record of work already closed rather than a queue to act on.
 const QUEUE_LINKS = [
     {
         to: "/municipal/proposals",
@@ -55,6 +56,14 @@ const QUEUE_LINKS = [
         labelHi: "पूर्णता समीक्षा",
         description:
             "Examine before/after evidence, GPS distance and AI advice, then close or return the work.",
+    },
+    {
+        to: "/municipal/history",
+        icon: History,
+        label: "Cleanup History",
+        labelHi: "सफाई इतिहास",
+        description:
+            "Re-open the file on any cleanup this corporation has approved, newest sign-off first.",
     },
 ];
 
@@ -156,7 +165,9 @@ export default function MunicipalDashboard() {
                     <BiText en="Review Desks" hi="समीक्षा पटल" />
                 </h2>
 
-                <div className="grid gap-3 md:grid-cols-3">
+                {/* Four desks, so two rows of two on a tablet rather than three
+                    across with one stranded underneath */}
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
                     {QUEUE_LINKS.map((queue) => {
                         const Icon = queue.icon;
 

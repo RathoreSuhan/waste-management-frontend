@@ -145,6 +145,8 @@ const ProposalQueuePage = lazy(() => import("@/pages/municipal/ProposalQueuePage
 const ProposalDetailPage = lazy(() => import("@/pages/municipal/ProposalDetailPage"));
 const ActiveCleanupsPage = lazy(() => import("@/pages/municipal/ActiveCleanupsPage"));
 const CompletionReviewPage = lazy(() => import("@/pages/municipal/CompletionReviewPage"));
+// Work already signed off - the only way back to an approved cleanup's file
+const CleanupHistoryPage = lazy(() => import("@/pages/municipal/CleanupHistoryPage"));
 const AssignmentReviewPage = lazy(() => import("@/pages/municipal/AssignmentReviewPage"));
 
 /**
@@ -391,6 +393,13 @@ export default function AppRoutes() {
 
                         {/* Finished cleanups awaiting the officer's completion decision */}
                         <Route path="/municipal/completions" element={<CompletionReviewPage />} />
+
+                        {/*
+                          Cleanups this corporation has already approved. Read
+                          only: approving a completion is final, so this desk
+                          exists to reach the closed file again, not to reopen it.
+                        */}
+                        <Route path="/municipal/history" element={<CleanupHistoryPage />} />
 
                         {/*
                           One assignment in full: evidence, GPS verdict, the

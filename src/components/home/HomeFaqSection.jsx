@@ -4,6 +4,7 @@ import {
     Route as RouteIcon,
     ImageOff,
     MapPinCheck,
+    Landmark,        // the corporation that signs a cleanup off
     ChevronDown,
     HelpCircle,
     ArrowRight,
@@ -16,7 +17,7 @@ import { HOME_FAQS } from "@/constants/homeContent";
  * Home FAQ Section
  * ============================================================================
  *
- * The four questions a visitor still has after reading the page, closing
+ * The five questions a visitor still has after reading the page, closing
  * the landing page and targeted by the footer's FAQ link at /#faq.
  *
  * Why <details> rather than a useState accordion
@@ -37,7 +38,7 @@ import { HOME_FAQS } from "@/constants/homeContent";
  *   - It holds no state, so nothing here can desynchronise.
  *
  * The cost is that several can be open at once. That is fine, and
- * arguably right: these are four independent answers, not a set of
+ * arguably right: these are five independent answers, not a set of
  * alternatives, and a reader comparing two of them should not have the
  * first collapse as they open the second.
  *
@@ -65,6 +66,7 @@ const FAQ_ICONS = {
     "after-filing": RouteIcon,
     rejected: ImageOff,
     duplicate: MapPinCheck,
+    "who-decides": Landmark,
 };
 
 export default function HomeFaqSection() {
@@ -93,10 +95,11 @@ export default function HomeFaqSection() {
                     <div className="mt-1.5 h-0.5 w-12 bg-saffron" />
 
                     <p className="mt-2 max-w-3xl text-sm leading-relaxed text-ink-muted">
-                        Four things worth knowing before you file anything -
+                        Five things worth knowing before you file anything -
                         what an account is for, what happens to a report once
-                        it is filed, and the two checks that most often
-                        surprise people.
+                        it is filed, the two checks that most often
+                        surprise people, and who it is that finally closes a
+                        cleanup.
                     </p>
                 </div>
 
@@ -113,7 +116,7 @@ export default function HomeFaqSection() {
 
                                 /*
                                   The first answer is showing when the page
-                                  loads. Four collapsed rows give a reader
+                                  loads. Five collapsed rows give a reader
                                   no reason to believe any of them are worth
                                   opening; one open answer shows the depth
                                   the others go to.
@@ -182,7 +185,7 @@ export default function HomeFaqSection() {
                 {/*
                   Where the unanswered questions go.
 
-                  Four cannot cover everything, and the honest next step
+                  Five cannot cover everything, and the honest next step
                   is the page that explains the platform at length rather
                   than a contact address the project does not staff.
                 */}

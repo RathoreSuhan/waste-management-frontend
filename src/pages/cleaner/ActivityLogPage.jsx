@@ -209,12 +209,30 @@ function ActivityCard({ entry, index, expanded, onToggle }) {
                     </p>
 
                     {entry.imageUrl ? (
-                        <img
-                            src={entry.imageUrl}
-                            alt={`Activity recorded on ${formatDateTime(entry.activityAt)}`}
-                            loading="lazy"
-                            className="mt-4 w-full rounded-gov border border-rule object-cover"
-                        />
+                        /*
+                          Bounded frame, because the file decides nothing about
+                          the layout.
+
+                          A phone camera photograph is commonly 3000px tall, and
+                          `w-full` on its own renders it at that full height: one
+                          entry then owns several screens and the facts below it
+                          are scrolled out of reach.
+
+                          max-h caps the frame against the viewport so the entry
+                          stays readable on any screen; object-contain fits the
+                          whole photograph inside that cap rather than trimming
+                          its edges, and w-auto leaves a small image at its own
+                          size instead of stretching it. Nothing is cropped and
+                          nothing is distorted - only the frame is limited.
+                        */
+                        <div className="mt-4 flex justify-center overflow-hidden rounded-gov border border-rule bg-paper">
+                            <img
+                                src={entry.imageUrl}
+                                alt={`Activity recorded on ${formatDateTime(entry.activityAt)}`}
+                                loading="lazy"
+                                className="max-h-[min(65vh,30rem)] w-auto max-w-full object-contain"
+                            />
+                        </div>
                     ) : (
                         /* Absence is stated, since a photograph was optional */
                         <p className="mt-4 flex items-center gap-1.5 text-xs text-ink-muted">

@@ -15,10 +15,22 @@ import { formatFileSize } from "@/utils/formatters";
  *
  * The backend validates this image with AI, so only the
  * formats supported by the AI pipeline are accepted here.
+ *
+ * Shared by four forms, and the photograph is mandatory in
+ * only two of them - a cleaner's activity log takes a
+ * text-only entry, and inspection evidence on a proposal is
+ * encouraged rather than demanded - so `required` drives the
+ * asterisk.
  * ==========================================================
  */
 
-export default function ImageUploadField({ file, onFileChange, error }) {
+export default function ImageUploadField({
+    file,
+    onFileChange,
+    error,
+    // Defaults to true, so the forms that do demand a photo need no change
+    required = true,
+}) {
 
     // Reference to the file input (used to reset it)
     const inputRef = useRef(null);
@@ -74,12 +86,14 @@ export default function ImageUploadField({ file, onFileChange, error }) {
     return (
         <div className="space-y-1">
 
-            {/* Field label - photograph is mandatory for a report */}
+            {/* Field label - the asterisk appears only where a photo is required */}
             <label className="block text-sm font-semibold text-ink">
                 Photographic Evidence
-                <span className="ml-0.5 text-red-700" aria-hidden="true">
-                    *
-                </span>
+                {required && (
+                    <span className="ml-0.5 text-red-700" aria-hidden="true">
+                        *
+                    </span>
+                )}
             </label>
 
             {/* Upload area / preview area */}

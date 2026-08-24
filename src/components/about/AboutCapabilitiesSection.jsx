@@ -43,7 +43,7 @@ const CAPABILITY_ICONS = {
     track: ListChecks,
     rate: Star,
     discuss: MessagesSquare,
-    claim: Truck,
+    propose: Truck,
     recognise: Trophy,
     public: Globe,
 };

@@ -186,6 +186,14 @@ export default function AssignmentReviewPage() {
     const awaitingDecision =
         assignment?.assignmentStatus === ASSIGNMENT_STATUS.AWAITING_APPROVAL;
 
+    /*
+      Where "back" goes. A closed file is reached from Cleanup History, and
+      Active Cleanups no longer lists it, so sending the officer there would be
+      a dead end. Every other state is still active work, which is where the
+      link has always pointed.
+    */
+    const isClosed = assignment?.assignmentStatus === ASSIGNMENT_STATUS.COMPLETED;
+
     /**
      * Record the officer's completion decision on this file.
      *
@@ -229,13 +237,13 @@ export default function AssignmentReviewPage() {
 
     return (
         <div>
-            {/* Back to the desk the officer most likely came from */}
+            {/* Back to the desk this file actually belongs to */}
             <Link
-                to="/municipal/active"
+                to={isClosed ? "/municipal/history" : "/municipal/active"}
                 className="mb-3 inline-flex items-center gap-1.5 text-sm font-semibold text-gov-blue hover:underline"
             >
                 <ArrowLeft size={14} aria-hidden="true" />
-                Back to Active Cleanups
+                {isClosed ? "Back to Cleanup History" : "Back to Active Cleanups"}
             </Link>
 
             <PageHeading
