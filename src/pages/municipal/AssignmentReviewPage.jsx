@@ -277,7 +277,11 @@ export default function AssignmentReviewPage() {
             )}
 
             {!loading && !error && assignment && (
-                <div className="space-y-4">
+                /* space-y-6: five distinct sections of one file, each with its own
+                   heading. A tighter gutter ran the evidence, the plan and the
+                   decision trail together, so a heading looked attached to the
+                   section above it rather than the one it introduces. */
+                <div className="space-y-6">
 
                     {/* 1. Assignment summary */}
                     <section className="rounded-gov border border-rule bg-white p-4">

@@ -128,7 +128,10 @@ export default function CleanupHistoryPage() {
                         </Alert>
                     </div>
 
-                    <div ref={listTopRef} className="space-y-3">
+                    {/* space-y-4: a card here is tall and photograph-heavy, so a
+                        wider gutter than the queue lists use keeps two adjacent
+                        before/after pairs from reading as one block */}
+                    <div ref={listTopRef} className="space-y-4">
                         {pageItems.map((assignment) => (
                             <CompletedCleanupCard
                                 key={assignment.assignmentId}
