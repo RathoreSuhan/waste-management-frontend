@@ -1,5 +1,5 @@
 import axiosClient from "@/api/axiosClient";
-import { AUTH_API } from "@/constants/apiConstants";
+import { AUTH_API, COLD_START_TIMEOUT } from "@/constants/apiConstants";
 
 /**
  * ============================================================================
@@ -33,7 +33,17 @@ export async function login(loginData) {
     */
     const response = await axiosClient.post(
         `${AUTH_API}/login`,
-        loginData
+        loginData,
+
+        /*
+          Sign-in is very often the call that meets a cold start: the visitor
+          opens the site and presses the button before the container has
+          finished starting. axiosClient's one-retry rule covers reads only -
+          a POST must never be re-sent - so this needs the longer budget
+          directly, or the request aborts at 10s while the server is still
+          coming up.
+        */
+        { timeout: COLD_START_TIMEOUT }
     );
 
     // Backend returns { token, email, role }
@@ -53,7 +63,10 @@ export async function register(registerData) {
     // Errors propagate untouched, as in login above
     const response = await axiosClient.post(
         `${AUTH_API}/register`,
-        registerData
+        registerData,
+
+        // Same cold-start budget as login, for the same reason
+        { timeout: COLD_START_TIMEOUT }
     );
 
     // Backend returns simple string message

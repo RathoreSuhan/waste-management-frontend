@@ -205,6 +205,20 @@ export const UPLOAD_TIMEOUT = 120000;
 
 
 /**
+ * Backend wake-up ping (free-plan cold start)
+ *
+ * The backend is hosted on a free plan that stops the container after a spell
+ * with no traffic, and starting it again takes close to a minute. Nothing can
+ * be served during that time - not even the login form's own request.
+ *
+ * So the site calls this endpoint the moment it opens, which starts the
+ * container while the visitor is still reading the page. It is public, cheap
+ * and touches no database - see HealthController on the backend.
+ */
+export const HEALTH_API = "/api/health";
+
+
+/**
  * Cleanup proposal endpoints (ROLE_CLEANER only).
  *
  * A cleaner inspects an open site and submits a costed cleanup proposal here
@@ -262,3 +276,59 @@ export const CLEANUP_ACTIVITY_LOGS_API = "/api/cleanup-activity-logs";
  * APPROVED completion decision does.
  */
 export const CLEANUP_APPROVALS_API = "/api/cleanup-approvals";
+
+
+/**
+ * ============================================================================
+ * Cold-start timings
+ * ============================================================================
+ *
+ * All four values exist for one reason: the free host stops the backend when
+ * it is idle, and the restart takes about fifty seconds. The default 10s
+ * timeout in axiosClient is right for a running server and hopeless for one
+ * that is still starting, so the paths that can meet a restart are given their
+ * own budget rather than raising the default for everything.
+ * ============================================================================
+ */
+
+/**
+ * One warm-up attempt.
+ *
+ * Short on purpose. A starting container usually refuses the connection or
+ * hangs, and there is nothing to be gained by waiting a long time on any
+ * single attempt when the next one is 1.5s away.
+ */
+export const HEALTH_PING_TIMEOUT = 8000;
+
+/**
+ * Gap between warm-up attempts, so a restart is not hammered.
+ */
+export const WARMUP_RETRY_DELAY = 1500;
+
+/**
+ * How long the warm-up keeps trying before calling the server unreachable.
+ *
+ * Comfortably past the observed restart time: if two minutes of retries have
+ * produced nothing, the problem is not a cold start and saying so is more
+ * useful than a spinner that never resolves.
+ */
+export const WARMUP_MAX_WAIT = 120000;
+
+/**
+ * How long an unanswered ping is tolerated before the notice appears.
+ *
+ * A warm server replies in well under this, so a visitor arriving at a running
+ * site never sees the notice at all. Anything slower is worth explaining.
+ */
+export const WAKE_NOTICE_AFTER = 2500;
+
+/**
+ * Request budget for anything that may be the call that starts the container:
+ * sign-in, registration and the one retry axiosClient allows a timed-out GET.
+ *
+ * Sized above the observed restart with margin. It is not applied globally
+ * because on a running server a request that takes this long is broken, not
+ * slow, and should fail quickly.
+ */
+export const COLD_START_TIMEOUT = 90000;
+

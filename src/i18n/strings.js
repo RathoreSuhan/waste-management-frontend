@@ -110,6 +110,42 @@ export const UI = {
 
         changePassword: { en: "Change Password", hi: "पासवर्ड बदलें" },
     },
+
+    /* ---------------- Backend warm-up notice ---------------- */
+    /*
+      Shown while the free-plan container is starting. The wording is shared by
+      BackendWakeNotice and BackendWakeStrip so the auth pages and the header
+      say exactly the same thing, and it lives here rather than in the
+      components because both must exist in Hindi as well.
+    */
+    backend: {
+        waking: { en: "Waking the server up", hi: "सर्वर शुरू हो रहा है" },
+
+        explain: {
+            en: "Clean Bharat runs on a free server that sleeps when nobody is using it. The first request after a quiet spell takes up to a minute.",
+            hi: "स्वच्छ भारत एक निःशुल्क सर्वर पर चलता है जो उपयोग न होने पर निष्क्रिय हो जाता है। शांत अवधि के बाद पहला अनुरोध एक मिनट तक ले सकता है।",
+        },
+
+        reassure: {
+            en: "Nothing is wrong — please stay on this page rather than pressing the button again.",
+            hi: "कोई गड़बड़ी नहीं है — कृपया बटन दोबारा दबाने के बजाय इसी पृष्ठ पर रुके रहें।",
+        },
+
+        // Shown once the retry budget is spent, so this is no longer a cold start
+        unreachable: {
+            en: "Cannot reach the server",
+            hi: "सर्वर से संपर्क नहीं हो पा रहा है",
+        },
+
+        unreachableExplain: {
+            en: "The server did not answer after two minutes of trying. Please check your connection, or try again in a little while.",
+            hi: "दो मिनट तक प्रयास के बाद भी सर्वर ने उत्तर नहीं दिया। कृपया अपना कनेक्शन जाँचें, या कुछ समय बाद पुनः प्रयास करें।",
+        },
+
+        retry: { en: "Try again", hi: "पुनः प्रयास करें" },
+
+        dismiss: { en: "Dismiss", hi: "बंद करें" },
+    },
 };
 
 export default UI;

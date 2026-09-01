@@ -9,9 +9,11 @@ import Input from "@/components/ui/Input";
 import Button from "@/components/ui/Button";
 import Select from "@/components/ui/Select";
 import AuthShell from "@/components/auth/AuthShell";
+import BackendWakeNotice from "@/components/common/BackendWakeNotice";
 
 import { registerSchema } from "@/schemas/authSchema";
 import * as authService from "@/services/authService";
+import { getErrorMessage } from "@/utils/errorMessage";
 
 import background from "@/assets/background1.jpg";
 
@@ -113,13 +115,9 @@ export default function RegisterPage() {
 
         } catch (error) {
 
-            setServerError(
-
-                error?.response?.data?.message ||
-
-                "Something went wrong. Please try again."
-
-            );
+            // Shared wording, so a cold-start timeout is named rather than
+            // reported as "Something went wrong" - see LoginPage
+            setServerError(getErrorMessage(error));
 
         }
 
@@ -328,6 +326,9 @@ export default function RegisterPage() {
                     <UserPlus size={15} aria-hidden="true" />
                     Create Account
                 </Button>
+
+                {/* Same cold-start explanation as sign-in, in the same place */}
+                <BackendWakeNotice />
 
             </form>
 

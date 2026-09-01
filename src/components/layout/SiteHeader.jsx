@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { Mail, Users, Languages } from "lucide-react";
 
 import BiText from "@/components/common/BiText";
+import BackendWakeStrip from "@/components/common/BackendWakeStrip";
 import AccountControl from "@/components/layout/AccountControl";
 import useLanguage from "@/hooks/useLanguage";
 import { LANGUAGES } from "@/constants/languageConstants";
@@ -238,6 +239,14 @@ export default function SiteHeader() {
 
                 </div>
             </div>
+
+            {/*
+              Cold-start notice, last so it sits directly above the page. Placed
+              here rather than in each layout because both PublicLayout and
+              MainLayout render this header, which makes it one insertion for
+              every non-auth screen. Renders nothing on a warm server.
+            */}
+            <BackendWakeStrip />
         </header>
     );
 }

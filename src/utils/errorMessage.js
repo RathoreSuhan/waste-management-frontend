@@ -82,14 +82,21 @@ export function getErrorMessage(
         return looksTechnical(error.response.data) ? fallback : error.response.data;
     }
 
-    // Request took longer than the configured timeout
-    if (error?.code === "ECONNABORTED") {
-        return "The request took too long. Please check your connection and try again.";
+    /*
+      Request took longer than the configured timeout.
+
+      Named as a probable cold start, because that is what it usually is: the
+      backend runs on a free plan that stops the container when it is idle, and
+      the restart takes close to a minute. "Check your connection" sent people
+      to look at their own wifi for a problem that was never theirs.
+    */
+    if (error?.code === "ECONNABORTED" || error?.code === "ETIMEDOUT") {
+        return "The server took too long to respond. It may still be waking up - please try again in a moment.";
     }
 
-    // Request never reached the server (backend down / CORS / offline)
+    // Request never reached the server (backend starting / down / CORS / offline)
     if (error?.request && !error?.response) {
-        return "Unable to reach the server. Please make sure the backend is running.";
+        return "Unable to reach the server. It may be waking up after a period of inactivity. Please try again in a moment.";
     }
 
     return fallback;

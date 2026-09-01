@@ -8,10 +8,12 @@ import Alert from "@/components/ui/Alert";
 import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
 import AuthShell from "@/components/auth/AuthShell";
+import BackendWakeNotice from "@/components/common/BackendWakeNotice";
 
 import useAuth from "@/hooks/useAuth";
 
 import { loginSchema } from "@/schemas/authSchema";
+import { getErrorMessage } from "@/utils/errorMessage";
 import { getDashboardPath } from "@/utils/roleRedirect";
 
 import background from "@/assets/background2.jpg";
@@ -113,14 +115,14 @@ export default function LoginPage() {
 
         } catch (error) {
 
-            // Backend error message
-            setServerError(
-
-                error?.response?.data?.message ||
-
-                "Something went wrong. Please try again."
-
-            );
+            /*
+              getErrorMessage rather than reading response.data.message here: a
+              cold-start timeout has no response body at all, and the old
+              fallback answered it with "Something went wrong", which is both
+              untrue and useless. The shared helper knows a timeout from a
+              rejection and says so.
+            */
+            setServerError(getErrorMessage(error));
 
         }
 
@@ -231,6 +233,12 @@ export default function LoginPage() {
                     Sign In
 
                 </Button>
+
+                {/*
+                  Sits under the button, where someone waiting on it is already
+                  looking. Shows itself only while the backend is starting.
+                */}
+                <BackendWakeNotice />
 
             </form>
 
