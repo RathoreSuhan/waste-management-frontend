@@ -11,7 +11,12 @@ import Select from "@/components/ui/Select";
 import AuthShell from "@/components/auth/AuthShell";
 import BackendWakeNotice from "@/components/common/BackendWakeNotice";
 
-import { registerSchema } from "@/schemas/authSchema";
+import {
+    registerSchema,
+    AUTH_MAX_LENGTHS,
+    PASSWORD_MIN_LENGTH,
+    PASSWORD_MAX_LENGTH,
+} from "@/schemas/authSchema";
 import * as authService from "@/services/authService";
 import { getErrorMessage } from "@/utils/errorMessage";
 
@@ -185,6 +190,7 @@ export default function RegisterPage() {
                         label="Full Name"
                         placeholder="Enter your name"
                         autoComplete="name"
+                        maxLength={AUTH_MAX_LENGTHS.name}
                         {...register("name")}
                         error={errors.name}
                     />
@@ -194,6 +200,7 @@ export default function RegisterPage() {
                         type="email"
                         placeholder="Enter email"
                         autoComplete="email"
+                        maxLength={AUTH_MAX_LENGTHS.email}
                         {...register("email")}
                         error={errors.email}
                     />
@@ -201,8 +208,10 @@ export default function RegisterPage() {
                     <Input
                         label="Password"
                         type="password"
-                        placeholder="Minimum 6 characters"
+                        placeholder={`${PASSWORD_MIN_LENGTH} to ${PASSWORD_MAX_LENGTH} characters`}
                         autoComplete="new-password"
+                        // 72 is all BCrypt reads, so a longer password is not stored in full
+                        maxLength={PASSWORD_MAX_LENGTH}
                         {...register("password")}
                         error={errors.password}
                     />
@@ -280,6 +289,7 @@ export default function RegisterPage() {
                             <Input
                                 label="Organization Name"
                                 placeholder="Optional"
+                                maxLength={AUTH_MAX_LENGTHS.organizationName}
                                 {...register("organizationName")}
                                 error={errors.organizationName}
                             />
@@ -300,6 +310,7 @@ export default function RegisterPage() {
                         <Input
                             label="State"
                             placeholder="Enter state"
+                            maxLength={AUTH_MAX_LENGTHS.state}
                             {...register("state")}
                             error={errors.state}
                         />
@@ -307,6 +318,7 @@ export default function RegisterPage() {
                         <Input
                             label="City"
                             placeholder="Enter city"
+                            maxLength={AUTH_MAX_LENGTHS.city}
                             {...register("city")}
                             error={errors.city}
                         />

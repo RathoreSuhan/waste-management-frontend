@@ -7,7 +7,11 @@ import PageContainer from "@/components/layout/PageContainer";
 import Alert from "@/components/ui/Alert";
 import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
-import { changePasswordSchema } from "@/schemas/authSchema";
+import {
+    changePasswordSchema,
+    PASSWORD_MIN_LENGTH,
+    PASSWORD_MAX_LENGTH,
+} from "@/schemas/authSchema";
 import { changePassword } from "@/services/accountService";
 import { getErrorMessage } from "@/utils/errorMessage";
 
@@ -81,7 +85,9 @@ export default function ChangePasswordPage() {
                     type="password"
                     autoComplete="new-password"
                     required
-                    hint="Use at least 6 characters."
+                    hint={`Use ${PASSWORD_MIN_LENGTH} to ${PASSWORD_MAX_LENGTH} characters.`}
+                    // 72 is all BCrypt reads, so a longer password is not stored in full
+                    maxLength={PASSWORD_MAX_LENGTH}
                     error={errors.newPassword}
                     {...register("newPassword")}
                 />
@@ -91,6 +97,7 @@ export default function ChangePasswordPage() {
                     type="password"
                     autoComplete="new-password"
                     required
+                    maxLength={PASSWORD_MAX_LENGTH}
                     error={errors.confirmPassword}
                     {...register("confirmPassword")}
                 />

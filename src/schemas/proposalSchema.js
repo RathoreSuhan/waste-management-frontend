@@ -1,6 +1,22 @@
 import { z } from "zod";
 
 /**
+ * Longest value each typed field accepts, matching the @Size limits on
+ * CreateProposalRequest.
+ *
+ * Exported so the form can stop the cleaner at the same number the schema
+ * rejects, instead of letting a 1,500 character plan be typed and then refused.
+ */
+export const PROPOSAL_MAX_LENGTHS = {
+    siteObservations: 1000,
+    equipment: 500,
+    cleaningMethod: 500,
+    wasteHandlingPlan: 1000,
+    estimatedWasteVolume: 200,
+    remarks: 1000,
+};
+
+/**
  * Validation for a cleanup proposal.
  *
  * Mirrors CreateProposalRequest on the backend so a cleaner is told about a
@@ -15,7 +31,10 @@ export const proposalSchema = z.object({
         .string()
         .trim()
         .min(20, "Describe the site in at least 20 characters")
-        .max(1000, "Site observations cannot exceed 1000 characters"),
+        .max(
+            PROPOSAL_MAX_LENGTHS.siteObservations,
+            `Site observations cannot exceed ${PROPOSAL_MAX_LENGTHS.siteObservations} characters`
+        ),
 
     // Working days needed, matching the backend @Min(1) @Max(30)
     estimatedDurationDays: z.coerce
@@ -36,27 +55,39 @@ export const proposalSchema = z.object({
         .string()
         .trim()
         .min(1, "List the equipment you will bring")
-        .max(500, "Equipment list cannot exceed 500 characters"),
+        .max(
+            PROPOSAL_MAX_LENGTHS.equipment,
+            `Equipment list cannot exceed ${PROPOSAL_MAX_LENGTHS.equipment} characters`
+        ),
 
     // How the site will be cleaned
     cleaningMethod: z
         .string()
         .trim()
         .min(1, "Describe the cleaning method")
-        .max(500, "Cleaning method cannot exceed 500 characters"),
+        .max(
+            PROPOSAL_MAX_LENGTHS.cleaningMethod,
+            `Cleaning method cannot exceed ${PROPOSAL_MAX_LENGTHS.cleaningMethod} characters`
+        ),
 
     // Where the collected waste will go - the municipal officer reviews this closely
     wasteHandlingPlan: z
         .string()
         .trim()
         .min(20, "Describe the waste handling plan in at least 20 characters")
-        .max(1000, "Waste handling plan cannot exceed 1000 characters"),
+        .max(
+            PROPOSAL_MAX_LENGTHS.wasteHandlingPlan,
+            `Waste handling plan cannot exceed ${PROPOSAL_MAX_LENGTHS.wasteHandlingPlan} characters`
+        ),
 
     // Optional rough volume, e.g. "about 2 tractor loads"
     estimatedWasteVolume: z
         .string()
         .trim()
-        .max(200, "Estimated waste volume cannot exceed 200 characters")
+        .max(
+            PROPOSAL_MAX_LENGTHS.estimatedWasteVolume,
+            `Estimated waste volume cannot exceed ${PROPOSAL_MAX_LENGTHS.estimatedWasteVolume} characters`
+        )
         .optional(),
 
     // Optional start date, never in the past (backend @FutureOrPresent)
@@ -73,6 +104,9 @@ export const proposalSchema = z.object({
     remarks: z
         .string()
         .trim()
-        .max(1000, "Remarks cannot exceed 1000 characters")
+        .max(
+            PROPOSAL_MAX_LENGTHS.remarks,
+            `Remarks cannot exceed ${PROPOSAL_MAX_LENGTHS.remarks} characters`
+        )
         .optional(),
 });

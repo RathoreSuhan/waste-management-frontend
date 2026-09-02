@@ -4,15 +4,22 @@ import { z } from "zod";
  * ==========================================================
  * Municipal Corporation Validation Schema (Phase 5)
  * ----------------------------------------------------------
- * The backend DTO carries no bean validation of its own, so
- * these rules are the only thing standing between a mistyped
- * entry and the database.
+ * Mirrors the @Size limits on MunicipalCorporationRequest, so
+ * the admin is stopped at the same length the API rejects.
  *
- * That matters more than usual here: reports are matched to a
- * corporation by city name, so a blank or misspelt city makes
- * the record unreachable rather than merely untidy.
+ * Getting these right matters more than usual here: reports are
+ * matched to a corporation by city name, so a blank or misspelt
+ * city makes the record unreachable rather than merely untidy.
  * ==========================================================
  */
+
+/** Longest value each field accepts, shared with the form for maxLength. */
+export const CORPORATION_MAX_LENGTHS = {
+    city: 100,
+    organizationName: 150,
+    phone: 20,
+    email: 150,
+};
 
 export const municipalCorporationSchema = z.object({
 
@@ -21,14 +28,20 @@ export const municipalCorporationSchema = z.object({
         .string()
         .trim()
         .min(2, "City is required")
-        .max(100, "City cannot exceed 100 characters"),
+        .max(
+            CORPORATION_MAX_LENGTHS.city,
+            `City cannot exceed ${CORPORATION_MAX_LENGTHS.city} characters`
+        ),
 
     // Official name of the corporation
     organizationName: z
         .string()
         .trim()
         .min(3, "Organisation name must contain at least 3 characters")
-        .max(150, "Organisation name cannot exceed 150 characters"),
+        .max(
+            CORPORATION_MAX_LENGTHS.organizationName,
+            `Organisation name cannot exceed ${CORPORATION_MAX_LENGTHS.organizationName} characters`
+        ),
 
     /*
       Contact number.
@@ -41,6 +54,10 @@ export const municipalCorporationSchema = z.object({
         .string()
         .trim()
         .min(1, "Contact number is required")
+        .max(
+            CORPORATION_MAX_LENGTHS.phone,
+            `Contact number cannot exceed ${CORPORATION_MAX_LENGTHS.phone} characters`
+        )
         .regex(
             /^(\+?91[\s-]?)?[0-9][0-9\s-]{7,14}$/,
             "Enter a valid contact number"
@@ -52,5 +69,8 @@ export const municipalCorporationSchema = z.object({
         .trim()
         .min(1, "Email address is required")
         .email("Enter a valid email address")
-        .max(150, "Email cannot exceed 150 characters"),
+        .max(
+            CORPORATION_MAX_LENGTHS.email,
+            `Email cannot exceed ${CORPORATION_MAX_LENGTHS.email} characters`
+        ),
 });

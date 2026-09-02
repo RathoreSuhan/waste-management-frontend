@@ -5,7 +5,10 @@ import { Link } from "react-router-dom";
 import Input from "@/components/ui/Input";
 import Button from "@/components/ui/Button";
 import Alert from "@/components/ui/Alert";
-import { municipalCorporationSchema } from "@/schemas/municipalCorporationSchema";
+import {
+    municipalCorporationSchema,
+    CORPORATION_MAX_LENGTHS,
+} from "@/schemas/municipalCorporationSchema";
 
 /**
  * ==========================================================
@@ -69,6 +72,7 @@ export default function MunicipalCorporationForm({
                     placeholder="e.g. Bhubaneswar"
                     // Reports are matched to a corporation by this value
                     hint="Reports filed in this city will be routed to this office."
+                    maxLength={CORPORATION_MAX_LENGTHS.city}
                     error={errors.city}
                     {...register("city")}
                 />
@@ -77,6 +81,7 @@ export default function MunicipalCorporationForm({
                     label="Organisation Name"
                     required
                     placeholder="e.g. Bhubaneswar Municipal Corporation"
+                    maxLength={CORPORATION_MAX_LENGTHS.organizationName}
                     error={errors.organizationName}
                     {...register("organizationName")}
                 />
@@ -87,6 +92,7 @@ export default function MunicipalCorporationForm({
                         required
                         type="tel"
                         placeholder="e.g. 0674 2431299"
+                        maxLength={CORPORATION_MAX_LENGTHS.phone}
                         error={errors.phone}
                         {...register("phone")}
                     />
@@ -96,6 +102,7 @@ export default function MunicipalCorporationForm({
                         required
                         type="email"
                         placeholder="e.g. commissioner@bmc.gov.in"
+                        maxLength={CORPORATION_MAX_LENGTHS.email}
                         error={errors.email}
                         {...register("email")}
                     />

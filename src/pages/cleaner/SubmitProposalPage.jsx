@@ -12,7 +12,7 @@ import Textarea from "@/components/ui/Textarea";
 import ImageUploadField from "@/components/reports/ImageUploadField";
 import CleanupLocationCapture from "@/components/cleanup/CleanupLocationCapture";
 import useGeoLocation from "@/hooks/useGeoLocation";
-import { proposalSchema } from "@/schemas/proposalSchema";
+import { proposalSchema, PROPOSAL_MAX_LENGTHS } from "@/schemas/proposalSchema";
 import {
     getProposal,      // reads the proposal being revised, so the form can be prefilled
     submitProposal,
@@ -180,6 +180,17 @@ export default function SubmitProposalPage() {
             ...savedDraft, // a saved draft takes precedence over these starting values
         },
     });
+
+    /*
+      Live lengths for the character counters under the paragraph fields.
+
+      A cleaner writing a long plan needs to see the budget shrinking, otherwise
+      the field simply stops accepting keystrokes with no explanation.
+    */
+    const siteObservationsValue = watch("siteObservations") || "";
+    const cleaningMethodValue = watch("cleaningMethod") || "";
+    const wasteHandlingPlanValue = watch("wasteHandlingPlan") || "";
+    const remarksValue = watch("remarks") || "";
 
     /*
       Revision mode: fetch the proposal being changed.
@@ -676,9 +687,15 @@ export default function SubmitProposalPage() {
                         required
                         rows={4}
                         hint="What did you find - type of waste, spread, access, any hazard?"
-                        error={errors.siteObservations?.message}
+                        maxLength={PROPOSAL_MAX_LENGTHS.siteObservations}
+                        error={errors.siteObservations}
                         {...register("siteObservations")}
                     />
+
+                    {/* Character budget, mirrors the backend column size */}
+                    <p className="-mt-2 text-right text-xs text-ink-muted">
+                        {siteObservationsValue.length}/{PROPOSAL_MAX_LENGTHS.siteObservations}
+                    </p>
 
                     <div className="grid gap-4 sm:grid-cols-2">
                         <Input
@@ -687,7 +704,7 @@ export default function SubmitProposalPage() {
                             min={1}
                             max={30}
                             required
-                            error={errors.estimatedDurationDays?.message}
+                            error={errors.estimatedDurationDays}
                             {...register("estimatedDurationDays")}
                         />
 
@@ -697,7 +714,7 @@ export default function SubmitProposalPage() {
                             min={1}
                             max={100}
                             required
-                            error={errors.manpowerCount?.message}
+                            error={errors.manpowerCount}
                             {...register("manpowerCount")}
                         />
                     </div>
@@ -706,7 +723,8 @@ export default function SubmitProposalPage() {
                         label="Equipment and tools"
                         required
                         hint="e.g. 1 tractor trolley, 4 spades, gloves, masks"
-                        error={errors.equipment?.message}
+                        maxLength={PROPOSAL_MAX_LENGTHS.equipment}
+                        error={errors.equipment}
                         {...register("equipment")}
                     />
 
@@ -715,23 +733,34 @@ export default function SubmitProposalPage() {
                         required
                         rows={3}
                         hint="How the waste will be collected, segregated and loaded"
-                        error={errors.cleaningMethod?.message}
+                        maxLength={PROPOSAL_MAX_LENGTHS.cleaningMethod}
+                        error={errors.cleaningMethod}
                         {...register("cleaningMethod")}
                     />
+
+                    <p className="-mt-2 text-right text-xs text-ink-muted">
+                        {cleaningMethodValue.length}/{PROPOSAL_MAX_LENGTHS.cleaningMethod}
+                    </p>
 
                     <Textarea
                         label="Waste handling plan"
                         required
                         rows={4}
                         hint="Where the waste will be taken and how it will be disposed of or recycled"
-                        error={errors.wasteHandlingPlan?.message}
+                        maxLength={PROPOSAL_MAX_LENGTHS.wasteHandlingPlan}
+                        error={errors.wasteHandlingPlan}
                         {...register("wasteHandlingPlan")}
                     />
+
+                    <p className="-mt-2 text-right text-xs text-ink-muted">
+                        {wasteHandlingPlanValue.length}/{PROPOSAL_MAX_LENGTHS.wasteHandlingPlan}
+                    </p>
 
                     <Input
                         label="Estimated waste volume"
                         hint="Optional, e.g. about 2 tractor loads"
-                        error={errors.estimatedWasteVolume?.message}
+                        maxLength={PROPOSAL_MAX_LENGTHS.estimatedWasteVolume}
+                        error={errors.estimatedWasteVolume}
                         {...register("estimatedWasteVolume")}
                     />
 
@@ -739,7 +768,7 @@ export default function SubmitProposalPage() {
                         label="Proposed start date"
                         type="date"
                         hint="Optional. Today or later."
-                        error={errors.proposedStartDate?.message}
+                        error={errors.proposedStartDate}
                         {...register("proposedStartDate")}
                     />
 
@@ -747,9 +776,14 @@ export default function SubmitProposalPage() {
                         label="Remarks for the municipal officer"
                         rows={3}
                         hint="Optional. Anything else the officer should know."
-                        error={errors.remarks?.message}
+                        maxLength={PROPOSAL_MAX_LENGTHS.remarks}
+                        error={errors.remarks}
                         {...register("remarks")}
                     />
+
+                    <p className="-mt-2 text-right text-xs text-ink-muted">
+                        {remarksValue.length}/{PROPOSAL_MAX_LENGTHS.remarks}
+                    </p>
                 </section>
 
                 {/* Backend rejections, e.g. inspection too far or the site already awarded */}

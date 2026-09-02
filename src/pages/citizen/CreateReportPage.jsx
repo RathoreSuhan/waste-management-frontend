@@ -13,7 +13,7 @@ import LocationVerificationPanel from "@/components/reports/LocationVerification
 
 import useGeoLocation from "@/hooks/useGeoLocation";
 
-import { createReportSchema, DESCRIPTION_MAX_LENGTH } from "@/schemas/reportSchema";
+import { createReportSchema, DESCRIPTION_MAX_LENGTH, REPORT_MAX_LENGTHS } from "@/schemas/reportSchema";
 import { createReport } from "@/services/reportService";
 import {
     getErrorMessage,
@@ -139,6 +139,7 @@ export default function CreateReportPage() {
         handleSubmit,
         setValue,
         getValues,
+        watch,
         formState: { errors, isSubmitting },
     } = useForm({
         resolver: zodResolver(createReportSchema),
@@ -153,6 +154,9 @@ export default function CreateReportPage() {
             ? { ...restoredValues, latitude: "", longitude: "" }
             : EMPTY_FORM,
     });
+
+    // Live length for the counter under Description
+    const descriptionValue = watch("description") || "";
 
     /**
      * Current verification outcome, recalculated whenever a fresh position is
@@ -448,6 +452,7 @@ export default function CreateReportPage() {
                                     required
                                     hint="A short heading, e.g. Uncollected waste near bus stand"
                                     placeholder="Uncollected waste near bus stand"
+                                    maxLength={REPORT_MAX_LENGTHS.title}
                                     {...register("title")}
                                     error={errors.title}
                                 />
@@ -465,6 +470,11 @@ export default function CreateReportPage() {
                                     {...register("description")}
                                     error={errors.description}
                                 />
+
+                                {/* Character budget, so the cap is visible before it is reached */}
+                                <p className="-mt-2 text-right text-xs text-ink-muted">
+                                    {descriptionValue.length}/{DESCRIPTION_MAX_LENGTH}
+                                </p>
                             </div>
                         </FormSection>
 
@@ -527,6 +537,7 @@ export default function CreateReportPage() {
                                     label="Address"
                                     required
                                     placeholder="Street or area where the waste is located"
+                                    maxLength={REPORT_MAX_LENGTHS.address}
                                     {...register("address")}
                                     error={errors.address}
                                 />
@@ -536,6 +547,7 @@ export default function CreateReportPage() {
                                     label="Landmark"
                                     hint="Optional, but helps the cleanup team locate the site."
                                     placeholder="Near the community park"
+                                    maxLength={REPORT_MAX_LENGTHS.landmark}
                                     {...register("landmark")}
                                     error={errors.landmark}
                                 />
@@ -547,6 +559,7 @@ export default function CreateReportPage() {
                                         label="City"
                                         required
                                         placeholder="Kolkata"
+                                        maxLength={REPORT_MAX_LENGTHS.city}
                                         {...register("city")}
                                         error={errors.city}
                                     />
@@ -556,6 +569,7 @@ export default function CreateReportPage() {
                                         label="State"
                                         required
                                         placeholder="West Bengal"
+                                        maxLength={REPORT_MAX_LENGTHS.state}
                                         {...register("state")}
                                         error={errors.state}
                                     />
@@ -565,6 +579,7 @@ export default function CreateReportPage() {
                                         label="Pincode"
                                         required
                                         placeholder="700001"
+                                        maxLength={6}   // a pincode is exactly six digits
                                         {...register("pincode")}
                                         error={errors.pincode}
                                     />

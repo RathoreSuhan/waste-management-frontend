@@ -45,11 +45,23 @@ const longitudeField = z
     );
 
 /**
- * Longest description the API accepts. Kept here so the form and the schema
- * cannot drift apart: the backend column and CreateReportRequest both stop at
- * this many characters.
+ * Longest value each typed field accepts, matching the @Size limits on
+ * CreateReportRequest and the widths of the columns behind them.
+ *
+ * Kept here so the form and the schema cannot drift apart: the page reads these
+ * for maxLength, the rules below read them for .max().
  */
-export const DESCRIPTION_MAX_LENGTH = 500;
+export const REPORT_MAX_LENGTHS = {
+    title: 100,
+    description: 500,
+    address: 255,
+    landmark: 100,
+    city: 100,
+    state: 100,
+};
+
+/** Kept as a named export because the report page already imports it. */
+export const DESCRIPTION_MAX_LENGTH = REPORT_MAX_LENGTHS.description;
 
 export const createReportSchema = z.object({
 
@@ -57,7 +69,10 @@ export const createReportSchema = z.object({
     title: z
         .string()
         .min(5, "Title must contain at least 5 characters")
-        .max(100, "Title cannot exceed 100 characters"),
+        .max(
+            REPORT_MAX_LENGTHS.title,
+            `Title cannot exceed ${REPORT_MAX_LENGTHS.title} characters`
+        ),
 
     // Details about the garbage
     description: z
@@ -76,25 +91,37 @@ export const createReportSchema = z.object({
     address: z
         .string()
         .min(5, "Address must contain at least 5 characters")
-        .max(255, "Address cannot exceed 255 characters"),
+        .max(
+            REPORT_MAX_LENGTHS.address,
+            `Address cannot exceed ${REPORT_MAX_LENGTHS.address} characters`
+        ),
 
     // Optional nearby landmark
     landmark: z
         .string()
-        .max(100, "Landmark cannot exceed 100 characters")
+        .max(
+            REPORT_MAX_LENGTHS.landmark,
+            `Landmark cannot exceed ${REPORT_MAX_LENGTHS.landmark} characters`
+        )
         .optional(),
 
     // City name
     city: z
         .string()
         .min(2, "City is required")
-        .max(100, "City cannot exceed 100 characters"),
+        .max(
+            REPORT_MAX_LENGTHS.city,
+            `City cannot exceed ${REPORT_MAX_LENGTHS.city} characters`
+        ),
 
     // State name
     state: z
         .string()
         .min(2, "State is required")
-        .max(100, "State cannot exceed 100 characters"),
+        .max(
+            REPORT_MAX_LENGTHS.state,
+            `State cannot exceed ${REPORT_MAX_LENGTHS.state} characters`
+        ),
 
     // Indian postal code
     pincode: z
