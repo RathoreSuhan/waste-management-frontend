@@ -44,6 +44,13 @@ const longitudeField = z
         { message: "Longitude must be between -180 and 180" }
     );
 
+/**
+ * Longest description the API accepts. Kept here so the form and the schema
+ * cannot drift apart: the backend column and CreateReportRequest both stop at
+ * this many characters.
+ */
+export const DESCRIPTION_MAX_LENGTH = 500;
+
 export const createReportSchema = z.object({
 
     // Short heading of the report
@@ -56,7 +63,10 @@ export const createReportSchema = z.object({
     description: z
         .string()
         .min(10, "Please describe the issue in at least 10 characters")
-        .max(500, "Description cannot exceed 500 characters"),
+        .max(
+            DESCRIPTION_MAX_LENGTH,
+            `Description cannot exceed ${DESCRIPTION_MAX_LENGTH} characters`
+        ),
 
     // GPS coordinates of the garbage location
     latitude: latitudeField,

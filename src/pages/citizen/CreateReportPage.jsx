@@ -13,7 +13,7 @@ import LocationVerificationPanel from "@/components/reports/LocationVerification
 
 import useGeoLocation from "@/hooks/useGeoLocation";
 
-import { createReportSchema } from "@/schemas/reportSchema";
+import { createReportSchema, DESCRIPTION_MAX_LENGTH } from "@/schemas/reportSchema";
 import { createReport } from "@/services/reportService";
 import {
     getErrorMessage,
@@ -458,6 +458,10 @@ export default function CreateReportPage() {
                                     required
                                     hint="State the nature of the waste, how long it has remained, and any health hazard caused."
                                     placeholder="Describe the issue in detail"
+
+                                    // Stops the field at the length the API stores
+                                    maxLength={DESCRIPTION_MAX_LENGTH}
+
                                     {...register("description")}
                                     error={errors.description}
                                 />
