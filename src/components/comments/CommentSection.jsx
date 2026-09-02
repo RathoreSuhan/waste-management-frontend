@@ -65,9 +65,19 @@ export default function CommentSection({ reportId, onChanged }) {
     const isGuest = !user;
 
     /*
-      What the guest was trying to do, or null when the dialog is closed.
-      One piece of state covers both the composer and every Reply button,
-      so the wording stays specific without a flag per control.
+      A Municipal Corporation account cannot join the discussion: its email is
+      held in municipal_corporation, so CommentServiceImpl finds no user row to
+      attribute the message to and refuses with "User not found" - a true but
+      unhelpful thing to show an officer. Caught before the request instead.
+    */
+    const isMunicipal = user?.role === "ROLE_MUNICIPAL_OFFICER";
+
+    /*
+      What the blocked reader was trying to do, or null when the dialog is
+      closed. One piece of state covers both the composer and every Reply
+      button, so the wording stays specific without a flag per control - and
+      it serves a guest and a municipal account alike, since only one of the
+      two can ever be true of the same session.
     */
     const [loginPromptAction, setLoginPromptAction] = useState(null);
 
@@ -113,10 +123,14 @@ export default function CommentSection({ reportId, onChanged }) {
         setActionError("");
 
         /*
-          Returning false leaves the typed message in the composer, so it
-          is still there when they come back from signing in.
+          Returning false leaves the typed message in the composer, so it is
+          still there when a guest comes back from signing in - and is not
+          thrown away on a request the backend was always going to refuse.
+
+          One guard for both: the dialog reads isMunicipal itself and chooses
+          between inviting them to sign in and explaining the restriction.
         */
-        if (isGuest) {
+        if (isGuest || isMunicipal) {
             setLoginPromptAction("post a comment on this report");
             return false;
         }
@@ -145,7 +159,7 @@ export default function CommentSection({ reportId, onChanged }) {
         setActionError("");
 
         // Same treatment as a new comment - the reply text is preserved
-        if (isGuest) {
+        if (isGuest || isMunicipal) {
             setLoginPromptAction("reply to this discussion");
             return false;
         }
@@ -327,11 +341,13 @@ export default function CommentSection({ reportId, onChanged }) {
 
             </div>
 
-            {/* Shown when a guest tries to comment or reply */}
+            {/* Shown when a guest, or a municipal account, tries to comment or reply */}
             <LoginRequiredDialog
                 open={Boolean(loginPromptAction)}
                 onClose={() => setLoginPromptAction(null)}
                 action={loginPromptAction}
+                municipalAccount={isMunicipal}
+                currentRole={user?.role}
             />
         </section>
     );

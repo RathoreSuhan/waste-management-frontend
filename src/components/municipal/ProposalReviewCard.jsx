@@ -232,7 +232,17 @@ export default function ProposalReviewCard({
                             Proposal #{proposal.proposalId}
                         </p>
                         <h3 className="mt-1 text-base font-semibold text-gov-navy sm:text-lg">
-                            {proposal.reportTitle || `Report #${proposal.reportId}`}
+
+                            {/* The site title opens the citizen's report. A bid is
+                                judged against the complaint it answers, and the
+                                comparison strip below describes only the plan. */}
+                            <Link
+                                to={`/app/reports/${proposal.reportId}`}
+                                title="Open the citizen's original report"
+                                className="rounded transition-colors hover:text-gov-blue hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-gov-blue"
+                            >
+                                {proposal.reportTitle || `Report #${proposal.reportId}`}
+                            </Link>
                         </h3>
                         <p className="mt-1 flex items-start gap-1.5 text-sm text-ink-muted">
                             <MapPin className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />

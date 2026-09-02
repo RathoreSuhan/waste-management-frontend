@@ -41,6 +41,14 @@ export default function AppreciationBar({ story, compact = false }) {
     const isGuest = !user;
 
     /*
+      A Municipal Corporation account cannot appreciate a cleanup: its email is
+      held in municipal_corporation, so toggleLike finds no user row to store the
+      like against and refuses. The role is a safe test for that - it is granted
+      only where CustomUserDetailsService resolves a corporation email.
+    */
+    const isMunicipal = user?.role === "ROLE_MUNICIPAL_OFFICER";
+
+    /*
       The visitor's own like, once they press: { liked, likeCount } as the
       backend reported it. null means untouched, so the record is shown as
       it arrived.
@@ -50,7 +58,7 @@ export default function AppreciationBar({ story, compact = false }) {
     // Shares this visitor started, added on top of the recorded total
     const [sharesGiven, setSharesGiven] = useState(0);
 
-    // Raised when a signed-out visitor presses the heart
+    // Raised when a visitor who cannot like presses the heart anyway
     const [loginPromptOpen, setLoginPromptOpen] = useState(false);
 
     /*
@@ -81,10 +89,15 @@ export default function AppreciationBar({ story, compact = false }) {
 
         /*
           The endpoint is authenticated, so a guest's press would come back
-          401. They are invited to sign in rather than shown a heart that
-          fills and then quietly empties.
+          401, and a corporation account's would come back refused whatever it
+          did. Both are stopped here, before the optimistic update below, so
+          neither is shown a heart that fills and then quietly empties - the
+          catch further down reports nothing but a 401 on purpose.
+
+          The dialog reads isMunicipal itself and chooses between inviting them
+          to sign in and explaining the restriction.
         */
-        if (isGuest) {
+        if (isGuest || isMunicipal) {
             setLoginPromptOpen(true);
             return;
         }
@@ -242,13 +255,16 @@ export default function AppreciationBar({ story, compact = false }) {
                 <span className="sr-only">share this story</span>
             </button>
 
-            {/* Shown when a signed-out visitor presses the heart.
+            {/* Shown when a signed-out visitor presses the heart, or when a
+                municipal account does - the dialog picks the right wording.
                 Renders through a portal, so it is centred on the viewport
                 rather than trapped inside this card. */}
             <LoginRequiredDialog
                 open={loginPromptOpen}
                 onClose={closeLoginPrompt}
                 action="appreciate this cleanup"
+                municipalAccount={isMunicipal}
+                currentRole={user?.role}
             />
         </div>
     );

@@ -57,7 +57,17 @@ export default function ActiveCleanupCard({ assignment }) {
             <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="min-w-0">
                     <h3 className="text-base font-semibold text-gov-navy sm:text-lg">
-                        {assignment.reportTitle || `Report #${assignment.reportId}`}
+
+                        {/* The title is the way into the citizen's own report -
+                            an officer judging a cleanup needs to read what was
+                            actually filed, and the card carries only a summary. */}
+                        <Link
+                            to={`/app/reports/${assignment.reportId}`}
+                            title="Open the citizen's original report"
+                            className="rounded transition-colors hover:text-gov-blue hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-gov-blue"
+                        >
+                            {assignment.reportTitle || `Report #${assignment.reportId}`}
+                        </Link>
                     </h3>
                     <p className="mt-1 flex items-start gap-1.5 text-sm text-ink-muted">
                         <MapPin className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
