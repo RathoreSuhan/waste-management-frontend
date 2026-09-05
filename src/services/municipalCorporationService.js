@@ -28,9 +28,11 @@ import { MUNICIPAL_CORPORATIONS_API } from "@/constants/apiConstants";
  *                       must only be called from an admin screen.
  *
  * Note the city lookup still requires a token: it is authenticated, not
- * public. Anonymous callers get 401, which the axios response interceptor
- * treats as an expired session and clears storage for - so callers on
- * publicly reachable pages must check for a token before calling it.
+ * public. Anonymous callers get 401, so callers on publicly reachable pages
+ * must check for a token before calling it. That 401 is not mistaken for a
+ * lapsed session - the interceptor only ends a session when the request
+ * actually carried a stored token - but the call still fails, and an empty
+ * contact panel is a poor way to find out.
  * ============================================================================
  */
 export async function createMunicipalCorporation(corporation) {

@@ -299,7 +299,7 @@ ProtectedRoute → MainLayout → RoleRoute "ROLE_ADMIN"             → admin p
 
 <br />
 
-- One Axios instance in `api/axiosClient.js`. A request interceptor attaches the JWT; a response interceptor is the single place an expired session is detected and cleared, so no page contains logout logic.
+- One Axios instance in `api/axiosClient.js`. A request interceptor attaches the JWT; a response interceptor is the single place a refused session is detected — it clears the stored credentials and announces it through `api/sessionExpiry.js`, which `SessionExpiryWatcher` turns into a real sign-out and a redirect to the login form. No page contains logout logic, and no page is left claiming a session the server has stopped accepting.
 - Every path lives in `constants/apiConstants.js`, documented with its backend security posture — which endpoints are `permitAll`, which fall through to `authenticated()`, which are `hasRole(...)`. A component never has to guess whether a call will work while signed out.
 - `utils/errorMessage.js` reduces the various shapes a failure can arrive in — validation envelope, plain string body, network timeout — to one human sentence, so no screen ever prints `[object Object]`.
 - Thirteen thin service modules, one per domain (`reportService`, `voteService`, `commentService`, `cleanupService`, `rewardService`, `publicFeedService`, `analyticsService`, `leaderboardService`, `municipalCorporationService`, `municipalService`, `adminService`, `authService`, `accountService`). Components call services; components never call Axios. The split between the two municipal modules is deliberate: `municipalCorporationService` is the admin-facing city directory, `municipalService` is the console a signed-in corporation actually works in.

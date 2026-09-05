@@ -1,6 +1,7 @@
 import axios from "axios";
 
-import { API_BASE_URL, COLD_START_TIMEOUT } from "@/constants/apiConstants";
+import { API_BASE_URL, AUTH_API, COLD_START_TIMEOUT } from "@/constants/apiConstants";
+import { notifySessionExpired } from "@/api/sessionExpiry";
 
 /**
  * ============================================================================
@@ -14,6 +15,7 @@ import { API_BASE_URL, COLD_START_TIMEOUT } from "@/constants/apiConstants";
  * - Single timeout configuration
  * - Global base URL setup
  * - One retry for a GET that met a backend cold start
+ * - Ends the session in the app when the backend refuses the stored token
  * ============================================================================
  */
 
@@ -125,10 +127,40 @@ function isColdStartFailure(error) {
 }
 
 /**
+ * Whether a 401 means the session this browser was holding has ended.
+ *
+ * Not every 401 does, so two conditions have to hold.
+ *
+ * 1. A token was in storage when the answer came back. Without one there is
+ *    no session to end: the caller was a visitor reading a page that happens
+ *    to need an account, and their own code already handles the refusal - the
+ *    like button, for instance, invites them to sign in where they stand.
+ *
+ * 2. The request was not a sign-in attempt. The request interceptor attaches
+ *    whatever token is in storage to every call, /api/auth/login included, so
+ *    a stale token is present on the very request meant to replace it. A wrong
+ *    password answers 401 too, and treating that as an expiry would clear the
+ *    form's own "Invalid email or password" and bounce the visitor away from
+ *    the page they were already on.
+ */
+function isSessionRejection(error, storedToken) {
+
+    if (error.response?.status !== 401) {
+        return false;
+    }
+
+    if (!storedToken) {
+        return false;
+    }
+
+    return !String(error.config?.url || "").startsWith(AUTH_API);
+}
+
+/**
  * Response Interceptor
  *
  * Handle authentication errors globally.
- * If token is invalid/expired, clear it and redirect to login.
+ * If token is invalid/expired, clear it and end the session in the app.
  */
 axiosClient.interceptors.response.use(
     (response) => {
@@ -155,16 +187,29 @@ axiosClient.interceptors.response.use(
             return axiosClient(retryConfig);
         }
 
-        // 401 Unauthorized = token expired or invalid
-        if (error.response?.status === 401) {
-            // Clear corrupted/expired token from storage
+        /*
+          Read before anything is removed, so the check below sees the session
+          as it was. It is also what keeps one lapsed session from raising the
+          signal repeatedly: a page usually has several requests in flight, so
+          several 401s arrive together, and only the first of them still finds
+          a token here.
+        */
+        const storedToken = localStorage.getItem("token");
+
+        // 401 with a token of our own = the session behind it has ended
+        if (isSessionRejection(error, storedToken)) {
+
+            // Clear the rejected credentials before anyone is told
             localStorage.removeItem("token");
             localStorage.removeItem("user");
-            
-            // Optionally redirect to login (if in browser, not in test/dev)
-            if (typeof window !== "undefined") {
-                // window.location.href = "/login";
-            }
+
+            /*
+              Storage alone is not the session. React still holds it, which is
+              why the header went on offering Sign Out to somebody the server
+              had already stopped recognising. SessionExpiryWatcher picks this
+              up, ends the session properly and sends them to sign in.
+            */
+            notifySessionExpired();
         }
 
         return Promise.reject(error);

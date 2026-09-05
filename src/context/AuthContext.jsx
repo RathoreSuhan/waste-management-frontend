@@ -2,6 +2,7 @@ import { useState } from "react";
 
 import AuthContext from "@/context/authContextInstance";
 import * as authService from "@/services/authService";
+import { clearSessionExpiryNotice } from "@/api/sessionExpiry";
 import { clearAllProposalDrafts } from "@/utils/proposalDraft";
 
 /**
@@ -111,6 +112,15 @@ export function AuthProvider({ children }) {
 
         // Half-written proposals were never sent, so they leave with the session
         clearAllProposalDrafts();
+
+        /*
+          Any earlier "your session has ended" note goes too, so signing out on
+          purpose is not explained as an expiry on the way to the login form.
+
+          SessionExpiryWatcher records its note after calling this, for that
+          reason - the order matters.
+        */
+        clearSessionExpiryNotice();
 
         // Clear React state
         setSession({ token: null, user: null });

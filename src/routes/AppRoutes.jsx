@@ -11,6 +11,9 @@ import PublicLayout from "@/layouts/PublicLayout";
 // Scroll behaviour, applied to every navigation in the project
 import ScrollManager from "@/components/layout/ScrollManager";
 
+// Ends the session and sends the visitor to sign in when the backend refuses their token
+import SessionExpiryWatcher from "@/components/auth/SessionExpiryWatcher";
+
 // Placeholder while a page chunk is on its way
 import RouteFallback from "@/components/common/RouteFallback";
 
@@ -165,6 +168,13 @@ export default function AppRoutes() {
               left - which is the only thing it exists to remember.
             */}
             <ScrollManager />
+
+            {/*
+              Beside the table for the same reason: a session can lapse while
+              any page is open, so the listener has to survive navigation
+              rather than be remounted by it.
+            */}
+            <SessionExpiryWatcher />
 
             {/*
               One boundary around the whole table rather than one per route.

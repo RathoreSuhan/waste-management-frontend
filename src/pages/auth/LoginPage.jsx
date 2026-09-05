@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useSyncExternalStore } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Link, useLocation, useNavigate } from "react-router-dom";
@@ -12,9 +12,14 @@ import BackendWakeNotice from "@/components/common/BackendWakeNotice";
 
 import useAuth from "@/hooks/useAuth";
 
+import {
+    getSessionExpiryNotice,
+    subscribeSessionExpiryNotice,
+} from "@/api/sessionExpiry";
+
 import { loginSchema } from "@/schemas/authSchema";
 import { getErrorMessage } from "@/utils/errorMessage";
-import { getDashboardPath } from "@/utils/roleRedirect";
+import { resolvePostLoginPath } from "@/utils/roleRedirect";
 
 import background from "@/assets/background2.jpg";
 
@@ -48,7 +53,25 @@ export default function LoginPage() {
     */
     const location = useLocation();
 
-    const redirectTo = location.state?.from;
+    /*
+      Set when the visitor did not come here by choice: their session was
+      refused mid-task and they were sent back to sign in. Worth saying,
+      because from their side the application signed them out on its own.
+
+      Read from the module rather than from router state - see
+      recordSessionExpiryNotice for why the state does not always survive the
+      trip. It carries `from` too, so the return journey works either way.
+
+      Subscribed rather than copied on mount, so a session refused while this
+      form is already open explains itself as well.
+    */
+    const sessionNotice = useSyncExternalStore(
+        subscribeSessionExpiryNotice,
+        getSessionExpiryNotice
+    );
+
+    // Router state for a reader stopped mid-task, the note for a lapsed session
+    const redirectTo = location.state?.from || sessionNotice?.from;
 
 
     // Authentication
@@ -105,10 +128,14 @@ export default function LoginPage() {
               Return to the page they were on, falling back to the
               dashboard for a normal login that started at /login.
 
+              The destination comes from resolvePostLoginPath because
+              PublicRoute redirects on the new session as well - both have to
+              choose the same page, or whichever renders last decides.
+
               replace: true keeps /login out of the history stack, so
               Back from the report does not bounce through the form.
             */
-            navigate(redirectTo || getDashboardPath(response.role), {
+            navigate(resolvePostLoginPath(redirectTo, response.role), {
                 replace: true,
             });
 
@@ -149,11 +176,25 @@ export default function LoginPage() {
         >
 
             {/*
-              Explains why the form appeared, for a reader who was pushed
-              here mid-task by LoginRequiredDialog rather than choosing
-              to sign in.
+              Explains why the form appeared, for a reader who did not ask
+              for it - either stopped mid-task by LoginRequiredDialog, or
+              returned here because their session was refused.
+
+              Both know where the visitor was, so the expired case is checked
+              first and gets the stronger wording: one is an invitation, the
+              other is an interruption. Hidden once the form has its own
+              error, which is the more immediate thing to read.
             */}
-            {redirectTo && !serverError && (
+            {sessionNotice && !serverError && (
+                <div className="mb-5">
+                    <Alert type="warning" title="Your Session Has Ended">
+                        You were signed out because your session expired. Sign in
+                        again to continue where you left off.
+                    </Alert>
+                </div>
+            )}
+
+            {redirectTo && !sessionNotice && !serverError && (
                 <div className="mb-5">
                     <Alert type="info" title="Sign In to Continue">
                         You will be returned to the page you were reading once you
