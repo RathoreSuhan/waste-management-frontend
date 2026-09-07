@@ -153,17 +153,23 @@ export default function HomePage() {
                                 )}
 
                                 {/*
-                                  Reading needs no account, and saying so
-                                  keeps a curious visitor from bouncing at
-                                  the sight of two sign-in buttons.
+                                  Guest-only. Reading needs no account, and
+                                  saying so keeps a curious visitor from
+                                  bouncing at the sight of two sign-in
+                                  buttons. A signed-in visitor is past the
+                                  browse-and-decide stage, so the offer is
+                                  withdrawn rather than shown beside their
+                                  dashboard button.
                                 */}
-                                <Link
-                                    to="/reports"
-                                    className="inline-flex items-center gap-2 px-2 py-2.5 text-sm font-semibold text-white/85 underline-offset-4 transition hover:text-white hover:underline"
-                                >
-                                    Browse reports without an account
-                                    <ArrowRight size={15} aria-hidden="true" />
-                                </Link>
+                                {!isAuthenticated && (
+                                    <Link
+                                        to="/reports"
+                                        className="inline-flex items-center gap-2 px-2 py-2.5 text-sm font-semibold text-white/85 underline-offset-4 transition hover:text-white hover:underline"
+                                    >
+                                        Browse reports without an account
+                                        <ArrowRight size={15} aria-hidden="true" />
+                                    </Link>
+                                )}
                             </div>
                         </div>
                     </div>
