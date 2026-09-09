@@ -4,6 +4,7 @@ import { FileText, Sparkles, Users, ShieldCheck } from "lucide-react";
 import { getAllReports } from "@/services/reportService";
 import { getPublicFeed } from "@/services/publicFeedService";
 import { getNationalLeaderboard } from "@/services/leaderboardService";
+import { getPlatformImpact } from "@/services/analyticsService";
 
 /**
  * ============================================================================
@@ -12,8 +13,12 @@ import { getNationalLeaderboard } from "@/services/leaderboardService";
  *
  * Four figures describing what the platform has actually done.
  *
- * Every number is counted from a public endpoint - GET /api/reports,
- * /api/public-feed and /api/leaderboard are all readable without a token.
+ * Preferred source is the cached public endpoint GET /api/analytics/platform-impact
+ * (Redis homepage_impact_stats::platform-impact, permitAll). It returns the four
+ * totals in one small JSON instead of three full lists, so the band warms the
+ * cache you see in Redis Insight rather than bypassing it.
+ * If that call fails (old backend, offline cache), it falls back to counting
+ * GET /api/reports, /api/public-feed and /api/leaderboard - all public too.
  * Nothing here is illustrative or rounded up: a civic platform that
  * invents its own numbers has nothing left to be trusted with.
  *
@@ -44,6 +49,23 @@ export default function HomeImpactBand() {
         async function load() {
 
             try {
+
+                // Cached fast path: one small JSON, warms homepage_impact_stats in Redis
+                try {
+                    const impact = await getPlatformImpact();
+
+                    if (active && impact && (impact.reportsFiled ?? 0) > 0) {
+                        setFigures({
+                            reports: impact.reportsFiled ?? 0,
+                            cleanups: impact.sitesCleared ?? 0,
+                            cleaners: impact.cleanersRanked ?? 0,
+                            verified: impact.verifiedCleanups ?? 0,
+                        });
+                        return;
+                    }
+                } catch {
+                    // Fall through to legacy counting below (old backend / cold cache)
+                }
 
                 /*
                   Requested together rather than in sequence. They are

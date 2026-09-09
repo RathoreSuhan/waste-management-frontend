@@ -111,9 +111,9 @@ export const PUBLIC_FEED_API = "/api/public-feed";
  * Engagement score = urgency score + (comments x 2) + (replies x 1),
  * recalculated by the backend on every vote, comment and reply.
  *
- * NOT listed under permitAll() in the backend SecurityConfig, so these
- * endpoints fall through to anyRequest().authenticated() and cannot be
- * used on the logged-out homepage.
+ * Only /api/analytics/platform-impact is permitAll() (cached homepage
+ * counters). Trending, per-report and dashboard fall through to
+ * anyRequest().authenticated() and cannot be used logged out.
  *
  * Note the trending response carries only counts and ids - no title,
  * image or timestamp - so it has to be joined against /api/reports to

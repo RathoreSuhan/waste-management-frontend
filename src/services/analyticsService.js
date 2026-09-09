@@ -61,10 +61,27 @@ export async function getTrendingReports() {
  * System-wide totals: reports, votes, comments, replies, the two
  * averages, and the id of the single most engaged report.
  *
+ * Requires auth (falls through to anyRequest().authenticated()).
+ *
  * @returns Backend DashboardAnalyticsResponse
  */
 export async function getDashboardAnalytics() {
     const response = await axiosClient.get(`${ANALYTICS_API}/dashboard`);
+
+    return response.data;
+}
+
+/**
+ * Get Platform Impact
+ *
+ * Public homepage counters backed by Redis (homepage_impact_stats::platform-impact):
+ * { reportsFiled, sitesCleared, cleanersRanked, verifiedCleanups }.
+ * permitAll() in SecurityConfig, so it works while logged out.
+ *
+ * @returns Backend PlatformImpactResponse
+ */
+export async function getPlatformImpact() {
+    const response = await axiosClient.get(`${ANALYTICS_API}/platform-impact`);
 
     return response.data;
 }
