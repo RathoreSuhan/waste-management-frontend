@@ -146,6 +146,19 @@ export const UI = {
 
         dismiss: { en: "Dismiss", hi: "बंद करें" },
     },
+
+    /* ---------------- API error wording ---------------- */
+    /*
+      Read by getErrorMessage rather than a component, because the rate-limit
+      answer arrives from a security filter and has to be readable wherever an
+      API call is made from. {seconds} is filled with the backend's Retry-After.
+    */
+    errors: {
+        rateLimited: {
+            en: "Slow down, retry in {seconds} s.",
+            hi: "कृपया धीमे चलें, {seconds} सेकंड बाद पुनः प्रयास करें।",
+        },
+    },
 };
 
 export default UI;

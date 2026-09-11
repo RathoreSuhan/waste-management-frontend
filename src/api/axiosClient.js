@@ -1,7 +1,13 @@
 import axios from "axios";
 
-import { API_BASE_URL, AUTH_API, COLD_START_TIMEOUT } from "@/constants/apiConstants";
+import {
+    API_BASE_URL,
+    AUTH_API,
+    COLD_START_TIMEOUT,
+    RATE_LIMIT_MAX_WAIT,
+} from "@/constants/apiConstants";
 import { notifySessionExpired } from "@/api/sessionExpiry";
+import { getRetryAfterSeconds } from "@/utils/errorMessage";
 
 /**
  * ============================================================================
@@ -15,6 +21,7 @@ import { notifySessionExpired } from "@/api/sessionExpiry";
  * - Single timeout configuration
  * - Global base URL setup
  * - One retry for a GET that met a backend cold start
+ * - One short backoff for a GET the backend rate limited
  * - Ends the session in the app when the backend refuses the stored token
  * ============================================================================
  */
@@ -127,6 +134,51 @@ function isColdStartFailure(error) {
 }
 
 /**
+ * How long to wait before quietly re-sending a rate-limited read, or null when
+ * the request must simply fail and let the caller show the message.
+ *
+ * The backend limits by tier: generous on public reads, strict on the paths
+ * that spend Gemini and Cloudinary quota. A page that opens several reads at
+ * once can clip a limit without anyone doing anything wrong, and waiting the
+ * second or two the backend asks for is nicer than a red banner.
+ *
+ * The same three limits as the cold-start retry apply, for the same reasons:
+ *
+ * 1. GET only. Re-sending a write could file a second report or cast a second
+ *    vote, and a 429 does not say whether the first one was recorded.
+ *
+ * 2. Once. Marked on the retried config, so a caller still over their limit
+ *    fails on the second answer instead of looping.
+ *
+ * 3. Only a short wait. Beyond RATE_LIMIT_MAX_WAIT the traffic really was
+ *    excessive, and sitting silently through most of a minute would look like
+ *    the site had hung.
+ */
+function rateLimitRetryDelay(error) {
+
+    const config = error?.config;
+
+    if (!config || config.__rateLimitRetried) {
+        return null;
+    }
+
+    if (String(config.method).toLowerCase() !== "get") {
+        return null;
+    }
+
+    // Null unless this is a 429 carrying a usable Retry-After
+    const seconds = getRetryAfterSeconds(error);
+
+    if (!seconds) {
+        return null;
+    }
+
+    const waitMs = seconds * 1000;
+
+    return waitMs <= RATE_LIMIT_MAX_WAIT ? waitMs : null;
+}
+
+/**
  * Whether a 401 means the session this browser was holding has ended.
  *
  * Not every 401 does, so two conditions have to hold.
@@ -185,6 +237,27 @@ axiosClient.interceptors.response.use(
             };
 
             return axiosClient(retryConfig);
+        }
+
+        /*
+          Rate limited on a read, with a wait short enough to absorb. Sent again
+          after exactly the delay the backend asked for, so the second attempt
+          lands in a fresh window rather than spending another slot immediately.
+        */
+        const rateLimitDelay = rateLimitRetryDelay(error);
+
+        if (rateLimitDelay !== null) {
+
+            const retryConfig = {
+                ...error.config,
+
+                // Marked so this can only ever happen once per request
+                __rateLimitRetried: true,
+            };
+
+            return new Promise((resolve) => {
+                setTimeout(resolve, rateLimitDelay);
+            }).then(() => axiosClient(retryConfig));
         }
 
         /*

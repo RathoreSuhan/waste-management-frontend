@@ -332,3 +332,15 @@ export const WAKE_NOTICE_AFTER = 2500;
  */
 export const COLD_START_TIMEOUT = 90000;
 
+
+/**
+ * Longest Retry-After the client will sit through on its own.
+ *
+ * The backend answers 429 with the seconds left in the caller's rate-limit
+ * window. A second or two is worth absorbing quietly - a page firing several
+ * reads at once can clip the limit through no fault of the reader. Anything
+ * longer means the traffic really was excessive, and the honest thing is to
+ * show the message rather than leave a spinner running for most of a minute.
+ */
+export const RATE_LIMIT_MAX_WAIT = 5000;
+

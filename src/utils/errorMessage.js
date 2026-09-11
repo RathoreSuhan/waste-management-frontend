@@ -11,6 +11,9 @@
  * ============================================================================
  */
 
+import { LANGUAGES, LANGUAGE_STORAGE_KEY } from "@/constants/languageConstants";
+import { UI } from "@/i18n/strings";
+
 /**
  * Signs of an internal message that should never reach a user: raw SQL,
  * JDBC/Hibernate wrappers, database constraint names, Java stack traces.
@@ -54,6 +57,53 @@ function looksTechnical(message) {
 }
 
 /**
+ * Seconds the backend asked the caller to wait, from a 429's Retry-After.
+ *
+ * The rate limiter is a Spring Security filter, so its answer never passes
+ * through GlobalExceptionHandler and the wait is carried in the header rather
+ * than the body. SecurityConfig exposes Retry-After through CORS, without which
+ * the browser would hide it from JavaScript - it is not a safelisted header.
+ *
+ * @param {Object} error - error thrown by Axios
+ * @returns {number|null} whole seconds to wait, or null when not a usable 429
+ */
+export function getRetryAfterSeconds(error) {
+    if (error?.response?.status !== 429) {
+        return null;
+    }
+
+    const headers = error.response.headers;
+
+    // Axios 1.x hands back an AxiosHeaders instance for real responses, and a
+    // plain object in tests and some proxied replies
+    const raw =
+        typeof headers?.get === "function"
+            ? headers.get("retry-after")
+            : headers?.["retry-after"];
+
+    const seconds = Number.parseInt(raw, 10);
+
+    return Number.isFinite(seconds) && seconds > 0 ? seconds : null;
+}
+
+/**
+ * The reader's chosen language, read straight from storage.
+ *
+ * getErrorMessage is a plain function called from services and event handlers,
+ * not a hook, so it cannot use LanguageContext. Reading the same key the
+ * context persists keeps the two in step without changing any of its callers.
+ */
+function readLanguage() {
+    try {
+        return localStorage.getItem(LANGUAGE_STORAGE_KEY) === LANGUAGES.HI
+            ? LANGUAGES.HI
+            : LANGUAGES.EN;
+    } catch {
+        return LANGUAGES.EN;
+    }
+}
+
+/**
  * Extract a readable error message from an Axios error.
  *
  * @param {Object} error - error thrown by Axios
@@ -64,6 +114,22 @@ export function getErrorMessage(
     error,
     fallback = "Something went wrong. Please try again."
 ) {
+    /*
+      Rate limited. Answered before the backend wording below because that
+      wording is written by a servlet filter in English only, while every other
+      message shown to a reader here exists in both languages.
+    */
+    const retryAfterSeconds = getRetryAfterSeconds(error);
+
+    if (retryAfterSeconds) {
+        const copy = UI.errors.rateLimited;
+
+        return (readLanguage() === LANGUAGES.HI ? copy.hi : copy.en).replace(
+            "{seconds}",
+            retryAfterSeconds
+        );
+    }
+
     // Backend ErrorResponse message (most common case)
     const backendMessage = error?.response?.data?.message;
 
