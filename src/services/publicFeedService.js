@@ -10,7 +10,7 @@ import { PUBLIC_FEED_API } from "@/constants/apiConstants";
  * verified by Gemini AI.
  *
  * Backend endpoints:
- *   GET  /api/public-feed              -> every verified cleanup
+ *   GET  /api/public-feed              -> one page of verified cleanups
  *   GET  /api/public-feed/{reportId}   -> one verified cleanup
  *   POST /api/public-feed/{id}/view    -> record a view
  *   POST /api/public-feed/{id}/like    -> give or withdraw a like
@@ -33,15 +33,28 @@ import { PUBLIC_FEED_API } from "@/constants/apiConstants";
  */
 
 /**
- * All AI-verified completed cleanups.
+ * One page of AI-verified completed cleanups, newest first.
  *
- * @returns Array of PublicFeedResponse
+ * The feed used to be returned whole; it is now cut on the server, so a
+ * reader downloads ten stories rather than every cleanup ever verified.
+ *
+ * @param {Object} [options]
+ * @param {number} [options.page] - zero-based page index
+ * @param {number} [options.size] - rows per page
+ * @returns PageResponse<PublicFeedResponse> -> { content, page, size,
+ *          totalElements, totalPages, hasNext, hasPrevious }
  */
-export async function getPublicFeed() {
-    const response = await axiosClient.get(PUBLIC_FEED_API);
+export async function getPublicFeed({ page, size } = {}) {
+    const response = await axiosClient.get(PUBLIC_FEED_API, {
+        params: {
+            // Only send what was asked for, so the backend defaults apply
+            ...(page !== undefined ? { page } : {}),
+            ...(size !== undefined ? { size } : {}),
+        },
+    });
 
-    // Guard against a null body so callers can always map over the result
-    return response.data || [];
+    // Guard against a null body so callers can always read the envelope
+    return response.data || { content: [], totalElements: 0, totalPages: 0 };
 }
 
 /**

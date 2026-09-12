@@ -14,8 +14,7 @@ import {
     ReportListEmpty,
 } from "@/components/reports/ReportListStates";
 
-import useReports from "@/hooks/useReports";
-import usePagination from "@/hooks/usePagination";
+import useServerPagination from "@/hooks/useServerPagination";
 import { getPublicFeed } from "@/services/publicFeedService";
 
 
@@ -26,7 +25,9 @@ import { getPublicFeed } from "@/services/publicFeedService";
  *
  * Public gallery of completed, AI-verified cleanups.
  *
- * Calls GET /api/public-feed
+ * Calls GET /api/public-feed, which answers with one page at a time. The
+ * feed used to be returned whole and sliced in the browser, which meant
+ * every visitor downloaded every cleanup ever verified to look at ten.
  *
  * Open to everyone, including visitors who have never signed in - the whole
  * purpose of the page is to be readable by people without an account.
@@ -39,19 +40,21 @@ import { getPublicFeed } from "@/services/publicFeedService";
 
 export default function SuccessStoriesPage() {
 
-    // getPublicFeed is defined at module level, so it is already stable
-    const { data: stories, loading, error, reload } = useReports(getPublicFeed, []);
-
-    // Ten cleanups to a page
+    // One page of verified cleanups, newest first
     const {
+        pageItems: stories,
         page,
-        pageItems,
         totalPages,
         total,
         rangeStart,
         rangeEnd,
         goToPage,
-    } = usePagination(stories);
+        loading,
+        error,
+        reload,
+    } = useServerPagination(getPublicFeed, {
+        fallbackMessage: "Unable to load cleanups.",
+    });
 
     // Anchor for the jump back up when the page changes
     const galleryTopRef = useRef(null);
@@ -103,7 +106,7 @@ export default function SuccessStoriesPage() {
 
                         <div ref={galleryTopRef}>
                             <div className="grid gap-5 lg:grid-cols-2">
-                                {pageItems.map((story) => (
+                                {stories.map((story) => (
                                     <SuccessStoryCard
                                         key={story.reportId}
                                         story={story}

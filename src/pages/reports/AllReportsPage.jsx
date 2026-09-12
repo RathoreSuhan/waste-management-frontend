@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { Search, Globe2, X } from "lucide-react";
 
 
@@ -12,8 +12,7 @@ import {
     ReportListEmpty,
 } from "@/components/reports/ReportListStates";
 
-import useReports from "@/hooks/useReports";
-import usePagination from "@/hooks/usePagination";
+import useServerPagination from "@/hooks/useServerPagination";
 
 import { getAllReports } from "@/services/reportService";
 import { REPORT_STATUS_FILTERS } from "@/constants/reportConstants";
@@ -26,7 +25,10 @@ import { REPORT_STATUS_FILTERS } from "@/constants/reportConstants";
  * Community view of every garbage report in the system.
  * Calls GET /api/reports, which is open to everyone for reads.
  *
- * Supports a text search and a status filter on the client side.
+ * Supports a text search and a status filter. Both are sent to the backend
+ * as query parameters rather than applied to the page on screen - a filter
+ * over one downloaded page answers a different question from the one the
+ * reader asked, and only the backend can answer it across every report.
  *
  * Serves both shells: the public site, where it opens with the navy band,
  * and the signed-in shell reached from the sidebar, where it opens with the
@@ -39,9 +41,6 @@ import { REPORT_STATUS_FILTERS } from "@/constants/reportConstants";
  */
 
 export default function AllReportsPage() {
-
-    // Load every report from the backend
-    const { data: reports, loading, error, reload } = useReports(getAllReports);
 
     // Free text search (title, city, address) - what is in the box
     const [search, setSearch] = useState("");
@@ -60,64 +59,36 @@ export default function AllReportsPage() {
     // Selected status filter
     const [statusFilter, setStatusFilter] = useState("ALL");
 
-    /**
-     * Apply search + status filters and sort by newest first.
-     */
-    const visibleReports = useMemo(() => {
-
-        // Guard against a non-array response
-        const list = Array.isArray(reports) ? reports : [];
-
-        // Case-insensitive search text, as last submitted
-        const query = appliedSearch.trim().toLowerCase();
-
-
-        return list
-            // Backend status, compared as sent
-            .filter((report) =>
-                statusFilter === "ALL" ? true : report.status === statusFilter
-            )
-            .filter((report) => {
-
-                // No search text - keep everything
-                if (!query) {
-                    return true;
-                }
-
-                // Match against the most useful fields
-                return (
-                    report.title?.toLowerCase().includes(query) ||
-                    report.city?.toLowerCase().includes(query) ||
-                    report.address?.toLowerCase().includes(query) ||
-                    report.state?.toLowerCase().includes(query)
-                );
-            })
-            // Newest report on top
-            .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-
-    }, [reports, appliedSearch, statusFilter]);
-
+    // Anchor for the jump back up when the page changes
+    const listTopRef = useRef(null);
 
     /*
-      Ten records to a page.
+      One page of the register, cut on the server.
 
-      The backend returns the whole register in one response, so the
-      paging is done here. The reader still gets a short page rather
-      than several hundred cards, and the search and status filters
-      above run across every record, not just the visible ten.
+      The fetcher simply forwards what it is given - the filters live in
+      `params` below, which is what tells useServerPagination to return to
+      the first page when they move. Sending `status` as undefined for "ALL"
+      keeps it off the query string, where the backend would otherwise try
+      to read it as a status it has never heard of.
     */
     const {
-        page,
         pageItems,
+        page,
         totalPages,
         total,
         rangeStart,
         rangeEnd,
         goToPage,
-    } = usePagination(visibleReports);
-
-    // Where to scroll back to when the page changes
-    const listTopRef = useRef(null);
+        loading,
+        error,
+        reload,
+    } = useServerPagination(getAllReports, {
+        params: {
+            keyword: appliedSearch,
+            status: statusFilter === "ALL" ? undefined : statusFilter,
+        },
+        fallbackMessage: "Unable to load reports.",
+    });
 
     // The search box, so submitting can take focus off it
     const searchInputRef = useRef(null);

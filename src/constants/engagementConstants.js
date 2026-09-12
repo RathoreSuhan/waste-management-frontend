@@ -73,6 +73,41 @@ export function formatScore(score) {
 }
 
 /**
+ * Translate A Sort Mode Into Backend Query Parameters
+ *
+ * The register used to sort the whole downloaded list in the browser. Now
+ * the backend cuts the register into pages, so the order has to be decided
+ * before the page is requested - which means it has to travel as query
+ * parameters, and the dropdown's labels have to be mapped onto the two
+ * field names the backend will accept.
+ *
+ * The backend keeps a whitelist of sortable properties, so an unknown mode
+ * here cannot reach the query; it simply falls back to the register's
+ * default order. Mapping it to the engagement default keeps the intent of
+ * this page ("most talked about first") intact.
+ *
+ * @param {string} mode - one of the SORT_* constants
+ * @returns {Object} { sortBy, direction } for GET /api/reports
+ */
+export function sortModeToQuery(mode) {
+
+    switch (mode) {
+        case SORT_ENGAGEMENT_ASC:
+            return { sortBy: "engagementScore", direction: "asc" };
+
+        case SORT_NEWEST:
+            return { sortBy: "createdAt", direction: "desc" };
+
+        case SORT_OLDEST:
+            return { sortBy: "createdAt", direction: "asc" };
+
+        case SORT_ENGAGEMENT_DESC:
+        default:
+            return { sortBy: "engagementScore", direction: "desc" };
+    }
+}
+
+/**
  * Sort Reports
  *
  * Returns a NEW array - Array.prototype.sort mutates in place, and

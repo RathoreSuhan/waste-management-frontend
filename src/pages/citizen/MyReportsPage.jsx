@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { Link } from "react-router-dom";
 import { FilePlus2 } from "lucide-react";
@@ -13,12 +13,13 @@ import {
 
 import Pagination from "@/components/common/Pagination";
 
-import useReports from "@/hooks/useReports";
-import usePagination from "@/hooks/usePagination";
-import { getMyReports } from "@/services/reportService";
+import useServerPagination from "@/hooks/useServerPagination";
+import {
+    getMyReports,
+    getMyReportsSummary,
+} from "@/services/reportService";
 
 import {
-    REPORT_STATUS,
     REPORT_STATUS_FILTERS,
 } from "@/constants/reportConstants";
 
@@ -27,10 +28,21 @@ import {
  * My Reports Page
  * ============================================================================
  *
- * Shows every report created by the logged-in citizen.
+ * Shows a page of the reports created by the logged-in citizen.
  * Calls GET /api/reports/my (user resolved from the JWT token).
  *
- * Both the filter and the summary tiles read ReportResponse.status, so the
+ * The status filter is a query parameter, so it is applied by the database
+ * across every report the citizen has filed rather than to the ten on
+ * screen - filtering one page answers a different question from the one the
+ * reader asked.
+ *
+ * The summary tiles above the list are served by /api/reports/my/summary.
+ * They describe every report the citizen has ever filed, while the list
+ * shows one page of it, so they can no longer be counted from the page on
+ * screen: a citizen with forty reports would read "10 pending" and believe
+ * they were wrong about their own work.
+ *
+ * Both the filter and the tiles read backend status values, so the
  * citizen's own view of a report agrees with the public register: PENDING
  * until a cleanup team claims it, IN_PROGRESS once claimed, RESOLVED after
  * the cleanup passes AI verification.
@@ -39,64 +51,79 @@ import {
 
 export default function MyReportsPage() {
 
-    // Load the citizen's own reports
-    const { data: reports, loading, error, reload } = useReports(getMyReports);
-
     // Currently selected status filter
     const [statusFilter, setStatusFilter] = useState("ALL");
 
-    /**
-     * Apply the status filter and show the newest reports first.
-     */
-    const visibleReports = useMemo(() => {
+    /*
+      One page of the citizen's own reports, newest first, cut on the server.
 
-        // Guard against a non-array response
-        const list = Array.isArray(reports) ? reports : [];
-
-        return list
-            // Backend status, compared as sent
-            .filter((report) =>
-                statusFilter === "ALL" ? true : report.status === statusFilter
-            )
-            // Newest report on top
-            .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-
-    }, [reports, statusFilter]);
-
-    /**
-     * Count reports per status for the summary row.
-     */
-    const counts = useMemo(() => {
-
-        const list = Array.isArray(reports) ? reports : [];
-
-        // One pass per status, all against report.status
-        return {
-            total: list.length,
-            pending: list.filter(
-                (report) => report.status === REPORT_STATUS.PENDING
-            ).length,
-            inProgress: list.filter(
-                (report) => report.status === REPORT_STATUS.IN_PROGRESS
-            ).length,
-            resolved: list.filter(
-                (report) => report.status === REPORT_STATUS.RESOLVED
-            ).length,
-        };
-    }, [reports]);
-
-    // Ten reports to a page, filtered set first
+      The fetcher simply forwards what it is given - the filter lives in
+      `params` below, which is what tells useServerPagination to return to
+      the first page when it moves. "ALL" is a frontend sentinel, so it is
+      never sent as a status the backend would have to try to read.
+    */
     const {
-        page,
         pageItems,
+        page,
         totalPages,
         total,
         rangeStart,
         rangeEnd,
         goToPage,
-    } = usePagination(visibleReports);
+        loading,
+        error,
+        reload,
+    } = useServerPagination(getMyReports, {
+        params: {
+            status: statusFilter === "ALL" ? undefined : statusFilter,
+        },
+        fallbackMessage: "Unable to load your reports.",
+    });
 
-    // Anchor for the jump back up when the page changes
+    /*
+      Counts for the summary tiles.
+
+      Fetched separately from the list, because the tiles describe the whole
+      collection and the list describes one page of it. The reloadKey is
+      shared with the list so both catch up together after a change.
+    */
+    const [summary, setSummary] = useState(null);
+
+    useEffect(() => {
+
+        let ignore = false;
+
+        getMyReportsSummary()
+            .then((counts) => {
+                if (!ignore) {
+                    setSummary(counts);
+                }
+            })
+            .catch(() => {
+                if (!ignore) {
+                    /*
+                      Absent counts hide the tiles rather than show wrong ones.
+                      The list below is unaffected, so a failed summary is a
+                      quieter state than a failed page.
+                    */
+                    setSummary(null);
+                }
+            });
+
+        return () => {
+            ignore = true;
+        };
+    }, []);
+
+    // Kept as a plain object with the same shape the tiles read
+    const counts = {
+        total: summary?.total ?? 0,
+        pending: summary?.pending ?? 0,
+        inProgress: summary?.inProgress ?? 0,
+        resolved: summary?.resolved ?? 0,
+    };
+
+    // Where to scroll back to when the page changes
     const listTopRef = useRef(null);
 
     return (

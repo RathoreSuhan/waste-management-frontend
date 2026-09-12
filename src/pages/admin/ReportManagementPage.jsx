@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 
 import { Link } from "react-router-dom";
 import { Search, X, FileSearch, Trash2, Eye, SlidersHorizontal } from "lucide-react";
@@ -8,11 +8,10 @@ import Alert from "@/components/ui/Alert";
 import StatusBadge from "@/components/reports/StatusBadge";
 import ConfirmDialog from "@/components/admin/ConfirmDialog";
 import Pagination from "@/components/common/Pagination";
-import usePagination from "@/hooks/usePagination";
+import useServerPagination from "@/hooks/useServerPagination";
 
 import {
     searchReports,
-
     filterReports,
     deleteReport,
 } from "@/services/adminService";
@@ -22,6 +21,35 @@ import {
 } from "@/constants/reportConstants";
 import { formatDateTime } from "@/utils/formatters";
 import { getErrorMessage } from "@/utils/errorMessage";
+
+/**
+ * Fetch one page of reports for the register.
+ *
+ * The hook calls this with the page number and the params it was given.
+ * A keyword switches to the search endpoint; otherwise the filter endpoint
+ * is used with whatever status, city and state were chosen. Both are asked
+ * for newest first, so the register reads the same whichever mode is open.
+ */
+async function fetchRegister({ page, size, keyword, status, city, state }) {
+    if (keyword) {
+        return searchReports(keyword, {
+            page,
+            size,
+            sortBy: "createdAt",
+            direction: "desc",
+        });
+    }
+
+    return filterReports({
+        status,
+        city,
+        state,
+        page,
+        size,
+        sortBy: "createdAt",
+        direction: "desc",
+    });
+}
 
 /**
  * ============================================================================
@@ -36,17 +64,15 @@ import { getErrorMessage } from "@/utils/errorMessage";
  * exactly and combines them. They are therefore offered as two modes
  * rather than merged, and switching mode clears the other's inputs so
  * the results always match what is on screen.
+ *
+ * One page arrives per request. That used to mean the whole register,
+ * sliced in the browser, so a register of a few thousand reports was
+ * downloaded to show ten. The request now carries the page and its size
+ * along with the mode's own filters.
  * ============================================================================
  */
 
 export default function ReportManagementPage() {
-
-    // Which endpoint is driving the register
-    const [mode, setMode] = useState("filter"); // "filter" | "search"
-
-    const [reports, setReports] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState("");
 
     // Search mode - typed value and the applied value
     const [keywordInput, setKeywordInput] = useState("");
@@ -65,9 +91,6 @@ export default function ReportManagementPage() {
         state: "",
     });
 
-    // Bumped after a deletion to refresh the register
-    const [reloadKey, setReloadKey] = useState(0);
-
     // Deletion confirmation
     const [deleteTarget, setDeleteTarget] = useState(null);
     const [deleteError, setDeleteError] = useState("");
@@ -76,63 +99,37 @@ export default function ReportManagementPage() {
     // Outcome of the last deletion
     const [notice, setNotice] = useState("");
 
-    // Ten reports to a page
+    // Anchor for the jump back up when the page changes
+    const tableTopRef = useRef(null);
+
+    /*
+      One page of the register, from whichever mode is active.
+
+      The filters live in `params` below, which is what tells
+      useServerPagination to return to the first page when they move - page
+      3 of every report is not page 3 of a search for "patna".
+    */
     const {
+        pageItems: reports,
         page,
-        pageItems,
         totalPages,
         total,
         rangeStart,
         rangeEnd,
         goToPage,
-    } = usePagination(reports);
-
-    // Anchor for the jump back up when the page changes
-    const tableTopRef = useRef(null);
-
-
-    /**
-     * Load the register for whichever mode is active.
-     */
-    useEffect(() => {
-
-        let ignore = false;
-
-        const request =
-            mode === "search" && keyword
-                ? searchReports(keyword)
-                : filterReports({
-                    // "ALL" is a UI value - the parameter is omitted instead
-                    status: filters.status === "ALL" ? undefined : filters.status,
-                    city: filters.city,
-                    state: filters.state,
-                });
-
-        request
-            .then((data) => {
-                if (!ignore) {
-                    setReports(data);
-                    setError("");
-                }
-            })
-            .catch((err) => {
-                if (!ignore) {
-                    setError(
-                        getErrorMessage(err, "The report register could not be loaded.")
-                    );
-                }
-            })
-            .finally(() => {
-                if (!ignore) {
-                    setLoading(false);
-                }
-            });
-
-        return () => {
-            ignore = true;
-        };
-    }, [mode, keyword, filters, reloadKey]);
-
+        loading,
+        error,
+        refresh,
+    } = useServerPagination(fetchRegister, {
+        params: {
+            keyword,
+            // "ALL" is a UI value - the parameter is omitted instead
+            status: filters.status === "ALL" ? undefined : filters.status,
+            city: filters.city,
+            state: filters.state,
+        },
+        fallbackMessage: "The report register could not be loaded.",
+    });
     /**
      * Applies the typed keyword and switches to search mode.
      */
@@ -146,19 +143,16 @@ export default function ReportManagementPage() {
             return;
         }
 
-        setLoading(true);
-        setMode("search");
+        // The hook reloads on its own once the keyword changes
         setKeyword(trimmed);
     };
 
     /**
-     * Applies the filter inputs and switches to filter mode.
+     * Applies the filter inputs and returns to the filtered register.
      */
     const handleFilter = (event) => {
         event.preventDefault();
 
-        setLoading(true);
-        setMode("filter");
         setKeyword("");
         setKeywordInput("");
         setFilters(filterInput);
@@ -170,8 +164,6 @@ export default function ReportManagementPage() {
     const clearAll = () => {
         const empty = { status: "ALL", city: "", state: "" };
 
-        setLoading(true);
-        setMode("filter");
         setKeyword("");
         setKeywordInput("");
         setFilterInput(empty);
@@ -225,7 +217,7 @@ export default function ReportManagementPage() {
                 );
 
                 setDeleteTarget(null);
-                setReloadKey((key) => key + 1);
+                refresh();
             })
             .catch((err) => {
                 setDeleteError(
@@ -465,7 +457,7 @@ export default function ReportManagementPage() {
                                 </thead>
 
                                 <tbody className="divide-y divide-rule text-sm">
-                                    {pageItems.map((report) => (
+                                    {reports.map((report) => (
 
                                         <tr key={report.id} className="transition hover:bg-paper">
 

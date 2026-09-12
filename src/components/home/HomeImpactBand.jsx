@@ -71,10 +71,16 @@ export default function HomeImpactBand() {
                   Requested together rather than in sequence. They are
                   three independent reads, and waiting for each in turn
                   would make the band the slowest part of the page.
+
+                  The list endpoints answer with one page rather than the
+                  whole collection now, so each call asks for a page of one
+                  row and reads the total that comes back with it. Asking
+                  for ten rows to count them would download ten rows for a
+                  number the server already knows.
                 */
                 const [reports, cleanups, leaderboard] = await Promise.all([
-                    getAllReports(),
-                    getPublicFeed(),
+                    getAllReports({ page: 0, size: 1 }),
+                    getPublicFeed({ page: 0, size: 1 }),
                     getNationalLeaderboard(),
                 ]);
 
@@ -84,23 +90,26 @@ export default function HomeImpactBand() {
 
                 /*
                   Three endpoints, three shapes. The report and feed calls
-                  answer with a plain list, but the leaderboard answers
-                  with the LeaderboardResponse wrapper and keeps the
-                  ranking under `leaderboard`.
+                  answer with the page envelope and keep the total under
+                  `totalElements`, while the leaderboard answers with the
+                  LeaderboardResponse wrapper and keeps the ranking under
+                  `leaderboard`.
 
-                  Everything is forced to an array before being counted.
+                  Everything is forced to a number before being counted.
                   A count is not worth taking a page down for, and this
                   section reads from three sources at once.
                 */
-                const reportList = Array.isArray(reports) ? reports : [];
-                const cleanupList = Array.isArray(cleanups) ? cleanups : [];
+                const reportTotal = reports?.totalElements ?? 0;
+
+                const cleanupTotal = cleanups?.totalElements ?? 0;
+
                 const cleaners = leaderboard?.leaderboard || [];
 
                 setFigures({
 
-                    reports: reportList.length,
+                    reports: reportTotal,
 
-                    cleanups: cleanupList.length,
+                    cleanups: cleanupTotal,
 
                     // Only cleaners who have earned a place on the board
                     cleaners: cleaners.length,

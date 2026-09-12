@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { FileText, CheckCircle2, Clock, FilePlus2, ArrowRight } from "lucide-react";
 
@@ -12,8 +12,15 @@ import {
 } from "@/components/reports/ReportListStates";
 
 import useReports from "@/hooks/useReports";
-import { getMyReports } from "@/services/reportService";
-import { REPORT_STATUS } from "@/constants/reportConstants";
+import {
+    getMyReports,
+    getMyReportsSummary,
+} from "@/services/reportService";
+
+/**
+ * How many recent submissions the activity section shows.
+ */
+const RECENT_COUNT = 3;
 
 /**
  * ============================================================================
@@ -21,51 +28,67 @@ import { REPORT_STATUS } from "@/constants/reportConstants";
  * ============================================================================
  *
  * Summary of the citizen's own reporting activity.
- * Data comes from GET /api/reports/my (Phase 2).
+ * Data comes from GET /api/reports/my and GET /api/reports/my/summary.
+ *
+ * The two are separate calls because they answer different questions. The
+ * figures describe every report the citizen has ever filed, while /my
+ * returns a page of ten - so the figures cannot be counted from the page
+ * on screen without reading "3 resolved" on a citizen with thirty.
  * ============================================================================
  */
 
 export default function CitizenDashboard() {
 
-    // Load the reports filed by this citizen
-    const { data: reports, loading, error, reload } = useReports(getMyReports);
+    // First page of the citizen's own reports, newest first
+    const { data: page, loading, error, reload } = useReports(getMyReports, {});
 
-    /**
-     * Build the summary figures from the report list.
-     */
-    const stats = useMemo(() => {
-
-        // Guard against a non-array response
-        const list = Array.isArray(reports) ? reports : [];
-
-        const resolved = list.filter(
-            (report) => report.status === REPORT_STATUS.RESOLVED
-        ).length;
-
-        // Still unclaimed - the backend moves a report on once a cleaner takes it
-        const pending = list.filter(
-            (report) => report.status === REPORT_STATUS.PENDING
-        ).length;
-
-        return {
-            total: list.length,
-            resolved,
-            pending,
-        };
-    }, [reports]);
-
-    /**
-     * Three most recent reports for the activity section.
-     */
+    // Recent submissions are the first few of that page
     const recentReports = useMemo(() => {
+        const list = Array.isArray(page?.content) ? page.content : [];
 
-        const list = Array.isArray(reports) ? reports : [];
+        /*
+          The backend already sent this page newest first, and the activity
+          section shows three of them. Sorting again would be harmless, but
+          it would also imply the order was not settled - which it is.
+        */
+        return list.slice(0, RECENT_COUNT);
+    }, [page]);
 
-        return [...list]
-            // Newest first
-            .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
-            .slice(0, 3);
-    }, [reports]);
+    /*
+      Figures for the three tiles, from the counts endpoint.
+
+      A page of reports cannot answer them: a citizen with forty reports
+      would read "10 filed" and "10 pending" whatever they had actually
+      done. The endpoint groups the whole collection in one query.
+    */
+    const [stats, setStats] = useState(null);
+
+    useEffect(() => {
+
+        // Prevents state updates from an outdated request
+        let ignore = false;
+
+        getMyReportsSummary()
+            .then((counts) => {
+                if (!ignore) {
+                    setStats({
+                        total: counts?.total ?? 0,
+                        resolved: counts?.resolved ?? 0,
+                        pending: counts?.pending ?? 0,
+                    });
+                }
+            })
+            .catch(() => {
+                if (!ignore) {
+                    // The tiles read "—" while the list still renders
+                    setStats(null);
+                }
+            });
+
+        return () => {
+            ignore = true;
+        };
+    }, []);
 
     return (
         <div>
@@ -82,22 +105,22 @@ export default function CitizenDashboard() {
                 <section className="grid gap-4 md:grid-cols-3">
                     <StatCard
                         title="Reports Filed"
-                        // Dash while the request is running
-                        value={loading ? "—" : String(stats.total)}
+                        // Dash while the count has not arrived yet
+                        value={stats ? String(stats.total) : "—"}
                         description="Total reports you have submitted."
                         accent="navy"
                         icon={FileText}
                     />
                     <StatCard
                         title="Resolved"
-                        value={loading ? "—" : String(stats.resolved)}
+                        value={stats ? String(stats.resolved) : "—"}
                         description="Closed after successful cleanup."
                         accent="green"
                         icon={CheckCircle2}
                     />
                     <StatCard
                         title="Pending"
-                        value={loading ? "—" : String(stats.pending)}
+                        value={stats ? String(stats.pending) : "—"}
                         description="Waiting to be assigned to a cleanup team."
                         accent="saffron"
                         icon={Clock}

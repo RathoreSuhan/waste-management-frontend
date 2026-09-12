@@ -29,8 +29,16 @@ export default function HomeSuccessSection() {
     // getPublicFeed is module level, so the reference is already stable
     const { data: stories, loading, error } = useReports(getPublicFeed, []);
 
+    /*
+      The feed answers with a page now, and the preview needs only its first
+      two rows - the same rows the page used to slice out of the whole list.
+      Reading them from the page means the landing preview costs the same
+      small request the gallery's first page costs.
+    */
+    const previews = (stories?.content ?? []).slice(0, PREVIEW_COUNT);
+
     // Say nothing rather than say something discouraging
-    if (loading || error || stories.length === 0) {
+    if (loading || error || previews.length === 0) {
         return null;
     }
 
@@ -65,7 +73,7 @@ export default function HomeSuccessSection() {
                 </div>
 
                 <div className="mt-6 grid gap-5 lg:grid-cols-2">
-                    {stories.slice(0, PREVIEW_COUNT).map((story) => (
+                    {previews.map((story) => (
                         <SuccessStoryCard key={story.reportId} story={story} />
                     ))}
                 </div>

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { Search, X, Users, ArrowUpCircle, Trash2, Eye } from "lucide-react";
 
@@ -7,7 +7,7 @@ import Alert from "@/components/ui/Alert";
 import RoleBadge from "@/components/admin/RoleBadge";
 import ConfirmDialog from "@/components/admin/ConfirmDialog";
 import Pagination from "@/components/common/Pagination";
-import usePagination from "@/hooks/usePagination";
+import useServerPagination from "@/hooks/useServerPagination";
 
 import {
     getUsers,
@@ -24,6 +24,31 @@ import { formatDateTime } from "@/utils/formatters";
 import { getErrorMessage } from "@/utils/errorMessage";
 
 /**
+ * Translate the role dropdown's value into a query parameter.
+ *
+ * "ALL" is a UI value only - the backend has no such role, and sending
+ * role=ALL would fail the enum binding with a 400 rather than being read
+ * as "no filter". An undefined value is dropped by the service.
+ */
+function roleParam(role) {
+    return role === "ALL" ? undefined : role;
+}
+
+/**
+ * Fetch one page of accounts for the register.
+ *
+ * The hook calls this with the page number and the params it was given, so
+ * everything the endpoint needs arrives as named arguments. A keyword
+ * switches to the search endpoint; otherwise the plain list endpoint is
+ * used, with the role narrowing it when one is chosen.
+ */
+async function fetchUsers({ page, size, keyword, role }) {
+    return keyword
+        ? searchUsers(keyword, { role, page, size })
+        : getUsers({ role, page, size });
+}
+
+/**
  * ============================================================================
  * User Management (Phase 12)
  * ============================================================================
@@ -35,15 +60,17 @@ import { getErrorMessage } from "@/utils/errorMessage";
  * is present the search endpoint is used (which accepts a role as well);
  * otherwise the plain list endpoint is used. Both are driven from the
  * same state so the two controls behave as one to the administrator.
+ *
+ * One page of accounts arrives per request, newest first - the backend
+ * orders by registration date with the id breaking ties. That ordering
+ * used to be applied here, over the complete list the page had
+ * downloaded; now it is part of the request, because with only one page
+ * on screen a client-side sort would order ten accounts against each
+ * other and call the result a register.
  * ============================================================================
  */
 
 export default function UserManagementPage() {
-
-    // Register contents
-    const [users, setUsers] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState("");
 
     // What is currently typed into the search box
     const [keywordInput, setKeywordInput] = useState("");
@@ -54,9 +81,6 @@ export default function UserManagementPage() {
     // Role filter, "ALL" meaning no role parameter is sent
     const [role, setRole] = useState("ALL");
 
-    // Bumped after a promotion or deletion to refresh the register
-    const [reloadKey, setReloadKey] = useState(0);
-
     // Confirmation dialog state, shared by both destructive actions
     const [dialog, setDialog] = useState(null);
     const [dialogError, setDialogError] = useState("");
@@ -65,76 +89,34 @@ export default function UserManagementPage() {
     // Outcome banner shown above the register after an action succeeds
     const [notice, setNotice] = useState("");
 
+    // Where to scroll back to when the page changes
+    const tableTopRef = useRef(null);
+
     /*
-      The API returns accounts in insertion order, so the oldest one sat at
-      the top. Sorted here rather than in the request because both the browse
-      call and the search call land in this same array. Copied first, since
-      sort() would otherwise reorder the state array in place.
+      One page of the register.
+
+      The filters live in `params` below, which is what tells
+      useServerPagination to return to the first page when they move - page
+      5 of an unfiltered register is not page 5 of a search for "amit".
     */
-    const sortedUsers = useMemo(() => {
-        return [...users].sort((a, b) => {
-
-            const bTime = Date.parse(b.createdAt ?? "") || 0;   // A missing or unreadable date sorts last
-            const aTime = Date.parse(a.createdAt ?? "") || 0;
-
-            // Several accounts share a registration day, so id breaks the tie
-            return bTime - aTime || (b.id ?? 0) - (a.id ?? 0);
-        });
-    }, [users]);
-
-    // Ten accounts to a page, paged over the sorted copy so page 1 is newest
     const {
+        pageItems: users,
         page,
-        pageItems,
         totalPages,
         total,
         rangeStart,
         rangeEnd,
         goToPage,
-    } = usePagination(sortedUsers);
-
-    // Anchor for the jump back up when the page changes
-    const tableTopRef = useRef(null);
-
-
-    /**
-     * Load the register whenever the applied filters change.
-     */
-    useEffect(() => {
-
-        let ignore = false;
-
-        // "ALL" is a UI value only - the backend has no such role
-        const roleParam = role === "ALL" ? undefined : role;
-
-        const request = keyword
-            ? searchUsers(keyword, roleParam)
-            : getUsers(roleParam);
-
-        request
-            .then((data) => {
-                if (!ignore) {
-                    setUsers(data);
-                    setError("");
-                }
-            })
-            .catch((err) => {
-                if (!ignore) {
-                    setError(
-                        getErrorMessage(err, "The user register could not be loaded.")
-                    );
-                }
-            })
-            .finally(() => {
-                if (!ignore) {
-                    setLoading(false);
-                }
-            });
-
-        return () => {
-            ignore = true;
-        };
-    }, [keyword, role, reloadKey]);
+        loading,
+        error,
+        refresh,
+    } = useServerPagination(fetchUsers, {
+        params: {
+            keyword,
+            role: roleParam(role),
+        },
+        fallbackMessage: "The user register could not be loaded.",
+    });
 
     /**
      * Applies the typed keyword.
@@ -142,7 +124,7 @@ export default function UserManagementPage() {
     const handleSearch = (event) => {
         event.preventDefault();
 
-        setLoading(true);
+        // The hook reloads on its own once the applied keyword changes
         setKeyword(keywordInput.trim());
     };
 
@@ -150,7 +132,6 @@ export default function UserManagementPage() {
      * Clears the keyword and returns to the full register.
      */
     const clearSearch = () => {
-        setLoading(true);
         setKeywordInput("");
         setKeyword("");
     };
@@ -159,7 +140,6 @@ export default function UserManagementPage() {
      * Changes the role filter.
      */
     const handleRoleChange = (event) => {
-        setLoading(true);
         setRole(event.target.value);
     };
 
@@ -240,7 +220,7 @@ export default function UserManagementPage() {
                 );
 
                 setDialog(null);
-                setReloadKey((key) => key + 1);
+                refresh();
             })
             .catch((err) => {
                 /*
@@ -426,7 +406,7 @@ export default function UserManagementPage() {
                                 </thead>
 
                                 <tbody className="divide-y divide-rule text-sm">
-                                    {pageItems.map((user) => (
+                                    {users.map((user) => (
 
                                         <tr key={user.id} className="transition hover:bg-paper">
 
