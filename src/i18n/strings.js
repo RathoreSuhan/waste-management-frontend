@@ -62,6 +62,100 @@ export const UI = {
         myDashboard: { en: "My Dashboard", hi: "मेरा डैशबोर्ड" },
     },
 
+    /* ---------------- Sign-in / registration ---------------- */
+    /*
+      Only the wording added by Google sign-in lives here. The rest of the two
+      auth pages is long-form English prose set against the Devanagari title
+      AuthShell renders, and rewriting all of it belongs to its own piece of
+      work - but new user-facing text should not be added English-only.
+    */
+    auth: {
+        or: { en: "or", hi: "या" },
+
+        signingIn: { en: "Signing you in…", hi: "साइन इन किया जा रहा है…" },
+
+        // Shown while Google's own script is still on its way
+        preparingGoogle: {
+            en: "Preparing Google sign-in…",
+            hi: "Google साइन-इन तैयार हो रहा है…",
+        },
+
+        googleUnavailableExplain: {
+            en: "Google sign-in could not load — it may be blocked by a browser extension. Use the form below instead.",
+            hi: "Google साइन-इन लोड नहीं हो सका — इसे किसी ब्राउज़र एक्सटेंशन ने रोका हो सकता है। कृपया नीचे दिए गए फ़ॉर्म का उपयोग करें।",
+        },
+
+        googlePopupBlocked: {
+            en: "The Google sign-in window could not open. Allow pop-ups for this site, then try again.",
+            hi: "Google साइन-इन विंडो नहीं खुल सकी। कृपया इस साइट के लिए पॉप-अप अनुमति दें और पुनः प्रयास करें।",
+        },
+
+        googleFailed: {
+            en: "Google sign-in could not be completed. Please try again.",
+            hi: "Google साइन-इन पूरा नहीं हो सका। कृपया पुनः प्रयास करें।",
+        },
+
+        /* ---- Email verification during sign-up ---- */
+
+        checkYourEmail: {
+            en: "Check your email",
+            hi: "अपना ईमेल देखें",
+        },
+
+        codeSentTo: {
+            en: "We sent a six-digit code to",
+            hi: "हमने छह अंकों का कोड भेजा है",
+        },
+
+        codeExpiryNote: {
+            en: "The code expires in 10 minutes. If it has not arrived, check your spam folder.",
+            hi: "कोड 10 मिनट में समाप्त हो जाएगा। यदि यह नहीं आया है, तो अपना स्पैम फ़ोल्डर देखें।",
+        },
+
+        verificationCodeLabel: {
+            en: "Verification code",
+            hi: "सत्यापन कोड",
+        },
+
+        verifyAndCreate: {
+            en: "Verify & Create Account",
+            hi: "सत्यापित करें और खाता बनाएँ",
+        },
+
+        resendCode: {
+            en: "Send a new code",
+            hi: "नया कोड भेजें",
+        },
+
+        // {seconds} is filled in by the countdown
+        resendIn: {
+            en: "You can ask for a new code in {seconds}s",
+            hi: "आप {seconds} सेकंड बाद नया कोड माँग सकते हैं",
+        },
+
+        useAnotherEmail: {
+            en: "Use a different email address",
+            hi: "दूसरा ईमेल पता उपयोग करें",
+        },
+
+        /* ---- Signing up with Google instead of a typed address ---- */
+
+        verifiedWithGoogle: {
+            en: "Verified with Google",
+            hi: "Google द्वारा सत्यापित",
+        },
+
+        emailNotEditable: {
+            en: "Taken from your Google account and cannot be changed here.",
+            hi: "आपके Google खाते से लिया गया है और इसे यहाँ बदला नहीं जा सकता।",
+        },
+
+        useAnotherGoogleAccount: {
+            en: "Use a different Google account",
+            hi: "दूसरा Google खाता चुनें",
+        },
+    },
+
     /* ---------------- Primary navigation ---------------- */
     nav: {
         home: { en: "Home", hi: "मुख्य" },

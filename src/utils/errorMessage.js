@@ -169,6 +169,36 @@ export function getErrorMessage(
 }
 
 /**
+ * Wording for a problem Google itself reported, rather than the backend.
+ *
+ * Google Identity Services calls error_callback with a `type`. Only one of
+ * them is worth a message: a blocked pop-up, which the reader can actually fix.
+ *
+ * A closed or dismissed window returns null on purpose. Somebody who changed
+ * their mind and shut the Google window does not need to be told they did -
+ * an error banner for a deliberate action reads as a fault, and the page is
+ * already back where they left it.
+ *
+ * @param {Object} error - the object Google passed to error_callback
+ * @returns {string|null} message to show, or null when nothing should be said
+ */
+export function getGoogleSignInError(error) {
+
+    const type = String(error?.type || "");
+
+    // The visitor closed it themselves: not a failure
+    if (/closed|cancel|suppressed|opt_out/i.test(type)) {
+        return null;
+    }
+
+    const copy = /popup_failed_to_open/i.test(type)
+        ? UI.auth.googlePopupBlocked
+        : UI.auth.googleFailed;
+
+    return readLanguage() === LANGUAGES.HI ? copy.hi : copy.en;
+}
+
+/**
  * Detect the special duplicate-report conflict returned by the backend.
  * DuplicateReportException responds with HTTP 409 and a body containing
  * { duplicate: true, existingReportId, distanceMeters, garbageCategory }

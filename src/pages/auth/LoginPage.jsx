@@ -1,4 +1,4 @@
-import { useState, useSyncExternalStore } from "react";
+import { useCallback, useState, useSyncExternalStore } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Link, useLocation, useNavigate } from "react-router-dom";
@@ -8,6 +8,7 @@ import Alert from "@/components/ui/Alert";
 import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
 import AuthShell from "@/components/auth/AuthShell";
+import GoogleSignInButton from "@/components/auth/GoogleSignInButton";
 import BackendWakeNotice from "@/components/common/BackendWakeNotice";
 
 import useAuth from "@/hooks/useAuth";
@@ -18,7 +19,7 @@ import {
 } from "@/api/sessionExpiry";
 
 import { loginSchema } from "@/schemas/authSchema";
-import { getErrorMessage } from "@/utils/errorMessage";
+import { getErrorMessage, getGoogleSignInError } from "@/utils/errorMessage";
 import { resolvePostLoginPath } from "@/utils/roleRedirect";
 
 import background from "@/assets/background2.jpg";
@@ -30,10 +31,19 @@ import background from "@/assets/background2.jpg";
  *
  * Sign-in form, framed by AuthShell over background2.
  *
- * Calls POST /api/auth/login through the auth context, which stores the
- * token and role for the rest of the session.
+ * Two ways in, both ending in the same Clean Bharat session.
  *
- * One form serves everybody: the backend decides which kind of session an
+ * Google, when it is configured for the deployment, posts the credential to
+ * POST /api/auth/google; the backend verifies it with Google, finds or links the
+ * account, and answers with this application's own JWT. A Google account with no
+ * Clean Bharat account yet is sent on to /register to finish - carrying the
+ * credential in router state, never in the URL and never in storage.
+ *
+ * Email and password serves everyone else: accounts created through the
+ * ordinary sign-up form, and a city's Municipal Corporation, which signs in with
+ * the password its administrator issued.
+ *
+ * One form still serves everybody: the backend decides which kind of session an
  * email is entitled to, so this page states no role-specific sign-in rules.
  * ============================================================================
  */
@@ -75,10 +85,13 @@ export default function LoginPage() {
 
 
     // Authentication
-    const { login } = useAuth();
+    const { login, loginWithGoogle } = useAuth();
 
     // Backend error message
     const [serverError, setServerError] = useState("");
+
+    // True only while a Google credential is being exchanged with the backend
+    const [googleBusy, setGoogleBusy] = useState(false);
 
     /**
      * React Hook Form
@@ -110,6 +123,84 @@ export default function LoginPage() {
         },
 
     });
+
+    /**
+     * A Google credential has arrived.
+     *
+     * Wrapped in useCallback because useGoogleSignIn holds it in a ref: a new
+     * function identity on every render is harmless, but a stable one keeps the
+     * intent clear - Google's button is drawn once and not re-created.
+     */
+    const onGoogleCredential = useCallback(async (credential) => {
+
+        setServerError("");
+
+        // Set only now, not when the button was pressed: a visitor who closes
+        // Google's window never reaches here, so nothing is left spinning
+        setGoogleBusy(true);
+
+        try {
+
+            const response = await loginWithGoogle(credential);
+
+            /*
+              Verified by Google, but new to Clean Bharat. The role and location
+              this application requires cannot come from Google, so registration
+              is finished on the next page.
+
+              The credential travels in router state: in memory, not in the URL
+              where it would be logged by proxies and kept in history, and not in
+              localStorage where it would outlive the tab. It is re-verified by
+              the backend before anything is created.
+            */
+            if (response.registrationRequired) {
+
+                navigate("/register", {
+                    state: {
+                        googleCredential: credential,
+                        googleEmail: response.email,
+                        googleName: response.name,
+                        from: redirectTo,
+                    },
+                });
+
+                return;
+            }
+
+            // Same destination logic as the password form below
+            navigate(resolvePostLoginPath(redirectTo, response.role), {
+                replace: true,
+            });
+
+        } catch (error) {
+
+            setServerError(getErrorMessage(error));
+
+        } finally {
+
+            setGoogleBusy(false);
+
+        }
+
+    }, [loginWithGoogle, navigate, redirectTo]);
+
+    /**
+     * Google itself could not complete the sign-in.
+     *
+     * A closed window returns null from the helper and is passed over in
+     * silence - someone who changed their mind has not made a mistake.
+     */
+    const onGoogleError = useCallback((error) => {
+
+        const message = getGoogleSignInError(error);
+
+        if (message) {
+            setServerError(message);
+        }
+
+        setGoogleBusy(false);
+
+    }, []);
 
     /**
      * Login Form Submit
@@ -218,6 +309,17 @@ export default function LoginPage() {
                 </div>
 
             )}
+
+            {/*
+              Google first where it is set up at all. Renders nothing - divider
+              included - when it is not, so the page is simply the form.
+            */}
+            <GoogleSignInButton
+                onCredential={onGoogleCredential}
+                onError={onGoogleError}
+                busy={googleBusy}
+                divider
+            />
 
             <form
 

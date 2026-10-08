@@ -469,10 +469,13 @@ Create a `.env.local` in the frontend root when you need to point at a non-defau
 | Variable | Required | Default | Purpose |
 |---|:---:|---|---|
 | `VITE_API_BASE_URL` | No | `http://localhost:8080` | Base URL of the Spring Boot API. Trailing slashes are trimmed automatically. |
+| `VITE_GOOGLE_CLIENT_ID` | No | *(empty)* | OAuth 2.0 **Web application** client id, the same value the backend holds as `GOOGLE_CLIENT_ID`. Left unset, the Google button and its divider are **not rendered at all** and the sign-up form is the way in — so a fresh clone runs without it. |
 
-That is the whole configuration surface. One variable, with a working default, so a fresh clone runs against a local backend with no setup at all.
+Two variables, both with working defaults, so a fresh clone runs against a local backend with no setup at all. Google sign-in is genuinely optional: without it, `/login` and `/register` are simply the form, exactly as they were before Google was added.
 
-> **Two things to keep in mind.** Vite only exposes variables prefixed `VITE_`, and it **inlines them at build time** — so changing the API URL on a host requires a rebuild, not a restart. And because anything inlined into a bundle is public by definition, no secret ever belongs in this file: API keys, the JWT signing secret and the Cloudinary credentials are the backend's business alone.
+> **Three things to keep in mind.** Vite only exposes variables prefixed `VITE_`, and it **inlines them at build time** — so changing either value on a host requires a rebuild, not a restart. Because anything inlined into a bundle is public by definition, no secret ever belongs in this file: API keys, the JWT signing secret, the SMTP password and the Cloudinary credentials are the backend's business alone. The Google client id is the one deliberate exception, and it is not a secret — it only identifies the application to Google, and there is **no Google client secret anywhere in this project**: the browser hands the backend a signed ID token, which the backend verifies against that same client id as the token's audience.
+
+**Google Cloud Console.** The client id's **Authorized JavaScript origins** must list every origin this app is served from — `http://localhost:5173` for development, plus the deployed origins. No **Authorized redirect URIs** are needed; this flow has no redirect. If the button does not appear, that variable is unset; if it appears but fails on click, the origin is missing from that list.
 
 ### Scripts
 
@@ -506,7 +509,7 @@ Configured for **Vercel**, with `vercel.json` doing three jobs.
 
 **3 · Security headers on every response.** `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy: strict-origin-when-cross-origin`, and a `Permissions-Policy` that denies camera and microphone outright while allowing `geolocation=(self)` — which the report form genuinely needs and nothing else does.
 
-**Build settings.** Root directory `WM Fronted`, build command `npm run build`, output directory `dist`. Set `VITE_API_BASE_URL` in the project's environment variables and redeploy — remember it is inlined at build time.
+**Build settings.** Root directory `WM Fronted`, build command `npm run build`, output directory `dist`. Set `VITE_API_BASE_URL` and `VITE_GOOGLE_CLIENT_ID` in the project's environment variables and redeploy — remember both are inlined at build time, and add the deployed origin to the Google client's Authorized JavaScript origins.
 
 ---
 

@@ -30,6 +30,24 @@ export const API_BASE_URL =
     );
 
 /**
+ * Google OAuth client id for this project.
+ *
+ * Public by design. It identifies the application to Google, and Google
+ * Identity Services needs it in the browser to render the button at all -
+ * which is why it is a VITE_ variable and ends up inlined in the bundle.
+ * It is not a credential: the browser-side flow hands the backend a signed
+ * ID token, so there is no client secret anywhere in this repository, and
+ * nothing here could be used to impersonate the application. What stops a
+ * token from another site being replayed is the backend pinning the same id
+ * as the token's audience - see GoogleAuthConfig.
+ *
+ * Left empty when unset, which is the state of a fresh clone with no .env.
+ * useGoogleSignIn treats that as "Google sign-in unavailable" and says so,
+ * rather than loading a script that cannot work.
+ */
+export const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || "";
+
+/**
  * Authentication APIs
  */
 export const AUTH_API = "/api/auth";

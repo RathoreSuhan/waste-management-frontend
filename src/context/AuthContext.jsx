@@ -17,6 +17,9 @@ import { clearAllProposalDrafts } from "@/utils/proposalDraft";
  * user
  * token
  * login()
+ * registerWithEmail()
+ * loginWithGoogle()
+ * registerWithGoogle()
  * logout()
  * isAuthenticated
  *
@@ -29,6 +32,11 @@ import { clearAllProposalDrafts } from "@/utils/proposalDraft";
  * Signing in or out also wipes any unsubmitted cleanup proposal draft. Those
  * drafts are unsent work belonging to one person, so they must never be waiting
  * for whoever signs in next on the same device.
+ *
+ * All three ways in end at the same place. Google sign-in is not a second
+ * session mechanism: the backend answers it with the same Clean Bharat JWT that
+ * password sign-in returns, so it is stored the same way and the rest of the
+ * application cannot tell the difference - which is exactly the point.
  * ============================================================================
  */
 
@@ -70,12 +78,15 @@ export function AuthProvider({ children }) {
     const { user, token } = session;
 
     /**
-     * Login User
+     * Put a freshly issued session into storage and into React state.
+     *
+     * Shared by every way in, so there is one definition of what being signed
+     * in means. Google sign-in writing its own copy of this is how the two
+     * would drift - a draft left behind here, a key named differently there.
+     *
+     * @param {Object} response - backend reply carrying { token, email, role }
      */
-    async function login(loginData) {
-
-        // Call backend login API
-        const response = await authService.login(loginData);
+    function establishSession(response) {
 
         // Safety net for sessions that ended without logout, e.g. an expired token
         clearAllProposalDrafts();
@@ -98,6 +109,81 @@ export function AuthProvider({ children }) {
         });
 
         return response;
+    }
+
+    /**
+     * Login User
+     *
+     * Email and password. Kept for municipal bodies and for accounts created
+     * before Google sign-in existed.
+     */
+    async function login(loginData) {
+
+        // Call backend login API
+        const response = await authService.login(loginData);
+
+        return establishSession(response);
+    }
+
+    /**
+     * Sign up with an address and a password.
+     *
+     * Two calls end up here. The first has no verification code, so the backend
+     * emails one and answers without a token - no session is started, because no
+     * account exists yet. The second carries the code, and that answer does
+     * establish the session.
+     *
+     * The raw answer is returned either way so the caller can tell the two
+     * apart and show the code step.
+     *
+     * @param {Object} registrationData - the form, plus verificationCode on the
+     *        second call
+     */
+    async function registerWithEmail(registrationData) {
+
+        const response = await authService.register(registrationData);
+
+        // No token means the code is still outstanding
+        if (response.verificationRequired) {
+            return response;
+        }
+
+        return establishSession(response);
+    }
+
+    /**
+     * Sign in with a Google credential.
+     *
+     * Returns the backend's answer either way, because there are two of them.
+     * A Google account with no Clean Bharat account behind it is answered with
+     * registrationRequired and NO token, so no session is started here - the
+     * caller sends the visitor on to finish registering. Starting a session at
+     * that point would mean an account that does not exist appearing signed in.
+     *
+     * @param {string} credential - Google ID token
+     */
+    async function loginWithGoogle(credential) {
+
+        const response = await authService.googleSignIn(credential);
+
+        if (response.registrationRequired) {
+            return response;
+        }
+
+        return establishSession(response);
+    }
+
+    /**
+     * Finish a first-time Google sign-up and sign the new account in.
+     *
+     * @param {Object} registrationData - credential plus the Clean Bharat
+     *        profile Google cannot supply (role, state, city, cleaner details)
+     */
+    async function registerWithGoogle(registrationData) {
+
+        const response = await authService.googleRegister(registrationData);
+
+        return establishSession(response);
     }
 
     /**
@@ -140,6 +226,12 @@ export function AuthProvider({ children }) {
         loading: false,
 
         login,
+
+        registerWithEmail,
+
+        loginWithGoogle,
+
+        registerWithGoogle,
 
         logout,
 

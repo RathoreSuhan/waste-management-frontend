@@ -16,9 +16,11 @@ export const AUTH_MAX_LENGTHS = {
  * Password bounds.
  *
  * BCrypt only reads the first 72 bytes, so anything longer is silently ignored
- * when the password is checked at sign-in. The backend caps new passwords at the
- * same number; sign-in itself stays uncapped so an older account is never locked
- * out of its own longer password.
+ * when the password is checked at sign-in. Sign-in itself stays uncapped so an
+ * older account is never locked out of its own longer password.
+ *
+ * Registration no longer uses these - a Google account has no password to set -
+ * but changing one does, and so does the sign-in form for existing accounts.
  */
 export const PASSWORD_MIN_LENGTH = 6;
 export const PASSWORD_MAX_LENGTH = 72;
@@ -93,11 +95,28 @@ export const changePasswordSchema = z
  * ==========================================================
  * Register Validation Schema
  * ==========================================================
+ *
+ * One sign-up form serves two routes, which differ only in how the address is
+ * proved:
+ *
+ *   email code   the person types an address and a password, and a six-digit
+ *                code sent to that address proves they can read it
+ *   Google       the address arrives inside a token Google signed, so it is not
+ *                typed at all - and there is no password to choose
+ *
+ * Hence the factory: the role and location rules are identical either way, and
+ * only the credential fields come and go. Omitting them from the object also
+ * means Zod strips them from the submitted data, so a stale password left in
+ * form state cannot be sent along with a Google sign-up.
+ *
+ * @param {Object} [options]
+ * @param {boolean} [options.requireCredentials] false for the Google route
  */
-export const registerSchema = z
-    .object({
+export function buildRegisterSchema({ requireCredentials = true } = {}) {
 
-        // Full Name
+    const fields = {
+
+        // Full Name - typed, or prefilled from Google and still editable
         name: z
             .string()
             .min(2, "Name must contain at least 2 characters")
@@ -106,27 +125,7 @@ export const registerSchema = z
                 `Name cannot exceed ${AUTH_MAX_LENGTHS.name} characters`
             ),
 
-        // Email
-        email: z
-            .email("Please enter a valid email")
-            .max(
-                AUTH_MAX_LENGTHS.email,
-                `Email cannot exceed ${AUTH_MAX_LENGTHS.email} characters`
-            ),
-
-        // Password
-        password: z
-            .string()
-            .min(
-                PASSWORD_MIN_LENGTH,
-                `Password must contain at least ${PASSWORD_MIN_LENGTH} characters`
-            )
-            .max(
-                PASSWORD_MAX_LENGTH,
-                `Password cannot exceed ${PASSWORD_MAX_LENGTH} characters`
-            ),
-
-        // User Role
+        // User Role - only the two the backend lets anybody sign up for
         role: z.enum([
             "ROLE_CITIZEN",
             "ROLE_CLEANER",
@@ -163,28 +162,74 @@ export const registerSchema = z
                 AUTH_MAX_LENGTHS.city,
                 `City cannot exceed ${AUTH_MAX_LENGTHS.city} characters`
             ),
+    };
 
-    })
+    if (requireCredentials) {
 
-    // Custom validation
-    .superRefine((data, context) => {
+        // Email
+        fields.email = z
+            .email("Please enter a valid email")
+            .max(
+                AUTH_MAX_LENGTHS.email,
+                `Email cannot exceed ${AUTH_MAX_LENGTHS.email} characters`
+            );
 
-        // Cleaner must choose cleaner type
-        if (
-            data.role === "ROLE_CLEANER" &&
-            !data.cleanerType
-        ) {
+        // Password
+        fields.password = z
+            .string()
+            .min(
+                PASSWORD_MIN_LENGTH,
+                `Password must contain at least ${PASSWORD_MIN_LENGTH} characters`
+            )
+            .max(
+                PASSWORD_MAX_LENGTH,
+                `Password cannot exceed ${PASSWORD_MAX_LENGTH} characters`
+            );
+    }
 
-            context.addIssue({
+    return z
+        .object(fields)
 
-                code: z.ZodIssueCode.custom,
+        // Custom validation
+        .superRefine((data, context) => {
 
-                path: ["cleanerType"],
+            // Cleaner must choose cleaner type
+            if (
+                data.role === "ROLE_CLEANER" &&
+                !data.cleanerType
+            ) {
 
-                message: "Cleaner Type is required",
+                context.addIssue({
 
-            });
+                    code: z.ZodIssueCode.custom,
 
-        }
+                    path: ["cleanerType"],
 
-    });
+                    message: "Cleaner Type is required",
+
+                });
+
+            }
+
+        });
+}
+
+/** The ordinary form: address and password typed in. */
+export const registerSchema = buildRegisterSchema();
+
+/**
+ * ==========================================================
+ * Verification Code Schema
+ * ==========================================================
+ *
+ * Mirrors the @Pattern on RegisterRequest.verificationCode, so a mistyped code
+ * is caught on the page instead of spending one of the five attempts the
+ * backend allows before the code is burnt.
+ */
+export const verificationCodeSchema = z.object({
+
+    verificationCode: z
+        .string()
+        .regex(/^\d{6}$/, "Enter the six-digit code from the email"),
+
+});
