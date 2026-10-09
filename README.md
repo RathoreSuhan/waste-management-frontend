@@ -126,7 +126,7 @@ Nine of these fifteen screens are reachable with no account at all. That is deli
 <td valign="top">
 <img src="docs/screenshots/screen-08.jpg" alt="Sign in page" />
 <br /><b>10 · Sign in</b><br />
-<sub>A deliberately small form on a full-bleed photograph, restating under the button that reading needs no account and that <i>Back to Home</i> is always available. Nobody gets trapped at the gate.</sub>
+<sub>A deliberately small form on a full-bleed photograph, restating under the button that reading needs no account and that <i>Back to Home</i> is always available. Nobody gets trapped at the gate. When Google sign-in is configured, a <i>Continue with Google</i> button sits above the form — an existing account signs straight in, a new one carries its verified address over to the registration form.</sub>
 </td>
 </tr>
 </table>
@@ -134,7 +134,7 @@ Nine of these fifteen screens are reachable with no account at all. That is deli
 <div align="center">
 <img src="docs/screenshots/screen-09.jpg" alt="Create account page" width="62%" />
 <br /><b>11 · Create account</b><br />
-<sub>Grouped into <b>Account details → Role → Location</b>. Choosing a role reveals a plain-language description of what that role may do, and the location fields carry their own justification: <i>"used to place you on the state and city leaderboards, and to route reports to the right municipal corporation."</i> No field is asked for without a stated reason.</sub>
+<sub>Grouped into <b>Account details → Role → Location</b>. Choosing a role reveals a plain-language description of what that role may do, and the location fields carry their own justification: <i>"used to place you on the state and city leaderboards, and to route reports to the right municipal corporation."</i> No field is asked for without a stated reason. Pressing <i>Create Account</i> proves the address first: a six-digit code is emailed to whatever was typed (ten minutes to use it, a fresh one after sixty seconds), and only the code creates the account. <i>Continue with Google</i> skips the code entirely — the address arrives inside a token Google signed, so there is nothing to prove.</sub>
 </div>
 
 ### Part two · Signed in — four dashboards, one shell
@@ -303,6 +303,7 @@ ProtectedRoute → MainLayout → RoleRoute "ROLE_ADMIN"             → admin p
 - Every path lives in `constants/apiConstants.js`, documented with its backend security posture — which endpoints are `permitAll`, which fall through to `authenticated()`, which are `hasRole(...)`. A component never has to guess whether a call will work while signed out.
 - `utils/errorMessage.js` reduces the various shapes a failure can arrive in — validation envelope, plain string body, network timeout — to one human sentence, so no screen ever prints `[object Object]`.
 - Thirteen thin service modules, one per domain (`reportService`, `voteService`, `commentService`, `cleanupService`, `rewardService`, `publicFeedService`, `analyticsService`, `leaderboardService`, `municipalCorporationService`, `municipalService`, `adminService`, `authService`, `accountService`). Components call services; components never call Axios. The split between the two municipal modules is deliberate: `municipalCorporationService` is the admin-facing city directory, `municipalService` is the console a signed-in corporation actually works in.
+- Timeouts matched to the hosting, not the code. The backend sleeps on a free plan and takes the better part of a minute to wake, so auth calls (`authService`, 90-second `COLD_START_TIMEOUT`) carry a longer budget than the default client timeout — and a `BackendWakeNotice` says so on the page, rather than letting a cold start read as a broken form. Reads get one automatic retry; a `POST` is never re-sent.
 
 </details>
 
