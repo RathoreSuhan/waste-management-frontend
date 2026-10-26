@@ -16,7 +16,7 @@ import {
     Sparkles,
     TrendingUp,
     Menu,
-    KeyRound,
+    UserRound,
     FileText,
     Truck,          // active cleanups, municipal officer console
     ClipboardCheck, // completion review, municipal officer console
@@ -51,9 +51,9 @@ const COMMUNITY_ITEMS = [
 ];
 
 const ACCOUNT_ITEM = {
-    to: "/app/change-password",
-    ...UI.sidebar.changePassword,
-    icon: KeyRound,
+    to: "/app/profile",
+    ...UI.sidebar.profile,
+    icon: UserRound,
 };
 
 /**

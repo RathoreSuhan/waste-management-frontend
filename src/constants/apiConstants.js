@@ -297,6 +297,24 @@ export const CLEANUP_APPROVALS_API = "/api/cleanup-approvals";
 
 
 /**
+ * Location directory API (registration).
+ *
+ * The state/district/ULB directory the sign-up form's cascading selects are
+ * built from - generated from the supplied LGD workbook and bundled in the
+ * backend (see locations/README.md there). Registration submits the three
+ * codes, and the backend resolves and stores the names itself, so this is
+ * reference data only: what the browser does with it never decides what a
+ * valid place is.
+ *
+ * Listed under permitAll() in the backend SecurityConfig - registration is
+ * public, so its directory is too - and served with Cache-Control: max-age
+ * of one day. The payload is the whole directory (~5,000 ULBs, roughly
+ * 810 KB) so the cascade can filter locally with no further requests.
+ */
+export const LOCATIONS_API = "/api/locations";
+
+
+/**
  * ============================================================================
  * Cold-start timings
  * ============================================================================

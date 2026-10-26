@@ -154,6 +154,57 @@ export const UI = {
             en: "Use a different Google account",
             hi: "दूसरा Google खाता चुनें",
         },
+
+        /* ---- Choosing where you live, from the location directory ---- */
+
+        /*
+          The sign-up form asks for a state, then a district, then a city or
+          municipal area, each chosen from the directory the backend serves -
+          not typed freely, which is what once allowed "Punjab + Gaya".
+        */
+
+        locationState: { en: "State", hi: "राज्य" },
+
+        locationDistrict: { en: "District", hi: "ज़िला" },
+
+        locationCity: {
+            en: "City or municipal area",
+            hi: "शहर या नगरीय क्षेत्र",
+        },
+
+        locationPurpose: {
+            en: "Used to place you on the state and city leaderboards, and to route reports to the right municipal corporation.",
+            hi: "इसका उपयोग आपको राज्य और शहर की अग्रणी सूचियों में रखने और रिपोर्ट को सही नगर निगम तक पहुँचाने के लिए किया जाता है।",
+        },
+
+        locationChooseState: { en: "Choose a state", hi: "राज्य चुनें" },
+
+        locationChooseDistrict: { en: "Choose a district", hi: "ज़िला चुनें" },
+
+        locationChooseCity: {
+            en: "Choose your city or municipal area",
+            hi: "अपना शहर या नगरीय क्षेत्र चुनें",
+        },
+
+        locationNoMatches: {
+            en: "No matches found",
+            hi: "कोई मेल नहीं मिला",
+        },
+
+        locationLoading: {
+            en: "Loading the location directory…",
+            hi: "स्थान निर्देशिका लोड हो रही है…",
+        },
+
+        locationListLoading: {
+            en: "Loading…",
+            hi: "लोड हो रहा है…",
+        },
+
+        locationUnavailable: {
+            en: "The location directory could not be loaded, so registration cannot continue right now.",
+            hi: "स्थान निर्देशिका लोड नहीं हो सकी, इसलिए पंजीकरण अभी जारी नहीं रखा जा सकता।",
+        },
     },
 
     /* ---------------- Primary navigation ---------------- */
@@ -203,6 +254,7 @@ export const UI = {
         assignmentReview: { en: "Assignment Review", hi: "कार्य समीक्षा" },
 
         changePassword: { en: "Change Password", hi: "पासवर्ड बदलें" },
+        profile: { en: "Profile", hi: "प्रोफ़ाइल" },
     },
 
     /* ---------------- Backend warm-up notice ---------------- */

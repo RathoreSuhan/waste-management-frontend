@@ -182,7 +182,11 @@ A city's municipal corporation gets its own set of screens rather than a panel b
 
 The machine verdict is always captioned for what it is — *AI assessment — advisory only*. It never closes a cleanup by itself; a human decision recorded through `ApprovalDecisionDialog` does.
 
-**How a corporation signs in.** Municipal accounts are never self-registered. An administrator adds the city's contact row under *Municipal Bodies*, and from that point only that registered email can open the console for that city — the public sign-up form offers no municipal option at all. Picking `MUNICIPAL` as a **cleaner type** merely describes what kind of crew a sanitation account belongs to; it grants no console access whatsoever. The first-login password is issued together with the row (documented for the operator, never printed by the UI or the API) and is meant to be replaced straight away from `pages/account/ChangePasswordPage.jsx`, which posts to `PUT /api/account/password`.
+**How a corporation signs in.** Municipal accounts are never self-registered. An administrator adds the city's contact row under *Municipal Bodies*, and from that point only that registered email can open the console for that city — the public sign-up form offers no municipal option at all. Picking `MUNICIPAL` as a **cleaner type** merely describes what kind of crew a sanitation account belongs to; it grants no console access whatsoever. The first-login password is issued together with the row (documented for the operator, never printed by the UI or the API) and is meant to be replaced straight away from the shared `/app/profile` page, which sends `PATCH /api/account/password`.
+
+### Profile and account management
+
+Every signed-in role reaches the consolidated `/app/profile` page from the application shell. The page loads the account profile and its own activity record, lets the user update their name, and provides a separate password-change form. Profile photos are selected locally, cropped to a square before upload, sent to Cloudinary through `accountService`, then saved as the account's profile-picture URL; an existing avatar can also be removed. The sidebar uses `UserRound` for this account-focused destination.
 
 ---
 
@@ -303,6 +307,7 @@ ProtectedRoute → MainLayout → RoleRoute "ROLE_ADMIN"             → admin p
 - Every path lives in `constants/apiConstants.js`, documented with its backend security posture — which endpoints are `permitAll`, which fall through to `authenticated()`, which are `hasRole(...)`. A component never has to guess whether a call will work while signed out.
 - `utils/errorMessage.js` reduces the various shapes a failure can arrive in — validation envelope, plain string body, network timeout — to one human sentence, so no screen ever prints `[object Object]`.
 - Thirteen thin service modules, one per domain (`reportService`, `voteService`, `commentService`, `cleanupService`, `rewardService`, `publicFeedService`, `analyticsService`, `leaderboardService`, `municipalCorporationService`, `municipalService`, `adminService`, `authService`, `accountService`). Components call services; components never call Axios. The split between the two municipal modules is deliberate: `municipalCorporationService` is the admin-facing city directory, `municipalService` is the console a signed-in corporation actually works in.
+- `accountService` keeps the Profile page's account calls together: profile read/update, Cloudinary-backed profile-picture upload/removal, the signed-in account record, and password change through `PATCH /api/account/password`.
 - Timeouts matched to the hosting, not the code. The backend sleeps on a free plan and takes the better part of a minute to wake, so auth calls (`authService`, 90-second `COLD_START_TIMEOUT`) carry a longer budget than the default client timeout — and a `BackendWakeNotice` says so on the page, rather than letting a cold start read as a broken form. Reads get one automatic retry; a `POST` is never re-sent.
 
 </details>
@@ -425,7 +430,7 @@ WM Fronted/
         ├── public/              # Home · SuccessStories(+detail) · Leaderboard
         │                        #   Environment · About · Policies
         ├── auth/                # Login · Register
-        ├── account/             # ChangePassword (shared by all roles)
+        ├── account/             # Profile (name · avatar · password · account record)
         ├── reports/             # AllReports · TrendingReports · ReportDetail
         ├── citizen/             # Dashboard · CreateReport · MyReports
         ├── cleaner/             # Dashboard · AvailableTasks · SubmitProposal

@@ -28,8 +28,9 @@ import { AUTH_API, COLD_START_TIMEOUT } from "@/constants/apiConstants";
  * The whole form goes on both calls - nothing is parked on the server between
  * them, and every rule is re-checked at the moment the account is created.
  *
- * @param {Object} registerData - { name, email, password, role, state, city,
- *        cleanerType?, organizationName?, verificationCode? }
+ * @param {Object} registerData - { name, email, password, role,
+ *        stateCode, districtCode, ulbCode, cleanerType?, organizationName?,
+ *        verificationCode? }
  * @returns Backend RegisterResponse { verificationRequired, token, email, role }
  * @throws Error with message from backend or generic message
  */
@@ -123,8 +124,8 @@ export async function googleSignIn(credential) {
  * and authorised nothing - it only reported that no account existed yet - so
  * the backend verifies the credential a second time before creating anything.
  *
- * @param {Object} registrationData - { credential, name, role, state, city,
- *        cleanerType?, organizationName? }
+ * @param {Object} registrationData - { credential, name, role,
+ *        stateCode, districtCode, ulbCode, cleanerType?, organizationName? }
  * @returns GoogleAuthResponse { registrationRequired: false, token, email, name, role }
  * @throws Error with message from backend or generic message
  */

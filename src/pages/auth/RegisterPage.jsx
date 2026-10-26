@@ -1,5 +1,5 @@
-import { useCallback, useMemo, useState } from "react";
-import { useForm } from "react-hook-form";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { ShieldCheck, UserPlus } from "lucide-react";
@@ -8,6 +8,7 @@ import Alert from "@/components/ui/Alert";
 import Input from "@/components/ui/Input";
 import Button from "@/components/ui/Button";
 import Select from "@/components/ui/Select";
+import SearchableSelect from "@/components/ui/SearchableSelect";
 import AuthShell from "@/components/auth/AuthShell";
 import GoogleSignInButton from "@/components/auth/GoogleSignInButton";
 import EmailCodeStep from "@/components/auth/EmailCodeStep";
@@ -15,6 +16,7 @@ import BackendWakeNotice from "@/components/common/BackendWakeNotice";
 import BiText from "@/components/common/BiText";
 
 import useAuth from "@/hooks/useAuth";
+import { getLocationDirectory } from "@/services/locationService";
 
 import {
     buildRegisterSchema,
@@ -92,6 +94,38 @@ export default function RegisterPage() {
     const [serverError, setServerError] = useState("");
     const [googleBusy, setGoogleBusy] = useState(false);
 
+    /*
+      The state/district/ULB directory the Location section is built from.
+
+      "loading" until the first answer, "ready" once it is in hand, "failed"
+      when it could not be fetched. Registration cannot proceed without it:
+      the backend resolves every sign-up against this same directory, so a
+      form that cannot offer real places is a form that cannot be submitted.
+    */
+    const [directory, setDirectory] = useState(null);
+    const [directoryStatus, setDirectoryStatus] = useState("loading");
+
+    const loadDirectory = useCallback(async () => {
+
+        setDirectoryStatus("loading");
+
+        try {
+            const data = await getLocationDirectory();
+            setDirectory(data);
+            setDirectoryStatus("ready");
+        } catch {
+            // The message is fixed wording, not getErrorMessage: a failed
+            // directory is the server's fault, not something the form
+            // framing can say more usefully than "try again"
+            setDirectoryStatus("failed");
+        }
+
+    }, []);
+
+    useEffect(() => {
+        loadDirectory();
+    }, [loadDirectory]);
+
     // Where the visitor was before being asked to sign in, if anywhere
     const redirectTo = location.state?.from;
 
@@ -114,11 +148,15 @@ export default function RegisterPage() {
 
         register,
 
+        control,
+
         handleSubmit,
 
         getValues,
 
         setValue,
+
+        clearErrors,
 
         watch,
 
@@ -147,15 +185,58 @@ export default function RegisterPage() {
 
             organizationName: "",
 
-            state: "",
+            /*
+              Where you live, as directory codes rather than typed names.
+              The backend resolves them to the stored state and city, so a
+              "Punjab + Gaya" mistake is impossible rather than corrected.
+            */
+            stateCode: "",
 
-            city: "",
+            districtCode: "",
+
+            ulbCode: "",
 
         },
 
     });
 
     const selectedRole = watch("role");
+
+    // The cascade reads its parents to know which children to enable and fill
+    const selectedStateCode = watch("stateCode");
+    const selectedDistrictCode = watch("districtCode");
+
+    const states = useMemo(() => directory?.states ?? [], [directory]);
+
+    const districts = useMemo(
+        () => states.find((state) => state.code === selectedStateCode)?.districts ?? [],
+        [states, selectedStateCode]
+    );
+
+    const ulbs = useMemo(
+        () => districts.find((district) => district.code === selectedDistrictCode)?.ulbs ?? [],
+        [districts, selectedDistrictCode]
+    );
+
+    const stateOptions = useMemo(
+        () => states.map((state) => ({ value: state.code, label: state.name })),
+        [states]
+    );
+
+    const districtOptions = useMemo(
+        () => districts.map((district) => ({ value: district.code, label: district.name })),
+        [districts]
+    );
+
+    /*
+      The type is shown because it is the honest difference between entries:
+      "Ludhiana — Municipal Corporation" and a "Nagar Panchayat" are not the
+      same kind of place, and the leaderboard will carry whichever is chosen.
+    */
+    const ulbOptions = useMemo(
+        () => ulbs.map((ulb) => ({ value: ulb.code, label: `${ulb.name} — ${ulb.type}` })),
+        [ulbs]
+    );
 
     /** Strips the cleaner-only fields a citizen never filled in. */
     function toPayload(data) {
@@ -555,39 +636,156 @@ export default function RegisterPage() {
                         <FieldGroup title="Location">
 
                             {/*
-                              Two to a row: state and city are a single thought,
-                              and pairing them keeps a long form from feeling
-                              longer than it is.
+                              Chosen from the backend's location directory, not
+                              typed: state first, then the districts of that
+                              state, then the urban local bodies of that
+                              district. Each level waits for its parent, and
+                              re-choosing a parent empties everything beneath
+                              it - a rule the selects cannot express, so the
+                              page owns it here.
+
+                              Controller rather than register(): the fields are
+                              custom components whose value changes through a
+                              callback, not DOM inputs reacting to a name.
+                            */}
+
+                            {directoryStatus === "loading" && (
+                                <p className="text-xs leading-relaxed text-ink-muted" role="status">
+                                    <BiText {...UI.auth.locationLoading} />
+                                </p>
+                            )}
+
+                            {directoryStatus === "failed" && (
+                                <div
+                                    role="alert"
+                                    className="rounded-gov border border-red-200 bg-red-50 px-3.5 py-2.5 text-xs leading-relaxed text-red-700"
+                                >
+                                    <BiText {...UI.auth.locationUnavailable} />
+
+                                    <button
+                                        type="button"
+                                        onClick={loadDirectory}
+                                        className="mt-1 block font-semibold text-gov-blue hover:underline"
+                                    >
+                                        <BiText {...UI.backend.retry} />
+                                    </button>
+                                </div>
+                            )}
+
+                            {/*
+                              Two to a row: a state and its district are a single
+                              thought, and pairing them keeps a long form from
+                              feeling longer than it is. The city stands alone
+                              beneath, because its list is the long one.
                             */}
                             <div className="grid gap-5 sm:grid-cols-2">
 
-                                <Input
-                                    label="State"
-                                    placeholder="Enter state"
-                                    maxLength={AUTH_MAX_LENGTHS.state}
-                                    {...register("state")}
-                                    error={errors.state}
+                                <Controller
+                                    name="stateCode"
+                                    control={control}
+                                    render={({ field }) => (
+                                        <SearchableSelect
+                                            label={<BiText {...UI.auth.locationState} />}
+                                            options={stateOptions}
+                                            value={field.value}
+                                            name={field.name}
+                                            inputId="registration-state"
+                                            inputRef={field.ref}
+                                            onBlur={field.onBlur}
+                                            onChange={(value) => {
+                                                const changed = value !== field.value;
+                                                field.onChange(value);
+
+                                                if (changed) {
+                                                    // A different state invalidates everything chosen beneath it
+                                                    setValue("districtCode", "", { shouldValidate: false });
+                                                    setValue("ulbCode", "", { shouldValidate: false });
+                                                    clearErrors("districtCode");
+                                                    clearErrors("ulbCode");
+                                                }
+                                            }}
+                                            required
+                                            error={errors.stateCode}
+                                            disabled={directoryStatus === "failed"}
+                                            loading={directoryStatus === "loading"}
+                                            placeholderElement={<BiText {...UI.auth.locationChooseState} />}
+                                            loadingText={<BiText {...UI.auth.locationListLoading} />}
+                                            noMatchesText={<BiText {...UI.auth.locationNoMatches} />}
+                                        />
+                                    )}
                                 />
 
-                                <Input
-                                    label="City"
-                                    placeholder="Enter city"
-                                    maxLength={AUTH_MAX_LENGTHS.city}
-                                    {...register("city")}
-                                    error={errors.city}
+                                <Controller
+                                    name="districtCode"
+                                    control={control}
+                                    render={({ field }) => (
+                                        <SearchableSelect
+                                            label={<BiText {...UI.auth.locationDistrict} />}
+                                            options={districtOptions}
+                                            value={field.value}
+                                            name={field.name}
+                                            inputId="registration-district"
+                                            inputRef={field.ref}
+                                            onBlur={field.onBlur}
+                                            onChange={(value) => {
+                                                const changed = value !== field.value;
+                                                field.onChange(value);
+
+                                                if (changed) {
+                                                    setValue("ulbCode", "", { shouldValidate: false });
+                                                    clearErrors("ulbCode");
+                                                }
+                                            }}
+                                            required
+                                            error={errors.districtCode}
+                                            disabled={directoryStatus !== "ready" || !selectedStateCode}
+                                            placeholderElement={<BiText {...UI.auth.locationChooseDistrict} />}
+                                            loadingText={<BiText {...UI.auth.locationListLoading} />}
+                                            noMatchesText={<BiText {...UI.auth.locationNoMatches} />}
+                                        />
+                                    )}
                                 />
+
                             </div>
+
+                            <Controller
+                                name="ulbCode"
+                                control={control}
+                                render={({ field }) => (
+                                    <SearchableSelect
+                                        label={<BiText {...UI.auth.locationCity} />}
+                                        options={ulbOptions}
+                                        value={field.value}
+                                        name={field.name}
+                                        inputId="registration-ulb"
+                                        inputRef={field.ref}
+                                        onBlur={field.onBlur}
+                                        onChange={field.onChange}
+                                        required
+                                        error={errors.ulbCode}
+                                        disabled={directoryStatus !== "ready" || !selectedDistrictCode}
+                                        placeholderElement={<BiText {...UI.auth.locationChooseCity} />}
+                                        loadingText={<BiText {...UI.auth.locationListLoading} />}
+                                        noMatchesText={<BiText {...UI.auth.locationNoMatches} />}
+                                    />
+                                )}
+                            />
 
                             {/* Explains why a form asks for a location at all */}
                             <p className="text-xs leading-relaxed text-ink-muted">
-                                Used to place you on the state and city leaderboards, and to
-                                route reports to the right municipal corporation.
+                                <BiText {...UI.auth.locationPurpose} />
                             </p>
                         </FieldGroup>
 
+                        {/*
+                          Disabled, not hidden: a visitor who arrived while the
+                          directory was still waking up is told the form is not
+                          ready rather than offered a submit that must fail.
+                        */}
                         <Button
                             type="submit"
                             loading={isSubmitting}
+                            disabled={directoryStatus !== "ready"}
                         >
                             <UserPlus size={15} aria-hidden="true" />
                             Create Account

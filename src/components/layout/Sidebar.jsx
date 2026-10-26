@@ -1,9 +1,12 @@
+import { useEffect, useState } from "react";
 import { NavLink } from "react-router-dom";
 import { LifeBuoy, UserRound } from "lucide-react";
 import BiText from "@/components/common/BiText";
+import { PROFILE_PICTURE_UPDATED_EVENT } from "@/constants/profileEvents";
 import useAuth from "@/hooks/useAuth";
 import { getRoleLabel } from "@/constants/roleLabels";
 import { UI } from "@/i18n/strings";
+import { getProfile } from "@/services/accountService";
 
 /**
  * ============================================================================
@@ -30,6 +33,30 @@ export default function Sidebar({ menuItems = [] }) {
 
     // Session details, used for the identity panel at the top
     const { user } = useAuth();
+    const [profilePic, setProfilePic] = useState(null);
+
+    useEffect(() => {
+        let active = true;
+
+        getProfile()
+            .then((profile) => {
+                if (active) {
+                    setProfilePic(profile.profilePic ?? null);
+                }
+            })
+            .catch(() => {});
+
+        const handleProfilePictureUpdated = (event) => {
+            setProfilePic(event.detail?.profilePic ?? null);
+        };
+
+        window.addEventListener(PROFILE_PICTURE_UPDATED_EVENT, handleProfilePictureUpdated);
+
+        return () => {
+            active = false;
+            window.removeEventListener(PROFILE_PICTURE_UPDATED_EVENT, handleProfilePictureUpdated);
+        };
+    }, []);
 
     return (
         // w-64 rather than w-72: the 32px returned goes to the content column
@@ -44,12 +71,24 @@ export default function Sidebar({ menuItems = [] }) {
                     <BiText {...UI.account.loggedInAs} primaryOnly />
                 </p>
 
-                <div className="mt-2 flex items-start gap-2.5">
+                <div className="mt-2 text-center">
 
-                    {/* Avatar placeholder - initial letter of the email */}
-                    <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center border border-white/25 bg-white/10">
-                        <UserRound size={16} aria-hidden="true" />
-                    </span>
+                    {/* Fetched account data preserves the image after a session refresh. */}
+                    {profilePic ? (
+                        <img
+                            src={profilePic}
+                            alt="Profile picture"
+                            className="mx-auto mb-3 h-16 w-16 rounded-full border border-white/25 object-cover"
+                        />
+                    ) : (
+                        <span
+                            className="mx-auto mb-3 flex h-16 w-16 items-center justify-center rounded-full border border-white/25 bg-white/10"
+                            role="img"
+                            aria-label="No profile picture"
+                        >
+                            <UserRound size={25} aria-hidden="true" />
+                        </span>
+                    )}
 
                     <div className="min-w-0">
                         {/* Email can be long, so it truncates rather than wrapping */}

@@ -3,13 +3,18 @@ import { z } from "zod";
 /**
  * Longest value each account field accepts, matching the @Size limits on
  * RegisterRequest so the form stops where the API stops.
+ *
+ * The location entries are codes, not names - Punjab is "3" - so their limit
+ * is the backend's 20-character @Size rather than room for a spelled-out
+ * name.
  */
 export const AUTH_MAX_LENGTHS = {
     name: 100,
     email: 150,
     organizationName: 150,
-    state: 100,
-    city: 100,
+    stateCode: 20,
+    districtCode: 20,
+    ulbCode: 20,
 };
 
 /**
@@ -145,22 +150,33 @@ export function buildRegisterSchema({ requireCredentials = true } = {}) {
             )
             .optional(),
 
-        // State
-        state: z
+        /*
+          Where you live, as three codes from the location directory rather
+          than typed names. Codes are what the backend validates against its
+          bundled LGD directory - a typed "Punjab + Gaya" passed free text,
+          which is exactly what this replaces. min(1), not min(2): a code is
+          one character long.
+        */
+        stateCode: z
             .string()
-            .min(2, "State is required")
+            .min(1, "State is required")
             .max(
-                AUTH_MAX_LENGTHS.state,
-                `State cannot exceed ${AUTH_MAX_LENGTHS.state} characters`
+                AUTH_MAX_LENGTHS.stateCode,
+                `State is not valid`
             ),
 
-        // City
-        city: z
+        districtCode: z
             .string()
-            .min(2, "City is required")
             .max(
-                AUTH_MAX_LENGTHS.city,
-                `City cannot exceed ${AUTH_MAX_LENGTHS.city} characters`
+                AUTH_MAX_LENGTHS.districtCode,
+                "District is not valid"
+            ),
+
+        ulbCode: z
+            .string()
+            .max(
+                AUTH_MAX_LENGTHS.ulbCode,
+                "City or municipal area is not valid"
             ),
     };
 
@@ -207,6 +223,47 @@ export function buildRegisterSchema({ requireCredentials = true } = {}) {
 
                     message: "Cleaner Type is required",
 
+                });
+
+            }
+
+            /*
+              The cascade's dependency rules, so a child is flagged for the
+              parent it is actually waiting on rather than a generic "required"
+              that reads as if it were broken on its own.
+            */
+            if (!data.stateCode) {
+
+                context.addIssue({
+                    code: z.ZodIssueCode.custom,
+                    path: ["districtCode"],
+                    message: "Choose a state first",
+                });
+
+            } else if (!data.districtCode) {
+
+                context.addIssue({
+                    code: z.ZodIssueCode.custom,
+                    path: ["districtCode"],
+                    message: "District is required",
+                });
+
+            }
+
+            if (!data.stateCode || !data.districtCode) {
+
+                context.addIssue({
+                    code: z.ZodIssueCode.custom,
+                    path: ["ulbCode"],
+                    message: "Choose a state and district first",
+                });
+
+            } else if (!data.ulbCode) {
+
+                context.addIssue({
+                    code: z.ZodIssueCode.custom,
+                    path: ["ulbCode"],
+                    message: "City or municipal area is required",
                 });
 
             }
