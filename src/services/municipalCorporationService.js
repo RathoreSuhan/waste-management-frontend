@@ -13,7 +13,9 @@ import { MUNICIPAL_CORPORATIONS_API } from "@/constants/apiConstants";
  *   GET    /api/municipal-corporations            -> list
  *   GET    /api/municipal-corporations/{id}       -> one record
  *   GET    /api/municipal-corporations/city/{city}-> lookup by city
+ *   GET    /api/municipal-corporations/me         -> signed-in officer's record
  *   PUT    /api/municipal-corporations/{id}       -> update
+ *   PUT    /api/municipal-corporations/me         -> update signed-in officer's record
  *   DELETE /api/municipal-corporations/{id}       -> remove
  *
  * MunicipalCorporationResponse:
@@ -69,6 +71,12 @@ export async function getMunicipalCorporation(id) {
     return response.data;
 }
 
+/** The municipal corporation represented by the authenticated officer. */
+export async function getOwnMunicipalCorporation() {
+    const response = await axiosClient.get(`${MUNICIPAL_CORPORATIONS_API}/me`);
+    return response.data;
+}
+
 /**
  * Lookup by city name.
  *
@@ -103,6 +111,12 @@ export async function updateMunicipalCorporation(id, corporation) {
         corporation
     );
 
+    return response.data;
+}
+
+/** Updates only the municipal corporation represented by the authenticated officer. */
+export async function updateOwnMunicipalCorporation(corporation) {
+    const response = await axiosClient.put(`${MUNICIPAL_CORPORATIONS_API}/me`, corporation);
     return response.data;
 }
 

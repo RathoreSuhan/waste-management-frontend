@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
+import { useNavigate } from "react-router-dom";
 import { Lock, Move, RotateCcw, Trash2, Upload, UserRound, X, ZoomIn, ZoomOut } from "lucide-react";
 
 import AccountRecord from "@/components/account/AccountRecord";
@@ -10,8 +11,10 @@ import Alert from "@/components/ui/Alert";
 import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
 import { PROFILE_PICTURE_UPDATED_EVENT } from "@/constants/profileEvents";
+import useAuth from "@/hooks/useAuth";
 import useModalBehaviour from "@/hooks/useModalBehaviour";
 import { changePasswordSchema, PASSWORD_MAX_LENGTH, PASSWORD_MIN_LENGTH } from "@/schemas/authSchema";
+import { CORPORATION_MAX_LENGTHS, municipalCorporationSchema } from "@/schemas/municipalCorporationSchema";
 import {
     changePassword,
     deleteProfilePicture,
@@ -20,6 +23,7 @@ import {
     updateProfile,
     uploadProfilePicture,
 } from "@/services/accountService";
+import { getOwnMunicipalCorporation, updateOwnMunicipalCorporation } from "@/services/municipalCorporationService";
 import { getErrorMessage } from "@/utils/errorMessage";
 
 const MIN_ZOOM = 100;
@@ -29,6 +33,9 @@ const CROP_SIZE = 280;
 const CROPPED_IMAGE_SIZE = 512;
 
 export default function ProfilePage() {
+    const { user, logout } = useAuth();
+    const navigate = useNavigate();
+    const isMunicipalOfficer = user?.role === "ROLE_MUNICIPAL_OFFICER";
     const [errorMessage, setErrorMessage] = useState("");
     const [successMessage, setSuccessMessage] = useState("");
     const [profilePicUrl, setProfilePicUrl] = useState(null);
@@ -42,6 +49,7 @@ export default function ProfilePage() {
     const fileInputRef = useRef(null);
     const objectUrlsRef = useRef(new Set());
     const { register: profileRegister, handleSubmit: handleProfileSubmit, setValue: profileSetValue, formState: { errors: profileErrors } } = useForm({ defaultValues: { name: "" } });
+    const { register: corporationRegister, handleSubmit: handleCorporationSubmit, reset: resetCorporation, formState: { errors: corporationErrors, isSubmitting: corporationSubmitting } } = useForm({ resolver: zodResolver(municipalCorporationSchema), defaultValues: { city: "", organizationName: "", phone: "", email: "" } });
     const { register: passwordRegister, handleSubmit: handlePasswordSubmit, reset: resetPassword, formState: { errors: passwordErrors, isSubmitting: passwordSubmitting } } = useForm({
         resolver: zodResolver(changePasswordSchema),
         defaultValues: { currentPassword: "", newPassword: "", confirmPassword: "" },
@@ -59,6 +67,14 @@ export default function ProfilePage() {
 
     useEffect(() => {
         let active = true;
+        if (isMunicipalOfficer) {
+            getOwnMunicipalCorporation().then((data) => {
+                if (active) resetCorporation(data);
+            }).catch((error) => {
+                if (active) setErrorMessage(getErrorMessage(error, "Your municipal corporation details could not be loaded."));
+            });
+            return () => { active = false; };
+        }
         getProfile().then((data) => {
             if (!active) return;
             profileSetValue("name", data.name ?? "");
@@ -72,7 +88,7 @@ export default function ProfilePage() {
             if (active) setRecordError(getErrorMessage(error, "Your account record could not be loaded."));
         });
         return () => { active = false; };
-    }, [profileSetValue]);
+    }, [isMunicipalOfficer, profileSetValue, resetCorporation]);
 
     const emitProfilePictureUpdated = useCallback((profilePic) => {
         window.dispatchEvent(new CustomEvent(PROFILE_PICTURE_UPDATED_EVENT, { detail: { profilePic } }));
@@ -132,6 +148,23 @@ export default function ProfilePage() {
         }
     };
 
+    const onCorporationSubmit = async (corporation) => {
+        setErrorMessage("");
+        setSuccessMessage("");
+        try {
+            const updatedCorporation = await updateOwnMunicipalCorporation(corporation);
+            resetCorporation(updatedCorporation);
+            if (updatedCorporation.email !== user?.email) {
+                logout();
+                navigate("/login", { replace: true, state: { municipalEmailUpdated: true } });
+                return;
+            }
+            setSuccessMessage("Municipal corporation details saved successfully.");
+        } catch (error) {
+            setErrorMessage(getErrorMessage(error, "Unable to update municipal corporation details."));
+        }
+    };
+
     const onPasswordSubmit = async (passwordData) => {
         setErrorMessage("");
         setSuccessMessage("");
@@ -152,12 +185,28 @@ export default function ProfilePage() {
 
     return (
         <PageContainer maxWidth="max-w-5xl" className="px-4 py-8 sm:px-6">
-            <PageHeading title="Profile" titleHi="प्रोफ़ाइल" subtitle="Manage your profile, password, and record of platform activity." />
+            <PageHeading title={isMunicipalOfficer ? "Municipal Corporation Profile" : "Profile"} titleHi={isMunicipalOfficer ? "नगर निगम प्रोफ़ाइल" : "प्रोफ़ाइल"} subtitle={isMunicipalOfficer ? "Manage the official details for your municipal corporation." : "Manage your profile, password, and record of platform activity."} />
             <div className="mt-5 space-y-4" aria-live="polite">
                 {errorMessage && <Alert type="error">{errorMessage}</Alert>}
                 {successMessage && <Alert type="success">{successMessage}</Alert>}
             </div>
             <div className="mt-6 space-y-6">
+                {isMunicipalOfficer ? (
+                    <form onSubmit={handleCorporationSubmit(onCorporationSubmit)} noValidate>
+                        <fieldset className="rounded-gov border border-rule bg-white p-4 sm:p-5">
+                            <legend className="px-2 text-sm font-semibold text-gov-navy">Municipal Corporation Details</legend>
+                            <div className="space-y-4">
+                                <Input label="City" required hint="Reports filed in this city are routed to your office." maxLength={CORPORATION_MAX_LENGTHS.city} error={corporationErrors.city} {...corporationRegister("city")} />
+                                <Input label="Organisation Name" required maxLength={CORPORATION_MAX_LENGTHS.organizationName} error={corporationErrors.organizationName} {...corporationRegister("organizationName")} />
+                                <div className="grid gap-4 sm:grid-cols-2">
+                                    <Input label="Contact Number" required type="tel" maxLength={CORPORATION_MAX_LENGTHS.phone} error={corporationErrors.phone} {...corporationRegister("phone")} />
+                                    <Input label="Email Address" required type="email" maxLength={CORPORATION_MAX_LENGTHS.email} error={corporationErrors.email} {...corporationRegister("email")} />
+                                </div>
+                            </div>
+                            <div className="mt-6 flex justify-end"><Button type="submit" loading={corporationSubmitting} fullWidth={false}>Save Corporation Details</Button></div>
+                        </fieldset>
+                    </form>
+                ) : (
                 <form onSubmit={handleProfileFormSubmit} noValidate>
                     <fieldset className="rounded-gov border border-rule bg-white p-4 sm:p-5">
                         <legend className="px-2 text-sm font-semibold text-gov-navy">Profile Details</legend>
@@ -189,6 +238,7 @@ export default function ProfilePage() {
                         <div className="mt-6 flex justify-end"><Button type="submit" loading={uploading} fullWidth={false}>Save Profile</Button></div>
                     </fieldset>
                 </form>
+                )}
 
                 <fieldset className="rounded-gov border border-rule bg-white p-4 sm:p-5">
                     <legend className="flex items-center gap-1.5 px-2 text-sm font-semibold text-gov-navy"><Lock size={14} aria-hidden="true" />Change Password</legend>
@@ -201,13 +251,14 @@ export default function ProfilePage() {
                         <div className="flex justify-end pt-2"><Button type="submit" loading={passwordSubmitting} fullWidth={false}>Change Password</Button></div>
                     </form>
                 </fieldset>
-                <section aria-labelledby="account-record-heading">
+                {!isMunicipalOfficer && <section aria-labelledby="account-record-heading">
                     <h2 id="account-record-heading" className="sr-only">Account Record</h2>
                     {recordError && <Alert type="error">{recordError}</Alert>}
                     {accountRecord && <AccountRecord user={accountRecord} compact />}
                 </section>
+                }
             </div>
-            {cropSource && <ProfilePictureCropDialog source={cropSource} onApply={({ file, url }) => { setSelectedFile(file); setPreviewUrl(url); setCropSource(null); }} onCancel={() => { setCropSource(null); if (fileInputRef.current) fileInputRef.current.value = ""; }} createObjectUrl={createObjectUrl} />}
+            {!isMunicipalOfficer && cropSource && <ProfilePictureCropDialog source={cropSource} onApply={({ file, url }) => { setSelectedFile(file); setPreviewUrl(url); setCropSource(null); }} onCancel={() => { setCropSource(null); if (fileInputRef.current) fileInputRef.current.value = ""; }} createObjectUrl={createObjectUrl} />}
         </PageContainer>
     );
 }

@@ -82,6 +82,7 @@ export default function LoginPage() {
 
     // Router state for a reader stopped mid-task, the note for a lapsed session
     const redirectTo = location.state?.from || sessionNotice?.from;
+    const municipalEmailUpdated = location.state?.municipalEmailUpdated;
 
 
     // Authentication
@@ -285,7 +286,16 @@ export default function LoginPage() {
                 </div>
             )}
 
-            {redirectTo && !sessionNotice && !serverError && (
+            {municipalEmailUpdated && !sessionNotice && !serverError && (
+                <div className="mb-5">
+                    <Alert type="success" title="Official Email Updated">
+                        Your municipal corporation details were saved. Sign in again
+                        using the updated official email address.
+                    </Alert>
+                </div>
+            )}
+
+            {redirectTo && !municipalEmailUpdated && !sessionNotice && !serverError && (
                 <div className="mb-5">
                     <Alert type="info" title="Sign In to Continue">
                         You will be returned to the page you were reading once you

@@ -34,17 +34,20 @@ export default function Sidebar({ menuItems = [] }) {
     // Session details, used for the identity panel at the top
     const { user } = useAuth();
     const [profilePic, setProfilePic] = useState(null);
+    const visibleProfilePic = user?.role === "ROLE_MUNICIPAL_OFFICER" ? null : profilePic;
 
     useEffect(() => {
         let active = true;
 
-        getProfile()
-            .then((profile) => {
-                if (active) {
-                    setProfilePic(profile.profilePic ?? null);
-                }
-            })
-            .catch(() => {});
+        if (user?.role !== "ROLE_MUNICIPAL_OFFICER") {
+            getProfile()
+                .then((profile) => {
+                    if (active) {
+                        setProfilePic(profile.profilePic ?? null);
+                    }
+                })
+                .catch(() => {});
+        }
 
         const handleProfilePictureUpdated = (event) => {
             setProfilePic(event.detail?.profilePic ?? null);
@@ -56,7 +59,7 @@ export default function Sidebar({ menuItems = [] }) {
             active = false;
             window.removeEventListener(PROFILE_PICTURE_UPDATED_EVENT, handleProfilePictureUpdated);
         };
-    }, []);
+    }, [user?.role]);
 
     return (
         // w-64 rather than w-72: the 32px returned goes to the content column
@@ -74,9 +77,9 @@ export default function Sidebar({ menuItems = [] }) {
                 <div className="mt-2 text-center">
 
                     {/* Fetched account data preserves the image after a session refresh. */}
-                    {profilePic ? (
+                    {visibleProfilePic ? (
                         <img
-                            src={profilePic}
+                            src={visibleProfilePic}
                             alt="Profile picture"
                             className="mx-auto mb-3 h-16 w-16 rounded-full border border-white/25 object-cover"
                         />
