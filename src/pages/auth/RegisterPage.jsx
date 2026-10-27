@@ -30,6 +30,22 @@ import { UI } from "@/i18n/strings";
 
 import background from "@/assets/background1.jpg";
 
+/*
+  Location names are English source data, so one collator gives State,
+  District and City/ULB the same predictable A–Z order. Numeric comparison
+  handles names containing numbers naturally; punctuation is ignored so
+  abbreviations such as S.A.S are placed by their letters.
+*/
+const LOCATION_NAME_COLLATOR = new Intl.Collator("en", {
+    sensitivity: "base",
+    numeric: true,
+    ignorePunctuation: true,
+});
+
+function compareLocationNames(first, second) {
+    return LOCATION_NAME_COLLATOR.compare(first.name, second.name);
+}
+
 /**
  * ============================================================================
  * Register Page
@@ -219,12 +235,16 @@ export default function RegisterPage() {
     );
 
     const stateOptions = useMemo(
-        () => states.map((state) => ({ value: state.code, label: state.name })),
+        () => [...states]
+            .sort(compareLocationNames)
+            .map((state) => ({ value: state.code, label: state.name })),
         [states]
     );
 
     const districtOptions = useMemo(
-        () => districts.map((district) => ({ value: district.code, label: district.name })),
+        () => [...districts]
+            .sort(compareLocationNames)
+            .map((district) => ({ value: district.code, label: district.name })),
         [districts]
     );
 
@@ -234,7 +254,12 @@ export default function RegisterPage() {
       same kind of place, and the leaderboard will carry whichever is chosen.
     */
     const ulbOptions = useMemo(
-        () => ulbs.map((ulb) => ({ value: ulb.code, label: `${ulb.name} — ${ulb.type}` })),
+        () => [...ulbs]
+            .sort(compareLocationNames)
+            .map((ulb) => ({
+                value: ulb.code,
+                label: `${ulb.name} — ${ulb.type}`,
+            })),
         [ulbs]
     );
 
@@ -739,9 +764,13 @@ export default function RegisterPage() {
                                             required
                                             error={errors.districtCode}
                                             disabled={directoryStatus !== "ready" || !selectedStateCode}
+                                            noMatchesText={
+                                                districts.length === 0
+                                                    ? <BiText {...UI.auth.locationNoAreas} />
+                                                    : <BiText {...UI.auth.locationNoMatches} />
+                                            }
                                             placeholderElement={<BiText {...UI.auth.locationChooseDistrict} />}
                                             loadingText={<BiText {...UI.auth.locationListLoading} />}
-                                            noMatchesText={<BiText {...UI.auth.locationNoMatches} />}
                                         />
                                     )}
                                 />
@@ -764,12 +793,25 @@ export default function RegisterPage() {
                                         required
                                         error={errors.ulbCode}
                                         disabled={directoryStatus !== "ready" || !selectedDistrictCode}
+                                        preferredHeight="10rem"
                                         placeholderElement={<BiText {...UI.auth.locationChooseCity} />}
                                         loadingText={<BiText {...UI.auth.locationListLoading} />}
                                         noMatchesText={<BiText {...UI.auth.locationNoMatches} />}
                                     />
                                 )}
                             />
+
+                            {/*
+                              A state the supplied LGD export carries no ULB rows for
+                              (Lakshadweep today) still appears in the selector, but no
+                              supported municipal area can be chosen under it - said
+                              plainly rather than left as an empty list.
+                            */}
+                            {directoryStatus === "ready" && selectedStateCode && districts.length === 0 && (
+                                <p className="text-xs leading-relaxed text-ink-muted">
+                                    <BiText {...UI.auth.locationNoAreas} />
+                                </p>
+                            )}
 
                             {/* Explains why a form asks for a location at all */}
                             <p className="text-xs leading-relaxed text-ink-muted">

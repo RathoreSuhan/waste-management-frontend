@@ -1,4 +1,4 @@
-import { useEffect, useId, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import { Check, ChevronDown, Loader2 } from "lucide-react";
 
 function filterOptions(options, query, selectedLabel = "") {
@@ -15,6 +15,45 @@ function filterOptions(options, query, selectedLabel = "") {
     );
 }
 
+/*
+  Panel sizing. The default preferred height is the max-h-60 the list has
+  always aimed for, in rem so the A-/A/A+ text controls scale the panel with
+  its text; the City field passes a compact 10rem cap because its list is
+  the long one.
+*/
+const DEFAULT_PREFERRED_HEIGHT = "15rem";
+
+/*
+  Every ancestor whose overflow clips or scrolls content bounds the popup -
+  the registration card's overflow-hidden was cutting the list off even when
+  the viewport had room. Their rects are intersected, with the viewport, into
+  one usable band; without any, the viewport alone decides.
+*/
+function findClipBounds(element) {
+
+    let top = 0;
+    let bottom = window.innerHeight;
+
+    for (
+        let node = element.parentElement;
+        node;
+        node = node.parentElement
+    ) {
+        const overflowY = getComputedStyle(node).overflowY;
+
+        if (
+            overflowY === "hidden" || overflowY === "clip"
+            || overflowY === "auto" || overflowY === "scroll"
+        ) {
+            const rect = node.getBoundingClientRect();
+            top = Math.max(top, rect.top);
+            bottom = Math.min(bottom, rect.bottom);
+        }
+    }
+
+    return { top, bottom };
+}
+
 /**
  * ============================================================================
  * Searchable Select
@@ -22,7 +61,7 @@ function filterOptions(options, query, selectedLabel = "") {
  *
  * A type-to-filter combobox built on a plain text input plus a listbox, with
  * no dependency beyond lucide icons. Built for the registration form's
- * State → District → City cascade, where a state list of 35 is fine in a
+ * State → District → City cascade, where a state list of 36 is fine in a
  * native <select> but a city list of hundreds is not.
  *
  * The committed value is the only thing that matters. Typing filters; it does
@@ -69,6 +108,9 @@ export default function SearchableSelect({
       placeholder attribute can only ever be a string.
     */
     placeholderElement = null,
+
+    // Preferred panel height in rem (e.g. "10rem"); smaller for the long City list
+    preferredHeight = DEFAULT_PREFERRED_HEIGHT,
 }) {
 
     const generatedId = useId();
@@ -84,7 +126,24 @@ export default function SearchableSelect({
     // Highlighted row, an index into the filtered matches
     const [activeIndex, setActiveIndex] = useState(-1);
 
+    /*
+      Where the list opens and how tall it may be, decided from the space the
+      input actually has. Measured in the same batch that opens the list, so
+      the null default never reaches a paint.
+    */
+    const [placement, setPlacement] = useState({
+        dropUp: false,
+        maxHeight: null,
+    });
+
     const listRef = useRef(null);
+
+    /*
+      The wrapper around the text input. Measured instead of the input itself
+      so the forwarded inputRef stays untouched: the wrapper's box equals the
+      input's, since it holds nothing that flows.
+    */
+    const wrapperRef = useRef(null);
 
     const selected = options.find((option) => option.value === value) || null;
 
@@ -93,20 +152,111 @@ export default function SearchableSelect({
         [options, query, selected?.label]
     );
 
-    // Keep the highlight inside the viewport as it moves with the arrow keys
+    /*
+      Keep the highlighted option visible by scrolling the option list itself.
+      scrollIntoView would also be free to scroll the card or the page, which
+      both moves the form under the reader and invalidates the placement.
+    */
     useEffect(() => {
 
         if (!open || activeIndex < 0 || !listRef.current) {
             return;
         }
 
-        const active = listRef.current.querySelector('[data-active="true"]');
+        const list = listRef.current;
+        const active = list.querySelector('[data-active="true"]');
 
-        if (active) {
-            active.scrollIntoView({ block: "nearest" });
+        if (!active) {
+            return;
+        }
+
+        // The positioned list is the option's offsetParent, so offsetTop is
+        // already list-relative and comparable with scrollTop
+        const top = active.offsetTop;
+        const bottom = top + active.offsetHeight;
+
+        if (top < list.scrollTop) {
+            list.scrollTop = top;
+        } else if (bottom > list.scrollTop + list.clientHeight) {
+            list.scrollTop = bottom - list.clientHeight;
         }
 
     }, [open, activeIndex]);
+
+    /*
+      Measures the room around the input and keeps the list inside both the
+      viewport and every clipping ancestor: the panel flips above the input
+      when there is not room below for the full height and more room above,
+      and the height is clamped to whatever space remains - a shorter list,
+      never a clipped one.
+    */
+    const measurePlacement = useCallback(() => {
+
+        const wrapper = wrapperRef.current;
+
+        if (!wrapper) {
+            return;
+        }
+
+        // Rem values resolve against the root, which the A-/A/A+ controls move
+        const rootFontSize =
+            parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
+        const preferred = parseFloat(preferredHeight) * rootFontSize;
+        const gap = 0.25 * rootFontSize; // the mt-1 / mb-1 between input and list
+
+        const rect = wrapper.getBoundingClientRect();
+        const clip = findClipBounds(wrapper);
+
+        const spaceBelow = Math.min(window.innerHeight, clip.bottom) - rect.bottom - gap;
+        const spaceAbove = rect.top - Math.max(0, clip.top) - gap;
+
+        const dropUp = spaceBelow < preferred && spaceAbove > spaceBelow;
+
+        // Never taller than the panel wants, nor than the space that exists
+        const maxHeight = Math.max(
+            0,
+            Math.min(preferred, dropUp ? spaceAbove : spaceBelow)
+        );
+
+        // Unchanged values keep a scrolling page from re-rendering the open list
+        setPlacement((previous) =>
+            previous.dropUp === dropUp && previous.maxHeight === maxHeight
+                ? previous
+                : { dropUp, maxHeight }
+        );
+
+    }, [preferredHeight]);
+
+    /*
+      A list opened before the page scrolled must not end up clipped, so the
+      measurement is refreshed for as long as the list is open. Capture picks
+      up scrolling inside any ancestor, not just the window itself.
+    */
+    useEffect(() => {
+
+        if (!open) {
+            return undefined;
+        }
+
+        measurePlacement();
+
+        /*
+          Focus/click can scroll the field after the opening event. Measure once
+          more on the next frame so the first visible panel uses that final
+          position, rather than waiting for a later user scroll or resize.
+        */
+        const placementFrame = window.requestAnimationFrame(measurePlacement);
+
+        window.addEventListener("scroll", measurePlacement, true);
+        window.addEventListener("resize", measurePlacement);
+
+        return () => {
+            window.cancelAnimationFrame(placementFrame);
+            window.removeEventListener("scroll", measurePlacement, true);
+            window.removeEventListener("resize", measurePlacement);
+        };
+
+    }, [open, measurePlacement]);
 
     /** Opens the list, seeded so editing feels like editing the current choice. */
     function openList() {
@@ -120,6 +270,8 @@ export default function SearchableSelect({
 
         setQuery(nextQuery);
         setOpen(true);
+        // Down-or-up and height are decided in the same render the list opens
+        measurePlacement();
         setActiveIndex(
             selected
                 ? nextMatches.findIndex((option) => option.value === selected.value)
@@ -236,7 +388,7 @@ export default function SearchableSelect({
 
             {hint && <p className="text-xs text-ink-muted">{hint}</p>}
 
-            <div className="relative">
+            <div className="relative" ref={wrapperRef}>
 
                 <input
                     ref={inputRef}
@@ -299,7 +451,10 @@ export default function SearchableSelect({
                         role="listbox"
                         aria-labelledby={label ? `${id}-label` : undefined}
                         aria-label={!label && typeof placeholder === "string" ? placeholder : undefined}
-                        className="absolute z-20 mt-1 max-h-60 w-full overflow-auto rounded-gov border border-rule bg-white py-1 shadow-lg"
+                        className={`absolute z-20 w-full overflow-auto rounded-gov border border-rule bg-white py-1 shadow-lg ${
+                            placement.dropUp ? "bottom-full mb-1" : "mt-1"
+                        }`}
+                        style={{ maxHeight: placement.maxHeight ?? undefined }}
                     >
 
                         {loading && (

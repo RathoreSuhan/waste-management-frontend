@@ -191,6 +191,12 @@ export const UI = {
             hi: "कोई मेल नहीं मिला",
         },
 
+        // A state the supplied LGD ULB export carries no rows for (Lakshadweep)
+        locationNoAreas: {
+            en: "No supported municipal areas are available for this State/UT in the current directory.",
+            hi: "वर्तमान निर्देशिका में इस राज्य या केंद्र शासित प्रदेश के लिए कोई समर्थित नगरीय क्षेत्र उपलब्ध नहीं है।",
+        },
+
         locationLoading: {
             en: "Loading the location directory…",
             hi: "स्थान निर्देशिका लोड हो रही है…",
