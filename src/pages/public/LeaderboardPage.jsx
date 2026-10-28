@@ -26,6 +26,7 @@ import {
 import {
     getNationalLeaderboard,
     getStateLeaderboard,
+    getDistrictLeaderboard,
     getCityLeaderboard,
     getMyRanking,
 } from "@/services/leaderboardService";
@@ -65,16 +66,29 @@ const EMPTY_RESPONSE = {
     leaderboard: [],
 };
 
+/*
+  The district tab is a build-time opt-in (VITE_LOCATION_V2_ENABLED): it
+  picks its place from the LGD directory and calls the new district board.
+  The legacy national/state/city tabs keep working unchanged either way.
+*/
+const SHOW_DISTRICT = import.meta.env.VITE_LOCATION_V2_ENABLED === "true";
+
 export default function LeaderboardPage() {
 
     // Used to decide whether the personal card should be requested
     const { user } = useAuth();
 
-    // National, by state, or by city
+    // National, by state, by district, or by city
     const [scope, setScope] = useState(LEADERBOARD_SCOPE.NATIONAL);
 
     // Submitted location - not the text currently being typed
     const [location, setLocation] = useState("");
+
+    /*
+      District scope: the picked (state, district) NAMES. The district picker
+      fetches its own directory while the tab is open.
+    */
+    const [districtPick, setDistrictPick] = useState(null);
 
     // Personal standing, cleaners only
     const [myRanking, setMyRanking] = useState(null);
@@ -92,12 +106,19 @@ export default function LeaderboardPage() {
             return getStateLeaderboard(location);
         }
 
+        if (scope === LEADERBOARD_SCOPE.DISTRICT) {
+            // Nothing picked yet: the picker is showing, no request to make
+            return districtPick
+                ? getDistrictLeaderboard(districtPick.state, districtPick.district)
+                : Promise.resolve(EMPTY_RESPONSE);
+        }
+
         if (scope === LEADERBOARD_SCOPE.CITY) {
             return getCityLeaderboard(location);
         }
 
         return getNationalLeaderboard();
-    }, [scope, location]);
+    }, [scope, location, districtPick]);
 
     const { data, loading, error, reload } = useReports(
         fetchLeaderboard,
@@ -143,9 +164,16 @@ export default function LeaderboardPage() {
     // The response always carries an array, but stay defensive
     const entries = data?.leaderboard || [];
 
-    // State and city rankings need a place before they mean anything
+    // State and city rankings need a place before they mean anything; the
+    // district ranking needs a full state+district pick from the directory
     const awaitingLocation =
-        scope !== LEADERBOARD_SCOPE.NATIONAL && !location.trim();
+        (scope === LEADERBOARD_SCOPE.STATE || scope === LEADERBOARD_SCOPE.CITY)
+            ? !location.trim()
+            : scope === LEADERBOARD_SCOPE.DISTRICT
+                ? !districtPick
+                : false;
+
+    const showWaitingNotice = awaitingLocation && scope !== LEADERBOARD_SCOPE.DISTRICT;
 
     /*
       The personal card is shown only to a cleaner. Checking the role at
@@ -181,10 +209,12 @@ export default function LeaderboardPage() {
                         location={location}
                         onScopeChange={setScope}
                         onLocationSubmit={setLocation}
+                        showDistrict={SHOW_DISTRICT}
+                        onDistrictSubmit={(pick) => setDistrictPick(pick)}
                     />
 
                     {/* Waiting for a state or city to be entered */}
-                    {awaitingLocation && (
+                    {showWaitingNotice && (
                         <div className="border border-rule bg-white px-5 py-10 text-center">
                             <MapPin
                                 size={22}

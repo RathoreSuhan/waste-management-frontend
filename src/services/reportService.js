@@ -43,7 +43,13 @@ function compact(params) {
  * The backend controller reads plain request params plus an "image" file,
  * so the payload must be sent as multipart/form-data (not JSON).
  *
- * @param {Object} reportData - { title, description, latitude, longitude, address, landmark, city, state, pincode }
+ * Two location shapes are accepted, matching CreateReportRequest:
+ * - { city, state }                 the legacy free-text path
+ * - { stateCode, districtCode, ulbCode }  the directory cascade; the backend
+ *   resolves the triple into the canonical stored names and the ULB code that
+ *   routes the report. Exactly one shape must be sent.
+ *
+ * @param {Object} reportData - { title, description, latitude, longitude, address, landmark, pincode, city?, state? } or { ..., stateCode, districtCode, ulbCode }
  * @param {File} imageFile - garbage photo captured by the citizen
  * @returns Backend ReportResponse
  */
@@ -65,8 +71,17 @@ export async function createReport(reportData, imageFile) {
         formData.append("landmark", reportData.landmark);
     }
 
-    formData.append("city", reportData.city);
-    formData.append("state", reportData.state);
+    if (reportData.ulbCode) {
+        // Directory cascade: codes only - the backend derives the stored names
+        formData.append("stateCode", reportData.stateCode);
+        formData.append("districtCode", reportData.districtCode);
+        formData.append("ulbCode", reportData.ulbCode);
+    } else {
+        // Legacy free-text path
+        formData.append("city", reportData.city);
+        formData.append("state", reportData.state);
+    }
+
     formData.append("pincode", reportData.pincode);
 
     // Field name must be "image" to match @RequestParam("image")

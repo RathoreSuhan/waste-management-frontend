@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useCallback, useMemo, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Link, useNavigate } from "react-router-dom";
@@ -10,10 +10,17 @@ import Input from "@/components/ui/Input";
 import Textarea from "@/components/ui/Textarea";
 import ImageUploadField from "@/components/reports/ImageUploadField";
 import LocationVerificationPanel from "@/components/reports/LocationVerificationPanel";
+import LocationCascade from "@/components/common/LocationCascade";
 
 import useGeoLocation from "@/hooks/useGeoLocation";
 
-import { createReportSchema, DESCRIPTION_MAX_LENGTH, REPORT_MAX_LENGTHS } from "@/schemas/reportSchema";
+import {
+    createReportSchema,
+    createDirectoryReportSchema,
+    DESCRIPTION_MAX_LENGTH,
+    REPORT_MAX_LENGTHS,
+} from "@/schemas/reportSchema";
+import { getLocationDirectory } from "@/services/locationService";
 import { createReport } from "@/services/reportService";
 import {
     getErrorMessage,
@@ -71,8 +78,24 @@ const EMPTY_FORM = {
     landmark: "",
     city: "",
     state: "",
+    stateCode: "",
+    districtCode: "",
+    ulbCode: "",
     pincode: "",
 };
+
+/*
+  Location shape, chosen at build time.
+
+  Off (default) the form is exactly as it has always been: free-text city and
+  state, resolved server-side the way it always was. On, the city/state
+  fields are replaced by the LGD directory cascade - the three codes are
+  validated against the same directory the backend uses, and the report is
+  routed to the Municipal Corporation configured for the chosen ULB. A ULB
+  nobody has onboarded yet is refused by the backend before any upload with
+  an actionable message, which this page surfaces through its server notice.
+*/
+const DIRECTORY_LOCATION = import.meta.env.VITE_LOCATION_V2_ENABLED === "true";
 
 export default function CreateReportPage() {
 
@@ -136,13 +159,15 @@ export default function CreateReportPage() {
      */
     const {
         register,
+        control,
         handleSubmit,
         setValue,
         getValues,
         watch,
+        clearErrors,
         formState: { errors, isSubmitting },
     } = useForm({
-        resolver: zodResolver(createReportSchema),
+        resolver: zodResolver(DIRECTORY_LOCATION ? createDirectoryReportSchema : createReportSchema),
 
         /**
          * Continue from the saved draft when there is one, but always with
@@ -157,6 +182,51 @@ export default function CreateReportPage() {
 
     // Live length for the counter under Description
     const descriptionValue = watch("description") || "";
+
+    /*
+      The directory the location cascade is built from. Fetched only when the
+      cascade shape is on; registration uses the same endpoint and cache.
+    */
+    const [directory, setDirectory] = useState(null);
+    const [directoryStatus, setDirectoryStatus] = useState("loading");
+
+    const loadDirectory = useCallback(async () => {
+
+        setDirectoryStatus("loading");
+
+        try {
+            const data = await getLocationDirectory();
+            setDirectory(data);
+            setDirectoryStatus("ready");
+        } catch {
+            // Fixed wording: a failed directory is the server's fault
+            setDirectoryStatus("failed");
+        }
+
+    }, []);
+
+    useEffect(() => {
+        if (DIRECTORY_LOCATION) {
+            loadDirectory();
+        }
+    }, [loadDirectory]);
+
+    // The cascade reads its parents to know which children to enable
+    const placeValues = {
+        stateCode: watch("stateCode"),
+        districtCode: watch("districtCode"),
+        ulbCode: watch("ulbCode"),
+    };
+
+    /** Writes the whole triple, clearing stale child selections in the form. */
+    function handlePlaceChange(next) {
+        setValue("stateCode", next.stateCode, { shouldValidate: false });
+        setValue("districtCode", next.districtCode, { shouldValidate: false });
+        setValue("ulbCode", next.ulbCode, { shouldValidate: false });
+        clearErrors("districtCode");
+        clearErrors("ulbCode");
+        saveDraft();
+    }
 
     /**
      * Current verification outcome, recalculated whenever a fresh position is
@@ -306,15 +376,17 @@ export default function CreateReportPage() {
         }
 
         try {
-            // Convert coordinate strings into numbers before sending
-            const response = await createReport(
-                {
-                    ...data,
-                    latitude: Number(data.latitude),
-                    longitude: Number(data.longitude),
-                },
-                imageFile
-            );
+            // Convert coordinate strings into numbers before sending.
+            // Directory mode strips the legacy free-text fields so exactly
+            // one location shape reaches the backend.
+            const payload = { ...data, latitude: Number(data.latitude), longitude: Number(data.longitude) };
+
+            if (DIRECTORY_LOCATION) {
+                delete payload.city;
+                delete payload.state;
+            }
+
+            const response = await createReport(payload, imageFile);
 
             // Submitted successfully, so the draft must not linger
             clearDraft();
@@ -552,38 +624,72 @@ export default function CreateReportPage() {
                                     error={errors.landmark}
                                 />
 
-                                <div className="grid gap-4 sm:grid-cols-3">
+                                {DIRECTORY_LOCATION ? (
+                                    <>
+                                        {/*
+                                          The LGD directory cascade replaces the typed
+                                          city/state pair: the chosen codes are validated
+                                          against the same directory the backend uses, and
+                                          a municipal area nobody has onboarded yet is
+                                          refused up front with a message shown above.
+                                        */}
+                                        <LocationCascade
+                                            control={control}
+                                            errors={errors}
+                                            directory={directory}
+                                            directoryStatus={directoryStatus}
+                                            onRetry={loadDirectory}
+                                            values={placeValues}
+                                            onChangePlace={handlePlaceChange}
+                                            idPrefix="report"
+                                        />
 
-                                    {/* City / town */}
-                                    <Input
-                                        label="City"
-                                        required
-                                        placeholder="Kolkata"
-                                        maxLength={REPORT_MAX_LENGTHS.city}
-                                        {...register("city")}
-                                        error={errors.city}
-                                    />
+                                        <div className="grid gap-4 sm:grid-cols-3">
+                                            {/* Postal code */}
+                                            <Input
+                                                label="Pincode"
+                                                required
+                                                placeholder="700001"
+                                                maxLength={6}   // a pincode is exactly six digits
+                                                {...register("pincode")}
+                                                error={errors.pincode}
+                                            />
+                                        </div>
+                                    </>
+                                ) : (
+                                    <div className="grid gap-4 sm:grid-cols-3">
 
-                                    {/* State */}
-                                    <Input
-                                        label="State"
-                                        required
-                                        placeholder="West Bengal"
-                                        maxLength={REPORT_MAX_LENGTHS.state}
-                                        {...register("state")}
-                                        error={errors.state}
-                                    />
+                                        {/* City / town */}
+                                        <Input
+                                            label="City"
+                                            required
+                                            placeholder="Kolkata"
+                                            maxLength={REPORT_MAX_LENGTHS.city}
+                                            {...register("city")}
+                                            error={errors.city}
+                                        />
 
-                                    {/* Postal code */}
-                                    <Input
-                                        label="Pincode"
-                                        required
-                                        placeholder="700001"
-                                        maxLength={6}   // a pincode is exactly six digits
-                                        {...register("pincode")}
-                                        error={errors.pincode}
-                                    />
-                                </div>
+                                        {/* State */}
+                                        <Input
+                                            label="State"
+                                            required
+                                            placeholder="West Bengal"
+                                            maxLength={REPORT_MAX_LENGTHS.state}
+                                            {...register("state")}
+                                            error={errors.state}
+                                        />
+
+                                        {/* Postal code */}
+                                        <Input
+                                            label="Pincode"
+                                            required
+                                            placeholder="700001"
+                                            maxLength={6}   // a pincode is exactly six digits
+                                            {...register("pincode")}
+                                            error={errors.pincode}
+                                        />
+                                    </div>
+                                )}
                             </div>
                         </FormSection>
 

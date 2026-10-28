@@ -88,19 +88,25 @@ export const BADGE_LADDER = [
  * Scopes offered by the leaderboard page.
  *
  * NATIONAL needs no location; STATE and CITY take one from the user
- * and put it straight into the URL path.
+ * and put it straight into the URL path. DISTRICT takes a state AND a
+ * district picked from the LGD directory, because two states can name a
+ * district the same way.
  */
 export const LEADERBOARD_SCOPE = {
     NATIONAL: "NATIONAL",
     STATE: "STATE",
+    DISTRICT: "DISTRICT",
     CITY: "CITY",
 };
 
 /**
- * Tab definitions, kept beside the scope values they select.
+ * Tab definitions, kept beside the scope values they select. The DISTRICT
+ * tab is appended by the leaderboard page only when the directory cascade
+ * is switched on (VITE_LOCATION_V2_ENABLED).
  */
 export const LEADERBOARD_SCOPES = [
     { value: LEADERBOARD_SCOPE.NATIONAL, label: "National", labelHi: "राष्ट्रीय" },
     { value: LEADERBOARD_SCOPE.STATE, label: "By State", labelHi: "राज्य" },
+    { value: LEADERBOARD_SCOPE.DISTRICT, label: "By District", labelHi: "ज़िला" },
     { value: LEADERBOARD_SCOPE.CITY, label: "By City", labelHi: "शहर" },
 ];

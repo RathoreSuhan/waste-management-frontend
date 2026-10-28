@@ -115,6 +115,30 @@ export async function getCityLeaderboard(city) {
 }
 
 /**
+ * Top 10 cleaners in one district, aggregating every ULB inside it.
+ *
+ * Both parts are required: different states can name a district the same
+ * way, so the (state, district) pair is what identifies one board. The
+ * backend normalises both through LocationUtil, matching how registration
+ * stores them.
+ *
+ * @param state State name typed by the visitor
+ * @param district District name typed by the visitor
+ */
+export async function getDistrictLeaderboard(state, district) {
+
+    if (!state || !state.trim() || !district || !district.trim()) {
+        return EMPTY_LEADERBOARD;
+    }
+
+    const response = await axiosClient.get(
+        `${LEADERBOARD_API}/district/${encodeURIComponent(state.trim())}/${encodeURIComponent(district.trim())}`
+    );
+
+    return normalise(response);
+}
+
+/**
  * Personal ranking for the signed-in cleaner.
  *
  * Cleaner-only: LeaderboardServiceImpl throws

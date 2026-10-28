@@ -58,13 +58,57 @@ export const REPORT_MAX_LENGTHS = {
     landmark: 100,
     city: 100,
     state: 100,
+    locationCode: 20,
 };
 
 /** Kept as a named export because the report page already imports it. */
 export const DESCRIPTION_MAX_LENGTH = REPORT_MAX_LENGTHS.description;
 
-export const createReportSchema = z.object({
+/*
+  The three LGD codes the directory cascade sends. All three travel together
+  and are resolved server-side into the canonical state/city names plus the
+  district and ULB code, so the stored location can never be a hand-typed
+  "Punjab + Gaya" mix.
+*/
+const locationCodeField = (label) =>
+    z
+        .string()
+        .min(1, `${label} is required`)
+        .max(
+            REPORT_MAX_LENGTHS.locationCode,
+            `${label} is not valid`
+        );
 
+const directoryLocationShape = {
+    stateCode: locationCodeField("State"),
+    districtCode: locationCodeField("District"),
+    ulbCode: locationCodeField("City or municipal area"),
+};
+
+const legacyLocationShape = {
+    // City name (legacy free-text path)
+    city: z
+        .string()
+        .min(2, "City is required")
+        .max(
+            REPORT_MAX_LENGTHS.city,
+            `City cannot exceed ${REPORT_MAX_LENGTHS.city} characters`
+        ),
+
+    // State name (legacy free-text path)
+    state: z
+        .string()
+        .min(2, "State is required")
+        .max(
+            REPORT_MAX_LENGTHS.state,
+            `State cannot exceed ${REPORT_MAX_LENGTHS.state} characters`
+        ),
+};
+
+/*
+  The report fields both location shapes share; only the place itself differs.
+*/
+const reportBaseShape = {
     // Short heading of the report
     title: z
         .string()
@@ -105,26 +149,27 @@ export const createReportSchema = z.object({
         )
         .optional(),
 
-    // City name
-    city: z
-        .string()
-        .min(2, "City is required")
-        .max(
-            REPORT_MAX_LENGTHS.city,
-            `City cannot exceed ${REPORT_MAX_LENGTHS.city} characters`
-        ),
-
-    // State name
-    state: z
-        .string()
-        .min(2, "State is required")
-        .max(
-            REPORT_MAX_LENGTHS.state,
-            `State cannot exceed ${REPORT_MAX_LENGTHS.state} characters`
-        ),
-
     // Indian postal code
     pincode: z
         .string()
         .regex(/^[1-9][0-9]{5}$/, "Pincode must be a valid 6 digit number"),
+};
+
+/*
+  Two shapes, chosen by the page at build time:
+
+  - createReportSchema            today's free-text city/state form (the
+                                  default while VITE_LOCATION_V2_ENABLED is off)
+  - createDirectoryReportSchema   the directory cascade: the three LGD codes
+                                  are required together, replacing the typed
+                                  city/state fields entirely
+*/
+export const createReportSchema = z.object({
+    ...reportBaseShape,
+    ...legacyLocationShape,
+});
+
+export const createDirectoryReportSchema = z.object({
+    ...reportBaseShape,
+    ...directoryLocationShape,
 });

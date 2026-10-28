@@ -122,6 +122,7 @@ export default function EditMunicipalCorporationPage() {
                     <MunicipalCorporationForm
                         defaultValues={{
                             city: corporation.city || "",
+                            ulbCode: corporation.ulbCode || "",
                             organizationName: corporation.organizationName || "",
                             phone: corporation.phone || "",
                             email: corporation.email || "",
