@@ -12,24 +12,26 @@ import { MUNICIPAL_CORPORATIONS_API } from "@/constants/apiConstants";
  *   POST   /api/municipal-corporations            -> create
  *   GET    /api/municipal-corporations            -> list
  *   GET    /api/municipal-corporations/{id}       -> one record
- *   GET    /api/municipal-corporations/city/{city}-> lookup by city
+ *   GET    /api/municipal-corporations/city/{city}-> legacy lookup by city
+ *   GET    /api/municipal-corporations/ulb/{code} -> location-V2 lookup by exact ULB code
  *   GET    /api/municipal-corporations/me         -> signed-in officer's record
  *   PUT    /api/municipal-corporations/{id}       -> update
  *   PUT    /api/municipal-corporations/me         -> update signed-in officer's record
  *   DELETE /api/municipal-corporations/{id}       -> remove
  *
  * MunicipalCorporationResponse:
- *   { id, city, organizationName, phone, email }
+ *   { id, city, ulbCode, organizationName, phone, email }
  *
  * Access, as set in the backend SecurityConfig:
  *
- *   GET /city/{city}  - any signed-in user (citizen, cleaner or admin).
- *                       The report detail page shows this contact to the
- *                       citizen who filed the report.
+ *   GET /city/{city} and /ulb/{code}
+ *                     - any signed-in user (citizen, cleaner or admin).
+ *                       The report detail page uses ULB code whenever the
+ *                       report has one; legacy reports keep the city lookup.
  *   everything else   - ROLE_ADMIN only, so the remaining functions here
  *                       must only be called from an admin screen.
  *
- * Note the city lookup still requires a token: it is authenticated, not
+ * Note both contact lookups still require a token: they are authenticated,
  * public. Anonymous callers get 401, so callers on publicly reachable pages
  * must check for a token before calling it. That 401 is not mistaken for a
  * lapsed session - the interceptor only ends a session when the request
@@ -90,6 +92,25 @@ export async function getOwnMunicipalCorporation() {
 export async function getMunicipalCorporationByCity(city) {
     const response = await axiosClient.get(
         `${MUNICIPAL_CORPORATIONS_API}/city/${encodeURIComponent(city.trim())}`
+    );
+
+    return response.data;
+}
+
+/**
+ * Location-V2 lookup by exact LGD ULB code.
+ *
+ * The backend deliberately does not fall back to city-name matching: mapped
+ * corporations preserve their legacy city value (for legacy reports), which
+ * can differ from the canonical ULB name a code-backed report carries.
+ * No exact code match therefore rejects with 404 rather than guessing.
+ *
+ * @param {string} ulbCode - LGD ULB code stored on the report
+ * @returns MunicipalCorporationResponse
+ */
+export async function getMunicipalCorporationByUlbCode(ulbCode) {
+    const response = await axiosClient.get(
+        `${MUNICIPAL_CORPORATIONS_API}/ulb/${encodeURIComponent(ulbCode.trim())}`
     );
 
     return response.data;

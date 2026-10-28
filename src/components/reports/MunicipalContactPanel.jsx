@@ -1,28 +1,38 @@
 import { useEffect, useState } from "react";
 import { Building2, Phone, Mail, Loader2 } from "lucide-react";
-import { getMunicipalCorporationByCity } from "@/services/municipalCorporationService";
+import {
+    getMunicipalCorporationByCity,
+    getMunicipalCorporationByUlbCode,
+} from "@/services/municipalCorporationService";
 
 /**
  * ============================================================================
  * Municipal Contact Panel
  * ============================================================================
  *
- * The municipal corporation answerable for the city a report was filed in,
- * with the phone number and email a citizen can chase it on.
+ * The municipal corporation answerable for the exact ULB a report was filed
+ * in, with the phone number and email a citizen can chase it on.
  *
- * Calls GET /api/municipal-corporations/city/{city} through the existing
- * service. The backend resolves the city with findByCityIgnoreCase, so
- * "Mohali", "mohali" and "MOHALI" all reach the same record.
+ * Location V2:
+ *   report.ulbCode present -> GET /api/municipal-corporations/ulb/{code}
+ *                             exact code match, never city fallback
+ *   report.ulbCode absent  -> GET /api/municipal-corporations/city/{city}
+ *                             backward-compatible legacy behavior
+ *
+ * The distinction matters: a code-backed report may store the canonical ULB
+ * city "S.a.s.nagar - Mohali" while the mapped corporation must preserve its
+ * legacy city "Mohali" for old reports. Comparing those strings would turn a
+ * real contact into a false 404, which is the production bug this path fixes.
  *
  * ----------------------------------------------------------------------------
  * The four outcomes are kept distinct on purpose
  * ----------------------------------------------------------------------------
  *
  *   found     - render the contact card
- *   notFound  - a real 404: no corporation registered for this city. Many
- *               cities have no row, since the list is maintained by hand by
- *               administrators, so this is an ordinary outcome and is said
- *               plainly.
+ *   notFound  - a real 404: no corporation registered for the report's exact
+ *               ULB code (location V2) or city (legacy report). Many places
+ *               have no row, since the list is maintained by administrators,
+ *               so this is an ordinary outcome and is said plainly.
  *   error     - network, timeout or permission failure. Renders nothing.
  *               Claiming "no contact is registered" here would be a lie
  *               about the data when the truth is we could not ask.
@@ -98,25 +108,36 @@ function ContactRow({ icon: Icon, label, value, href }) {
 }
 
 /**
- * @param report  the loaded ReportResponse - only `city` is used
+ * @param report  the loaded ReportResponse - `ulbCode` selects the exact
+ *                location-V2 lookup; `city` is the legacy key and the label
  */
 export default function MunicipalContactPanel({ report }) {
 
     const city = report?.city?.trim() || "";
-
-    // Whether this render is even allowed to ask the API
-    const canLookup = Boolean(city) && hasStoredToken();
+    const ulbCode = report?.ulbCode?.trim() || "";
 
     /*
-      `city` is recorded alongside the result so a response can be matched
-      to the city it was fetched for. Comparing during render is what keeps
-      a previous city's contact off screen without a setState in the effect
-      body, which React now warns about as a cascading render.
+      One stable key records which report location a response belongs to.
+      Code-backed reports key on ULB code; legacy reports key on city. The
+      prefix keeps a numeric city from ever colliding with a code by accident.
+    */
+    const lookupKey = ulbCode ? `ulb:${ulbCode}` : `city:${city}`;
+
+    // A code-backed report can be looked up from its code alone; a legacy
+    // report needs its stored city. Both endpoints remain authenticated.
+    const hasLookupValue = Boolean(ulbCode || city);
+    const canLookup = hasLookupValue && hasStoredToken();
+
+    /*
+      `lookupKey` is recorded alongside the result so a response can be
+      matched to the report location it was fetched for. Comparing during
+      render keeps a previous report's contact off screen while the next
+      request is in flight, without a synchronous setState in the effect.
     */
     const [result, setResult] = useState({
         status: canLookup ? STATUS.LOADING : STATUS.IDLE,
         data: null,
-        city,
+        lookupKey,
     });
 
     useEffect(() => {
@@ -126,42 +147,52 @@ export default function MunicipalContactPanel({ report }) {
             return;
         }
 
-        // Guards against a slow reply for a city we have since navigated away from
+        // Guards against a slow reply for a report we have since navigated away from
         let active = true;
 
-        getMunicipalCorporationByCity(city)
+        /*
+          Location-V2 reports always take the exact ULB-code path. A 404 stays
+          a real "not configured" result - it must never retry by city, since
+          the corporation's preserved legacy city may intentionally differ.
+          Only reports with no ULB code use the legacy city lookup.
+        */
+        const request = ulbCode
+            ? getMunicipalCorporationByUlbCode(ulbCode)
+            : getMunicipalCorporationByCity(city);
+
+        request
             .then((data) => {
                 if (!active) return;
 
-                setResult({ status: STATUS.FOUND, data, city });
+                setResult({ status: STATUS.FOUND, data, lookupKey });
             })
             .catch((err) => {
                 if (!active) return;
 
                 /*
                   404 is the backend's way of saying no corporation is
-                  registered for this city - a legitimate state worth
-                  telling the reader about. Every other failure is a
-                  problem on our side, and is kept quiet.
+                  registered for this exact ULB (or for the legacy city) - a
+                  legitimate state worth telling the reader about. Every other
+                  failure is a problem on our side, and is kept quiet.
                 */
                 const status =
                     err?.response?.status === 404
                         ? STATUS.NOT_FOUND
                         : STATUS.ERROR;
 
-                setResult({ status, data: null, city });
+                setResult({ status, data: null, lookupKey });
             });
 
         return () => {
             active = false;
         };
-    }, [city, canLookup]);
+    }, [lookupKey, canLookup, ulbCode, city]);
 
-    // A result for a different city is stale until the effect refetches
-    const status = result.city === city ? result.status : STATUS.LOADING;
+    // A result for a different location is stale until the effect refetches
+    const status = result.lookupKey === lookupKey ? result.status : STATUS.LOADING;
 
-    // ---- Report has no city, so there is nothing to look up ----
-    if (!city) {
+    // ---- Report has no usable location, so there is nothing to look up ----
+    if (!hasLookupValue) {
         return (
             <div className="rounded-gov border border-rule bg-paper p-4">
                 <p className="text-sm leading-relaxed text-ink-muted">
@@ -195,15 +226,16 @@ export default function MunicipalContactPanel({ report }) {
         );
     }
 
-    // ---- No corporation registered for this city ----
+    // ---- No corporation registered for this exact place ----
     if (status === STATUS.NOT_FOUND) {
         return (
             <div className="rounded-gov border border-rule bg-paper p-4">
                 <p className="text-sm leading-relaxed text-ink-muted">
                     No municipal contact is registered for{" "}
-                    <span className="font-semibold text-ink">{city}</span>{" "}
-                    yet. The report is still logged and will be assigned to a
-                    cleanup team in the usual way.
+                    <span className="font-semibold text-ink">{city || `ULB ${ulbCode}`}</span>{" "}
+                    yet. {ulbCode
+                        ? "No Municipal Corporation is configured for this municipal area. The report remains logged, and no different corporation was substituted."
+                        : "The report is still logged and will be assigned to a cleanup team in the usual way."}
                 </p>
             </div>
         );
