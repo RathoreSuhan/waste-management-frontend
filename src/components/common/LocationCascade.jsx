@@ -43,6 +43,12 @@ function compareLocationNames(first, second) {
  * - onChangePlace               called with the whole next triple on any change
  * - showUlb                     false for pickers that stop at the district
  * - idPrefix                    unique id prefix per mounted form
+ * - layout                      "grid" (default) stacks the fields in the
+ *                               form grid, labels visible; "toolbar" lines
+ *                               them up inline with hidden labels and the
+ *                               compact height the small search inputs use,
+ *                               for toolbars that hold the picker beside
+ *                               other controls
  * ============================================================================
  */
 
@@ -56,7 +62,19 @@ export default function LocationCascade({
     onChangePlace,
     showUlb = true,
     idPrefix = "location",
+    layout = "grid",
 }) {
+
+    const isToolbar = layout === "toolbar";
+
+    /*
+      The toolbar variant only changes presentation: labels stay associated
+      for screen readers (hidden), the inputs match the compact search-field
+      height, and the parent sizes each field. Selection behavior is identical.
+    */
+    const toolbarFieldProps = isToolbar
+        ? { dense: true, hideLabel: true, className: "w-40 sm:w-48 min-w-0" }
+        : {};
 
     const states = useMemo(() => directory?.states ?? [], [directory]);
 
@@ -102,7 +120,13 @@ export default function LocationCascade({
     return (
         <>
             {directoryStatus === "failed" && (
-                <div className="text-sm text-red-600">
+                <div
+                    className={
+                        isToolbar
+                            ? "w-full text-sm text-red-600"
+                            : "text-sm text-red-600"
+                    }
+                >
                     <BiText {...UI.auth.locationUnavailable} />
                     <button
                         type="button"
@@ -114,7 +138,13 @@ export default function LocationCascade({
                 </div>
             )}
 
-            <div className="grid gap-5 sm:grid-cols-2">
+            <div
+                className={
+                    isToolbar
+                        ? "flex flex-wrap items-center gap-2"
+                        : "grid gap-5 sm:grid-cols-2"
+                }
+            >
 
                 <Controller
                     name="stateCode"
@@ -144,6 +174,7 @@ export default function LocationCascade({
                             placeholderElement={<BiText {...UI.auth.locationChooseState} />}
                             loadingText={<BiText {...UI.auth.locationListLoading} />}
                             noMatchesText={<BiText {...UI.auth.locationNoMatches} />}
+                            {...toolbarFieldProps}
                         />
                     )}
                 />
@@ -182,6 +213,7 @@ export default function LocationCascade({
                             }
                             placeholderElement={<BiText {...UI.auth.locationChooseDistrict} />}
                             loadingText={<BiText {...UI.auth.locationListLoading} />}
+                            {...toolbarFieldProps}
                         />
                     )}
                 />

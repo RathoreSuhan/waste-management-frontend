@@ -111,6 +111,17 @@ export default function SearchableSelect({
 
     // Preferred panel height in rem (e.g. "10rem"); smaller for the long City list
     preferredHeight = DEFAULT_PREFERRED_HEIGHT,
+
+    /*
+      Toolbar variants, opt-in so every existing cascade keeps its exact
+      look. `dense` drops the input to the py-1.5 height the small search
+      inputs use; `hideLabel` keeps the (still associated) label for screen
+      readers out of the visual layout; `className` sizes the wrapper from
+      the parent, e.g. a fixed toolbar width.
+    */
+    dense = false,
+    hideLabel = false,
+    className = "",
 }) {
 
     const generatedId = useId();
@@ -361,7 +372,7 @@ export default function SearchableSelect({
     }
 
     const inputClasses = `
-        w-full rounded-gov border bg-white px-3 py-2 pr-9 text-sm outline-none
+        w-full rounded-gov border bg-white px-3 ${dense ? "py-1.5" : "py-2"} pr-9 text-sm outline-none
         transition placeholder:text-ink-muted/60 focus:border-gov-blue
         disabled:cursor-not-allowed disabled:bg-paper disabled:text-ink-muted
         ${error ? "border-red-600" : "border-rule"}
@@ -373,13 +384,17 @@ export default function SearchableSelect({
 
     return (
 
-        <div className="space-y-1.5">
+        <div className={`space-y-1.5 ${className}`}>
 
             {label && (
                 <label
                     id={`${id}-label`}
                     htmlFor={id}
-                    className="block text-sm font-semibold text-ink"
+                    className={
+                        hideLabel
+                            ? "sr-only text-sm font-semibold text-ink"
+                            : "block text-sm font-semibold text-ink"
+                    }
                 >
                     {label}
                     {required && <span className="ml-0.5 text-red-700" aria-hidden="true">*</span>}

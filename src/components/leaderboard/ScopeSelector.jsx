@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { Search, MapPin } from "lucide-react";
+import { Search } from "lucide-react";
 import { useForm } from "react-hook-form";
 
 import {
@@ -15,6 +15,12 @@ import { getLocationDirectory } from "@/services/locationService";
  * submits the resolved state and district NAMES - the backend identifies a
  * district board by the (state, district) name pair, normalising both the
  * way registration stores them.
+ *
+ * It renders on the right of the same toolbar row as the state and city
+ * search boxes, so the toolbar reads the same in every scope: the cascade
+ * runs in its toolbar layout (inline, hidden labels, the compact height),
+ * and Show matches the other scopes' button, disabled until both levels
+ * are chosen.
  *
  * The directory is fetched here, scoped to this tab's lifetime: it is a
  * public reference file cached for a day at the browser, so reopening the
@@ -85,7 +91,7 @@ function DistrictPicker({ onSubmitPlace }) {
     const pickReady = Boolean(values.stateCode && values.districtCode);
 
     return (
-        <form onSubmit={handleSubmit(submitPlace)} className="flex flex-wrap items-start gap-2">
+        <form onSubmit={handleSubmit(submitPlace)} className="flex flex-wrap items-center gap-2">
             <LocationCascade
                 control={control}
                 errors={errors}
@@ -96,11 +102,12 @@ function DistrictPicker({ onSubmitPlace }) {
                 onChangePlace={handlePlaceChange}
                 showUlb={false}
                 idPrefix="leaderboard-district"
+                layout="toolbar"
             />
             <button
                 type="submit"
                 disabled={!pickReady}
-                className="inline-flex items-center gap-1.5 border border-gov-navy bg-gov-navy px-3 py-2 text-sm font-medium text-white transition hover:bg-gov-navy/90 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-gov-navy"
+                className="inline-flex items-center gap-1.5 border border-gov-navy bg-gov-navy px-3 py-1.5 text-sm font-medium text-white transition hover:bg-gov-navy/90 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-gov-navy"
             >
                 <Search size={14} aria-hidden="true" />
                 Show
@@ -127,7 +134,9 @@ function DistrictPicker({ onSubmitPlace }) {
  * The DISTRICT tab (shown only when the directory cascade is switched on)
  * picks the place from the LGD directory instead of free text, because a
  * district board is identified by the (state, district) pair - two states
- * can name a district the same way.
+ * can name a district the same way. Its State and District dropdowns sit on
+ * the right of this same toolbar row, in the compact search style of the
+ * other scopes, wrapping neatly beneath the tabs on narrow screens.
  * ============================================================================
  */
 
@@ -244,19 +253,12 @@ export default function ScopeSelector({
                         </button>
                     </form>
                 )}
-            </div>
 
-            {/* District scope picks its place from the directory */}
-            {needsLocation && isDistrict && (
-                <div className="mt-3 border-t border-rule pt-3">
-                    <p className="mb-2 flex items-center gap-1.5 text-xs text-ink-muted">
-                        <MapPin size={12} aria-hidden="true" />
-                        Choose a state and district — the ranking covers every municipal area inside the district.
-                    </p>
-
+                {/* District scope: the same toolbar row, directory-backed */}
+                {needsLocation && isDistrict && (
                     <DistrictPicker onSubmitPlace={onDistrictSubmit} />
-                </div>
-            )}
+                )}
+            </div>
         </div>
     );
 }
