@@ -190,7 +190,13 @@ export default function LeaderboardPage() {
                 ? !districtPick
                 : false;
 
-    const showWaitingNotice = awaitingLocation && scope !== LEADERBOARD_SCOPE.DISTRICT;
+    /*
+      Every scoped ranking asks for a place before it means anything, and all
+      three show the same waiting panel while that pick is missing - the
+      district scope waits for a full state+district selection from the
+      directory, exactly like the state and city scopes wait for typed text.
+    */
+    const showWaitingNotice = awaitingLocation;
 
     /*
       The personal card is shown only to a cleaner. Checking the role at
@@ -230,7 +236,7 @@ export default function LeaderboardPage() {
                         onDistrictSubmit={(pick) => setDistrictPick(pick)}
                     />
 
-                    {/* Waiting for a state or city to be entered */}
+                    {/* Waiting for a place to be chosen in the scoped tabs */}
                     {showWaitingNotice && (
                         <div className="border border-rule bg-white px-5 py-10 text-center">
                             <MapPin
@@ -242,12 +248,15 @@ export default function LeaderboardPage() {
                             <p className="mt-2 font-semibold text-ink">
                                 {scope === LEADERBOARD_SCOPE.STATE
                                     ? "Enter a state to see its ranking"
-                                    : "Enter a city to see its ranking"}
+                                    : scope === LEADERBOARD_SCOPE.DISTRICT
+                                        ? "Enter a district to see its ranking"
+                                        : "Enter a city to see its ranking"}
                             </p>
 
                             <p className="mt-1 text-sm text-ink-muted">
-                                Spelling is matched loosely, so capitals and extra
-                                spaces will not affect the result.
+                                {scope === LEADERBOARD_SCOPE.DISTRICT
+                                    ? "Choose the state and district from the directory above — the ranking covers every municipal area inside the district."
+                                    : "Spelling is matched loosely, so capitals and extra spaces will not affect the result."}
                             </p>
                         </div>
                     )}
