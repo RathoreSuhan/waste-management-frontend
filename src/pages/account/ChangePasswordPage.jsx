@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { useNavigate } from "react-router-dom";
-import { Lock, MapPin, Move, RotateCcw, Trash2, Upload, UserRound, X, ZoomIn, ZoomOut } from "lucide-react";
+import { Lock, MailCheck, MapPin, Move, RotateCcw, Trash2, Upload, UserRound, X, ZoomIn, ZoomOut } from "lucide-react";
 
 import AccountRecord from "@/components/account/AccountRecord";
 import PageHeading from "@/components/common/PageHeading";
@@ -13,15 +13,24 @@ import Input from "@/components/ui/Input";
 import { PROFILE_PICTURE_UPDATED_EVENT } from "@/constants/profileEvents";
 import useAuth from "@/hooks/useAuth";
 import useModalBehaviour from "@/hooks/useModalBehaviour";
-import { changePasswordSchema, PASSWORD_MAX_LENGTH, PASSWORD_MIN_LENGTH } from "@/schemas/authSchema";
+import {
+    changePasswordSchema,
+    passwordRecoverySetSchema,
+    verificationCodeSchema,
+    PASSWORD_MAX_LENGTH,
+    PASSWORD_MIN_LENGTH,
+} from "@/schemas/authSchema";
 import { CORPORATION_MAX_LENGTHS, municipalOfficerProfileSchema } from "@/schemas/municipalCorporationSchema";
 import {
     changePassword,
+    confirmPasswordReset,
     deleteProfilePicture,
     getAccountRecord,
     getProfile,
+    requestPasswordResetOtp,
     updateProfile,
     uploadProfilePicture,
+    verifyPasswordResetOtp,
 } from "@/services/accountService";
 import { getOwnMunicipalCorporation, updateOwnMunicipalCorporation } from "@/services/municipalCorporationService";
 import { getErrorMessage } from "@/utils/errorMessage";
@@ -31,6 +40,25 @@ const MAX_ZOOM = 250;
 const ZOOM_STEP = 10;
 const CROP_SIZE = 280;
 const CROPPED_IMAGE_SIZE = 512;
+
+// Matches the backend's own resend cooldown in EmailVerificationService
+const RESEND_COOLDOWN_SECONDS = 60;
+
+/**
+ * Hides most of the email address for display inside the recovery panel:
+ * the person reading it is the account owner, but a screen-shared or
+ * shoulder-surfed page should not hand out the whole address.
+ */
+function maskEmail(email) {
+    if (!email || !email.includes("@")) {
+        return "your registered email address";
+    }
+
+    const [local, domain] = email.split("@");
+    const visible = local.slice(0, Math.min(2, local.length));
+
+    return `${visible}${"•".repeat(Math.max(local.length - visible.length, 2))}@${domain}`;
+}
 
 export default function ProfilePage() {
     const { user, logout } = useAuth();
@@ -43,6 +71,17 @@ export default function ProfilePage() {
     const [recordError, setRecordError] = useState("");
     // The corporation's full record, kept for the read-only jurisdiction display
     const [corporation, setCorporation] = useState(null);
+
+    // Whether the Change Password section is showing the OTP recovery
+    // panel instead of the normal current-password form. Recovery state
+    // lives inside the panel, so closing it resets everything.
+    const [recoveryOpen, setRecoveryOpen] = useState(false);
+
+    /** Closes recovery and surfaces its final outcome. */
+    const finishRecovery = useCallback((message) => {
+        setRecoveryOpen(false);
+        setSuccessMessage(message);
+    }, []);
     const [selectedFile, setSelectedFile] = useState(null);
     const [previewUrl, setPreviewUrl] = useState(null);
     const [uploading, setUploading] = useState(false);
@@ -262,14 +301,40 @@ export default function ProfilePage() {
 
                 <fieldset className="rounded-gov border border-rule bg-white p-4 sm:p-5">
                     <legend className="flex items-center gap-1.5 px-2 text-sm font-semibold text-gov-navy"><Lock size={14} aria-hidden="true" />Change Password</legend>
-                    <form className="space-y-4" onSubmit={handlePasswordSubmit(onPasswordSubmit)} noValidate>
-                        <Input label="Current Password" type="password" autoComplete="current-password" required error={passwordErrors.currentPassword} {...passwordRegister("currentPassword")} />
-                        <div className="grid gap-4 lg:grid-cols-2">
-                            <Input label="New Password" type="password" autoComplete="new-password" required hint={`Use ${PASSWORD_MIN_LENGTH} to ${PASSWORD_MAX_LENGTH} characters.`} maxLength={PASSWORD_MAX_LENGTH} error={passwordErrors.newPassword} {...passwordRegister("newPassword")} />
-                            <Input label="Confirm New Password" type="password" autoComplete="new-password" required hint="Repeat the new password exactly." maxLength={PASSWORD_MAX_LENGTH} error={passwordErrors.confirmPassword} {...passwordRegister("confirmPassword")} />
-                        </div>
-                        <div className="flex justify-end pt-2"><Button type="submit" loading={passwordSubmitting} fullWidth={false}>Change Password</Button></div>
-                    </form>
+                    {recoveryOpen ? (
+                        /* OTP recovery: same section, separate form, no route */
+                        <PasswordRecoveryPanel
+                            email={user?.email}
+                            onCancel={() => {
+                                setErrorMessage("");
+                                setRecoveryOpen(false);
+                            }}
+                            onResetComplete={finishRecovery}
+                        />
+                    ) : (
+                        <form className="space-y-4" onSubmit={handlePasswordSubmit(onPasswordSubmit)} noValidate>
+                            <div>
+                                <Input label="Current Password" type="password" autoComplete="current-password" required error={passwordErrors.currentPassword} {...passwordRegister("currentPassword")} />
+                                {/* Available before any failed attempt: recovery starts here, not after an error */}
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setErrorMessage("");
+                                        setSuccessMessage("");
+                                        setRecoveryOpen(true);
+                                    }}
+                                    className="mt-1 text-xs font-semibold text-gov-blue hover:underline"
+                                >
+                                    Forgot current password? Reset using email OTP
+                                </button>
+                            </div>
+                            <div className="grid gap-4 lg:grid-cols-2">
+                                <Input label="New Password" type="password" autoComplete="new-password" required hint={`Use ${PASSWORD_MIN_LENGTH} to ${PASSWORD_MAX_LENGTH} characters.`} maxLength={PASSWORD_MAX_LENGTH} error={passwordErrors.newPassword} {...passwordRegister("newPassword")} />
+                                <Input label="Confirm New Password" type="password" autoComplete="new-password" required hint="Repeat the new password exactly." maxLength={PASSWORD_MAX_LENGTH} error={passwordErrors.confirmPassword} {...passwordRegister("confirmPassword")} />
+                            </div>
+                            <div className="flex justify-end pt-2"><Button type="submit" loading={passwordSubmitting} fullWidth={false}>Change Password</Button></div>
+                        </form>
+                    )}
                 </fieldset>
                 {!isMunicipalOfficer && <section aria-labelledby="account-record-heading">
                     <h2 id="account-record-heading" className="sr-only">Account Record</h2>
@@ -356,6 +421,204 @@ function JurisdictionFieldset({ corporation }) {
                 </p>
             )}
         </fieldset>
+    );
+}
+
+/**
+ * ============================================================================
+ * Password Recovery Panel
+ * ============================================================================
+ *
+ * The inline forgot-current-password flow, living inside the Change Password
+ * section rather than on a page of its own.
+ *
+ * Three steps, each server-checked before the next unlocks:
+ *   send   - a six-digit code goes to the account's registered email (the
+ *            backend takes the address from the authenticated session, so
+ *            nothing here can aim it elsewhere)
+ *   verify - the code comes back and is exchanged for a one-time reset token
+ *   set    - the token is spent and the new password stored
+ *
+ * The reset token lives in this component's state only: a page refresh
+ * starts recovery over, which is the safe direction to fail in. Cancelling
+ * returns to the normal current-password form.
+ * ============================================================================
+ */
+function PasswordRecoveryPanel({ email, onCancel, onResetComplete }) {
+
+    const [step, setStep] = useState("send");
+
+    // Issued by the verify step; spent by the confirm step. Never persisted.
+    const [resetToken, setResetToken] = useState(null);
+
+    const [error, setError] = useState("");
+    const [note, setNote] = useState("");
+    const [requesting, setRequesting] = useState(false);
+
+    // Resend affordance only; the backend refuses an early resend on its own
+    const [secondsLeft, setSecondsLeft] = useState(0);
+
+    useEffect(() => {
+        if (secondsLeft <= 0) {
+            return;
+        }
+
+        const timer = setTimeout(() => setSecondsLeft((value) => value - 1), 1000);
+
+        return () => clearTimeout(timer);
+    }, [secondsLeft]);
+
+    const {
+        register: verifyRegister,
+        handleSubmit: handleVerifySubmit,
+        formState: { errors: verifyErrors, isSubmitting: verifySubmitting },
+    } = useForm({
+        resolver: zodResolver(verificationCodeSchema),
+        defaultValues: { verificationCode: "" },
+    });
+
+    const {
+        register: setRegister,
+        handleSubmit: handleSetSubmit,
+        reset: resetSetForm,
+        formState: { errors: setErrors, isSubmitting: setSubmitting },
+    } = useForm({
+        resolver: zodResolver(passwordRecoverySetSchema),
+        defaultValues: { newPassword: "", confirmPassword: "" },
+    });
+
+    async function sendOtp() {
+        setError("");
+        setRequesting(true);
+
+        try {
+            const response = await requestPasswordResetOtp();
+            setNote(response.message || "A six-digit recovery code has been sent to your registered email address.");
+            setSecondsLeft(RESEND_COOLDOWN_SECONDS);
+            setStep("verify");
+        } catch (requestError) {
+            setError(getErrorMessage(requestError, "The recovery code could not be sent. Please try again."));
+        } finally {
+            setRequesting(false);
+        }
+    }
+
+    async function onVerifySubmit({ verificationCode }) {
+        setError("");
+
+        try {
+            const response = await verifyPasswordResetOtp(verificationCode);
+            setResetToken(response.resetToken);
+            setNote("");
+            setStep("set");
+        } catch (requestError) {
+            setError(getErrorMessage(requestError, "The code could not be verified. Please try again."));
+        }
+    }
+
+    async function onSetSubmit({ newPassword, confirmPassword }) {
+        setError("");
+
+        try {
+            const message = await confirmPasswordReset({ resetToken, newPassword, confirmPassword });
+            resetSetForm();
+            onResetComplete(message || "Password reset successfully. Your new password is ready to use.");
+        } catch (requestError) {
+            setError(getErrorMessage(requestError, "The password could not be reset. Please try again."));
+        }
+    }
+
+    return (
+        <div className="rounded-gov border border-rule bg-paper/50 p-4">
+
+            <div className="flex flex-wrap items-center justify-between gap-2">
+                <p className="flex items-center gap-1.5 text-sm font-semibold text-ink">
+                    <MailCheck size={15} className="text-india-green" aria-hidden="true" />
+                    Reset using email OTP
+                </p>
+
+                <button
+                    type="button"
+                    onClick={onCancel}
+                    className="text-xs font-semibold text-gov-blue hover:underline"
+                >
+                    Cancel recovery
+                </button>
+            </div>
+
+            <div className="mt-3 space-y-3" aria-live="polite">
+                {error && <Alert type="error">{error}</Alert>}
+            </div>
+
+            {step === "send" && (
+                <div className="mt-3 space-y-3">
+                    <p className="text-sm leading-relaxed text-ink-muted">
+                        We will send a six-digit code to your registered email address
+                        (<span className="break-all font-semibold text-ink">{maskEmail(email)}</span>).
+                        Verify it to set a new password without entering your current one.
+                    </p>
+
+                    <Button type="button" onClick={sendOtp} loading={requesting} fullWidth={false}>
+                        Send recovery code
+                    </Button>
+                </div>
+            )}
+
+            {step === "verify" && (
+                <form onSubmit={handleVerifySubmit(onVerifySubmit)} className="mt-3 space-y-3" noValidate>
+                    {note && <p className="text-sm text-ink">{note}</p>}
+
+                    <p className="text-sm text-ink-muted">
+                        The code went to{" "}
+                        <span className="break-all font-semibold text-ink">{maskEmail(email)}</span>. It
+                        expires in 10 minutes.
+                    </p>
+
+                    <Input
+                        label="Six-digit code"
+                        inputMode="numeric"
+                        autoComplete="one-time-code"
+                        placeholder="123456"
+                        maxLength={6}
+                        required
+                        error={verifyErrors.verificationCode}
+                        {...verifyRegister("verificationCode")}
+                    />
+
+                    <div className="flex flex-wrap items-center gap-3">
+                        <Button type="submit" loading={verifySubmitting} fullWidth={false}>Verify code</Button>
+
+                        {secondsLeft > 0 ? (
+                            <span className="text-xs text-ink-muted">
+                                Resend available in {secondsLeft}s
+                            </span>
+                        ) : (
+                            <button
+                                type="button"
+                                onClick={sendOtp}
+                                disabled={requesting}
+                                className="text-xs font-semibold text-gov-blue hover:underline disabled:cursor-not-allowed disabled:opacity-60"
+                            >
+                                Resend code
+                            </button>
+                        )}
+                    </div>
+                </form>
+            )}
+
+            {step === "set" && (
+                <form onSubmit={handleSetSubmit(onSetSubmit)} className="mt-3 space-y-3" noValidate>
+                    <p className="text-sm text-ink">Code verified. Choose a new password for your account.</p>
+
+                    <div className="grid gap-4 lg:grid-cols-2">
+                        <Input label="New Password" type="password" autoComplete="new-password" required hint={`Use ${PASSWORD_MIN_LENGTH} to ${PASSWORD_MAX_LENGTH} characters.`} maxLength={PASSWORD_MAX_LENGTH} error={setErrors.newPassword} {...setRegister("newPassword")} />
+                        <Input label="Confirm New Password" type="password" autoComplete="new-password" required hint="Repeat the new password exactly." maxLength={PASSWORD_MAX_LENGTH} error={setErrors.confirmPassword} {...setRegister("confirmPassword")} />
+                    </div>
+
+                    <Button type="submit" loading={setSubmitting} fullWidth={false}>Set new password</Button>
+                </form>
+            )}
+        </div>
     );
 }
 

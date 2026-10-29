@@ -87,8 +87,8 @@ export const GRIEVANCE_OFFICER = {
     name: "Suhan Kumar Singh",
     role: "Grievance Officer",
 
-    // TODO: replace with a monitored address before this page goes live.
-    email: "grievance@cleanbharat.example",
+    // The project's monitored grievance inbox; every complaint lands here.
+    email: "cleanbharat.project@gmail.com",
 
     /*
       The window the IT Rules, 2021 expect for acting on a valid

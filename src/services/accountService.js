@@ -20,6 +20,58 @@ export async function changePassword(passwordData) {
 }
 
 /**
+ * Request a password-recovery OTP for the currently authenticated account.
+ *
+ * The backend sends the six-digit code to the account's own registered
+ * email - there is no address parameter, so a request can never aim the
+ * code at another account.
+ *
+ * @returns Backend SuccessResponse { message, timestamp }
+ */
+export async function requestPasswordResetOtp() {
+    const response = await axiosClient.post(
+        `${ACCOUNT_API}/password/recovery/otp`
+    );
+
+    return response.data;
+}
+
+/**
+ * Verify the six-digit recovery code. On success the backend consumes the
+ * code and issues a short-lived, single-use reset token.
+ *
+ * @param {string} code - the six digits from the email
+ * @returns Backend PasswordResetTokenResponse { resetToken, message, timestamp }
+ */
+export async function verifyPasswordResetOtp(code) {
+    const response = await axiosClient.post(
+        `${ACCOUNT_API}/password/recovery/verify`,
+        { code }
+    );
+
+    return response.data;
+}
+
+/**
+ * Confirm the recovery: spend the reset token and set the new password.
+ * No current password is required - the verified OTP is the proof.
+ *
+ * @param {Object} recoveryData
+ * @param {string} recoveryData.resetToken  - from verifyPasswordResetOtp
+ * @param {string} recoveryData.newPassword
+ * @param {string} recoveryData.confirmPassword
+ * @returns Backend SuccessResponse { message, timestamp }
+ */
+export async function confirmPasswordReset(recoveryData) {
+    const response = await axiosClient.post(
+        `${ACCOUNT_API}/password/recovery/confirm`,
+        recoveryData
+    );
+
+    return response.data.message;
+}
+
+/**
  * Fetch the profile of the currently authenticated account.
  *
  * @returns Backend UserProfileResponse { name, email, profilePic, role }

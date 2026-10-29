@@ -98,6 +98,44 @@ export const changePasswordSchema = z
 
 /**
  * ==========================================================
+ * Password Recovery Set Schema
+ * ==========================================================
+ *
+ * Step 3 of the profile-page recovery flow: the new password chosen after
+ * the email OTP has been verified. Same length policy as the normal change-
+ * password form; the confirmation match is what stops a typo from locking
+ * the person out. There is deliberately no current-password field - the
+ * verified OTP is the proof of identity here.
+ */
+export const passwordRecoverySetSchema = z
+    .object({
+        newPassword: z
+            .string()
+            .min(
+                PASSWORD_MIN_LENGTH,
+                `New password must contain at least ${PASSWORD_MIN_LENGTH} characters`
+            )
+            .max(
+                PASSWORD_MAX_LENGTH,
+                `New password cannot exceed ${PASSWORD_MAX_LENGTH} characters`
+            ),
+
+        confirmPassword: z
+            .string()
+            .min(1, "Please confirm your new password"),
+    })
+    .superRefine((data, context) => {
+        if (data.newPassword !== data.confirmPassword) {
+            context.addIssue({
+                code: z.ZodIssueCode.custom,
+                path: ["confirmPassword"],
+                message: "New password and confirmation do not match",
+            });
+        }
+    });
+
+/**
+ * ==========================================================
  * Register Validation Schema
  * ==========================================================
  *
