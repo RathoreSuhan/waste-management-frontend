@@ -177,7 +177,7 @@ export default function AllReportsPage() {
                                     type="text"
                                     value={search}
                                     onChange={(event) => setSearch(event.target.value)}
-                                    placeholder="Search by title, city, state or address"
+                                    placeholder="Search by title, district, city/municipal area, state or address"
                                     aria-label="Search reports"
                                     className="w-full rounded-gov border border-rule py-2 pr-9 pl-9 text-sm outline-none transition placeholder:text-ink-muted/60 focus:border-gov-blue"
                                 />

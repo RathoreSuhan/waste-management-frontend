@@ -111,6 +111,16 @@ export const municipalCorporationDirectorySchema = z.object({
 });
 
 /**
+ * The municipal officer's own profile: the three contact details only.
+ *
+ * Location identity is deliberately absent - the stored legacy city and the
+ * assigned ULB code belong to the administrator's mapping workflow, and the
+ * backend's /me endpoint rejects any shape that could change them anyway.
+ * The jurisdiction itself is read-only display data on the profile page.
+ */
+export const municipalOfficerProfileSchema = z.object(identityShape);
+
+/**
  * Legacy create shape, kept so an API client reproducing the old form still
  * behaves exactly as before. The admin UI's create path uses the cascade.
  */

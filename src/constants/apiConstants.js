@@ -147,11 +147,12 @@ export const ANALYTICS_API = "/api/analytics";
  * assignments and reward history. There is no leaderboard table, so
  * the numbers are always current and nothing needs refreshing.
  *
- * The three ranking endpoints ARE listed under permitAll() in the
+ * The four ranking endpoints ARE listed under permitAll() in the
  * backend SecurityConfig:
- *   GET /api/leaderboard              -> national top 10
- *   GET /api/leaderboard/state/{state} -> state top 10
- *   GET /api/leaderboard/city/{city}   -> city top 10
+ *   GET /api/leaderboard                        -> national top 10
+ *   GET /api/leaderboard/state/{state}           -> state top 10
+ *   GET /api/leaderboard/district/{state}/{district} -> district top 10 (every ULB in the pair)
+ *   GET /api/leaderboard/city/{city}             -> city top 10 (legacy scope)
  *
  * /api/leaderboard/me is the exception: it falls through to
  * anyRequest().authenticated(), and LeaderboardServiceImpl further

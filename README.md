@@ -196,6 +196,8 @@ The machine verdict is always captioned for what it is — *AI assessment — ad
 
 Every signed-in role reaches the consolidated `/app/profile` page from the application shell. The page loads the account profile and its own activity record, lets the user update their name, and provides a separate password-change form. Profile photos are selected locally, cropped to a square before upload, sent to Cloudinary through `accountService`, then saved as the account's profile-picture URL; an existing avatar can also be removed. The sidebar uses `UserRound` for this account-focused destination.
 
+A Municipal Corporation officer gets a corporation profile instead: the official jurisdiction (state, district, ULB name and type, read from the location directory through the `/api/municipal-corporations/me` response) is displayed read-only beside the corporation's preserved legacy city, with an explicit unavailable state when the row is unmapped or the directory cannot describe the code. Only the contact details — organisation name, phone, email — are editable; the legacy city and the administrator-assigned ULB mapping cannot be changed from this page, and the API binds no such fields.
+
 ---
 
 ## What each role can do
@@ -307,14 +309,14 @@ control registration, municipal mapping or municipal-contact lookup.
 
 ### Leaderboard scopes
 
-National, State and City remain supported. The enabled build adds District:
-the picker selects a State/District pair from the directory and calls
-`GET /api/leaderboard/district/{state}/{district}`, aggregating every ULB in
-that district. The City endpoint remains available for compatibility. Current
-backend source does **not** include the District route in its anonymous
-`permitAll` matcher, so that request presently requires authentication even
-though the page itself is public; this is an explicitly documented source
-limitation, not an anonymous-access promise.
+All four scopes are public. National, State and City keep their original
+endpoints; the District scope selects a State/District pair from the
+directory and calls `GET /api/leaderboard/district/{state}/{district}`,
+aggregating every ULB in that district. The City endpoint remains available
+for compatibility. Every ranking route is listed in the backend's anonymous
+`permitAll` matchers, so the page behaves the same signed out as in; the one
+authenticated leaderboard endpoint, `/api/leaderboard/me`, serves a signed-in
+cleaner's personal standing and refuses anonymous calls.
 
 ### Municipal mapping and contact lookup
 

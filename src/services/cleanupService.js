@@ -21,7 +21,7 @@ import {
  *   POST /api/cleanup-assignments/{id}/start        -> begin awarded work
  *   POST /api/cleanup-assignments/{id}/upload-image -> submit proof for AI
  *   GET  /api/cleanup-assignments/my-tasks          -> every task of this cleaner
- *   GET  /api/cleanup-assignments/pending           -> open sites, any cleaner may propose
+ *   GET  /api/cleanup-assignments/pending           -> open sites inside the cleaner's district
  *   GET  /api/cleanup-assignments/claimed           -> sites awarded to this cleaner
  *   GET  /api/cleanup-assignments/in-progress       -> this cleaner, working
  *   GET  /api/cleanup-assignments/completed         -> this cleaner, verified

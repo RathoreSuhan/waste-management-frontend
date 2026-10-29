@@ -101,6 +101,7 @@ export default function ProposalQueuePage() {
             [
                 proposal.reportTitle,
                 proposal.address,
+                proposal.district,
                 proposal.city,
                 proposal.cleanerName,
                 proposal.cleanerOrganization,
@@ -353,7 +354,7 @@ export default function ProposalQueuePage() {
                     <div className="mb-4">
                         <RecordSearchBar
                             title="Search Proposals"
-                            placeholder="Search by site, city or cleaner"
+                            placeholder="Search by site, district, city or cleaner"
                             ariaLabel="Search proposals by site, city or cleaner"
                             value={query}
                             onChange={setQuery}

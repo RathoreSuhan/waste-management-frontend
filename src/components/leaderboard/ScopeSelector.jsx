@@ -81,6 +81,9 @@ function DistrictPicker({ onSubmitPlace }) {
         onSubmitPlace({ state: state.name, district: district.name });
     }
 
+    // Show means something only once a full state + district pair is chosen
+    const pickReady = Boolean(values.stateCode && values.districtCode);
+
     return (
         <form onSubmit={handleSubmit(submitPlace)} className="flex flex-wrap items-start gap-2">
             <LocationCascade
@@ -96,7 +99,8 @@ function DistrictPicker({ onSubmitPlace }) {
             />
             <button
                 type="submit"
-                className="inline-flex items-center gap-1.5 border border-gov-navy bg-gov-navy px-3 py-2 text-sm font-medium text-white transition hover:bg-gov-navy/90"
+                disabled={!pickReady}
+                className="inline-flex items-center gap-1.5 border border-gov-navy bg-gov-navy px-3 py-2 text-sm font-medium text-white transition hover:bg-gov-navy/90 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-gov-navy"
             >
                 <Search size={14} aria-hidden="true" />
                 Show
@@ -232,7 +236,8 @@ export default function ScopeSelector({
 
                         <button
                             type="submit"
-                            className="inline-flex items-center gap-1.5 border border-gov-navy bg-gov-navy px-3 py-1.5 text-sm font-medium text-white transition hover:bg-gov-navy/90"
+                            disabled={!draft.trim()}
+                            className="inline-flex items-center gap-1.5 border border-gov-navy bg-gov-navy px-3 py-1.5 text-sm font-medium text-white transition hover:bg-gov-navy/90 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-gov-navy"
                         >
                             <Search size={14} aria-hidden="true" />
                             Show

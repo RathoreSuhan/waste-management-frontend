@@ -38,9 +38,9 @@ import {
  *
  * Public ranking of cleaners by reward points.
  *
- * Calls GET /api/leaderboard, /api/leaderboard/state/{state} and
- * /api/leaderboard/city/{city} - all three are permitAll in the backend
- * SecurityConfig.
+ * Calls GET /api/leaderboard, /api/leaderboard/state/{state},
+ * /api/leaderboard/district/{state}/{district} and /api/leaderboard/city/{city}
+ * - all four scopes are permitAll in the backend SecurityConfig.
  *
  * The rankings are public, since recognising this work openly is the point
  * of the module. The same component is also mounted at /app/leaderboard,
@@ -90,6 +90,22 @@ export default function LeaderboardPage() {
     */
     const [districtPick, setDistrictPick] = useState(null);
 
+    /**
+     * Switch scope, dropping the previous scope's submitted place.
+     *
+     * Each scope keeps its own notion of "the place shown", so a district
+     * pick carried into the city tab - or a typed city into the district
+     * tab - would label the new table with a selection nobody made here.
+     * Clearing both re-arms the waiting/picker states for the new scope.
+     */
+    const handleScopeChange = (nextScope) => {
+        if (nextScope !== scope) {
+            setLocation("");
+            setDistrictPick(null);
+        }
+        setScope(nextScope);
+    };
+
     // Personal standing, cleaners only
     const [myRanking, setMyRanking] = useState(null);
 
@@ -122,7 +138,8 @@ export default function LeaderboardPage() {
 
     const { data, loading, error, reload } = useReports(
         fetchLeaderboard,
-        EMPTY_RESPONSE
+        EMPTY_RESPONSE,
+        "Unable to load the leaderboard."
     );
 
     /**
@@ -207,7 +224,7 @@ export default function LeaderboardPage() {
                     <ScopeSelector
                         scope={scope}
                         location={location}
-                        onScopeChange={setScope}
+                        onScopeChange={handleScopeChange}
                         onLocationSubmit={setLocation}
                         showDistrict={SHOW_DISTRICT}
                         onDistrictSubmit={(pick) => setDistrictPick(pick)}
@@ -242,7 +259,11 @@ export default function LeaderboardPage() {
 
                             {/* Request failed */}
                             {!loading && error && (
-                                <ReportListError message={error} onRetry={reload} />
+                                <ReportListError
+                                    title="Unable to load the leaderboard"
+                                    message={error}
+                                    onRetry={reload}
+                                />
                             )}
 
                             {/*

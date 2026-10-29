@@ -44,13 +44,17 @@ export function ReportListSkeleton({ count = 3 }) {
 
 /**
  * Error state with a retry action
+ *
+ * `title` names what failed. Register pages keep the default report wording;
+ * other consumers (the leaderboard, for instance) pass their own so the
+ * heading names the thing that actually broke.
  */
-export function ReportListError({ message, onRetry }) {
+export function ReportListError({ message, onRetry, title = "Unable to load records" }) {
 
     return (
         <div className="space-y-3">
             {/* Backend or network failure */}
-            <Alert type="error" title="Unable to load records">
+            <Alert type="error" title={title}>
                 {message}
             </Alert>
 

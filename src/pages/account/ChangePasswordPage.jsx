@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { useNavigate } from "react-router-dom";
-import { Lock, Move, RotateCcw, Trash2, Upload, UserRound, X, ZoomIn, ZoomOut } from "lucide-react";
+import { Lock, MapPin, Move, RotateCcw, Trash2, Upload, UserRound, X, ZoomIn, ZoomOut } from "lucide-react";
 
 import AccountRecord from "@/components/account/AccountRecord";
 import PageHeading from "@/components/common/PageHeading";
@@ -14,7 +14,7 @@ import { PROFILE_PICTURE_UPDATED_EVENT } from "@/constants/profileEvents";
 import useAuth from "@/hooks/useAuth";
 import useModalBehaviour from "@/hooks/useModalBehaviour";
 import { changePasswordSchema, PASSWORD_MAX_LENGTH, PASSWORD_MIN_LENGTH } from "@/schemas/authSchema";
-import { CORPORATION_MAX_LENGTHS, municipalCorporationSchema } from "@/schemas/municipalCorporationSchema";
+import { CORPORATION_MAX_LENGTHS, municipalOfficerProfileSchema } from "@/schemas/municipalCorporationSchema";
 import {
     changePassword,
     deleteProfilePicture,
@@ -41,6 +41,8 @@ export default function ProfilePage() {
     const [profilePicUrl, setProfilePicUrl] = useState(null);
     const [accountRecord, setAccountRecord] = useState(null);
     const [recordError, setRecordError] = useState("");
+    // The corporation's full record, kept for the read-only jurisdiction display
+    const [corporation, setCorporation] = useState(null);
     const [selectedFile, setSelectedFile] = useState(null);
     const [previewUrl, setPreviewUrl] = useState(null);
     const [uploading, setUploading] = useState(false);
@@ -49,7 +51,7 @@ export default function ProfilePage() {
     const fileInputRef = useRef(null);
     const objectUrlsRef = useRef(new Set());
     const { register: profileRegister, handleSubmit: handleProfileSubmit, setValue: profileSetValue, formState: { errors: profileErrors } } = useForm({ defaultValues: { name: "" } });
-    const { register: corporationRegister, handleSubmit: handleCorporationSubmit, reset: resetCorporation, formState: { errors: corporationErrors, isSubmitting: corporationSubmitting } } = useForm({ resolver: zodResolver(municipalCorporationSchema), defaultValues: { city: "", organizationName: "", phone: "", email: "" } });
+    const { register: corporationRegister, handleSubmit: handleCorporationSubmit, reset: resetCorporation, formState: { errors: corporationErrors, isSubmitting: corporationSubmitting } } = useForm({ resolver: zodResolver(municipalOfficerProfileSchema), defaultValues: { organizationName: "", phone: "", email: "" } });
     const { register: passwordRegister, handleSubmit: handlePasswordSubmit, reset: resetPassword, formState: { errors: passwordErrors, isSubmitting: passwordSubmitting } } = useForm({
         resolver: zodResolver(changePasswordSchema),
         defaultValues: { currentPassword: "", newPassword: "", confirmPassword: "" },
@@ -69,7 +71,15 @@ export default function ProfilePage() {
         let active = true;
         if (isMunicipalOfficer) {
             getOwnMunicipalCorporation().then((data) => {
-                if (active) resetCorporation(data);
+                if (!active) return;
+                // The full record feeds the read-only jurisdiction display; only
+                // the three editable contact fields go into the form
+                setCorporation(data);
+                resetCorporation({
+                    organizationName: data.organizationName ?? "",
+                    phone: data.phone ?? "",
+                    email: data.email ?? "",
+                });
             }).catch((error) => {
                 if (active) setErrorMessage(getErrorMessage(error, "Your municipal corporation details could not be loaded."));
             });
@@ -148,12 +158,19 @@ export default function ProfilePage() {
         }
     };
 
-    const onCorporationSubmit = async (corporation) => {
+    const onCorporationSubmit = async (contactDetails) => {
         setErrorMessage("");
         setSuccessMessage("");
         try {
-            const updatedCorporation = await updateOwnMunicipalCorporation(corporation);
-            resetCorporation(updatedCorporation);
+            // Only the contact details travel: the stored legacy city and the
+            // assigned ULB mapping are administrator-owned and are not sent
+            const updatedCorporation = await updateOwnMunicipalCorporation(contactDetails);
+            setCorporation(updatedCorporation);
+            resetCorporation({
+                organizationName: updatedCorporation.organizationName ?? "",
+                phone: updatedCorporation.phone ?? "",
+                email: updatedCorporation.email ?? "",
+            });
             if (updatedCorporation.email !== user?.email) {
                 logout();
                 navigate("/login", { replace: true, state: { municipalEmailUpdated: true } });
@@ -192,20 +209,23 @@ export default function ProfilePage() {
             </div>
             <div className="mt-6 space-y-6">
                 {isMunicipalOfficer ? (
-                    <form onSubmit={handleCorporationSubmit(onCorporationSubmit)} noValidate>
-                        <fieldset className="rounded-gov border border-rule bg-white p-4 sm:p-5">
-                            <legend className="px-2 text-sm font-semibold text-gov-navy">Municipal Corporation Details</legend>
-                            <div className="space-y-4">
-                                <Input label="City" required hint="Reports filed in this city are routed to your office." maxLength={CORPORATION_MAX_LENGTHS.city} error={corporationErrors.city} {...corporationRegister("city")} />
-                                <Input label="Organisation Name" required maxLength={CORPORATION_MAX_LENGTHS.organizationName} error={corporationErrors.organizationName} {...corporationRegister("organizationName")} />
-                                <div className="grid gap-4 sm:grid-cols-2">
-                                    <Input label="Contact Number" required type="tel" maxLength={CORPORATION_MAX_LENGTHS.phone} error={corporationErrors.phone} {...corporationRegister("phone")} />
-                                    <Input label="Email Address" required type="email" maxLength={CORPORATION_MAX_LENGTHS.email} error={corporationErrors.email} {...corporationRegister("email")} />
+                    <>
+                        {/* Read-only mapping display: administrator-owned, never editable here */}
+                        <JurisdictionFieldset corporation={corporation} />
+                        <form onSubmit={handleCorporationSubmit(onCorporationSubmit)} noValidate>
+                            <fieldset className="rounded-gov border border-rule bg-white p-4 sm:p-5">
+                                <legend className="px-2 text-sm font-semibold text-gov-navy">Municipal Corporation Details</legend>
+                                <div className="space-y-4">
+                                    <Input label="Organisation Name" required maxLength={CORPORATION_MAX_LENGTHS.organizationName} error={corporationErrors.organizationName} {...corporationRegister("organizationName")} />
+                                    <div className="grid gap-4 sm:grid-cols-2">
+                                        <Input label="Contact Number" required type="tel" maxLength={CORPORATION_MAX_LENGTHS.phone} error={corporationErrors.phone} {...corporationRegister("phone")} />
+                                        <Input label="Email Address" required type="email" maxLength={CORPORATION_MAX_LENGTHS.email} error={corporationErrors.email} {...corporationRegister("email")} />
+                                    </div>
                                 </div>
-                            </div>
-                            <div className="mt-6 flex justify-end"><Button type="submit" loading={corporationSubmitting} fullWidth={false}>Save Corporation Details</Button></div>
-                        </fieldset>
-                    </form>
+                                <div className="mt-6 flex justify-end"><Button type="submit" loading={corporationSubmitting} fullWidth={false}>Save Corporation Details</Button></div>
+                            </fieldset>
+                        </form>
+                    </>
                 ) : (
                 <form onSubmit={handleProfileFormSubmit} noValidate>
                     <fieldset className="rounded-gov border border-rule bg-white p-4 sm:p-5">
@@ -260,6 +280,82 @@ export default function ProfilePage() {
             </div>
             {!isMunicipalOfficer && cropSource && <ProfilePictureCropDialog source={cropSource} onApply={({ file, url }) => { setSelectedFile(file); setPreviewUrl(url); setCropSource(null); }} onCancel={() => { setCropSource(null); if (fileInputRef.current) fileInputRef.current.value = ""; }} createObjectUrl={createObjectUrl} />}
         </PageContainer>
+    );
+}
+
+/**
+ * Read-only jurisdiction display for the municipal officer's profile.
+ *
+ * Three distinct states, deliberately not merged:
+ * - mapped + described: the official directory block (state, district, ULB,
+ *   type, code) beside the row's preserved legacy city;
+ * - mapped but not described: the code exists yet the directory cannot
+   describe it right now - shown as unavailable, never a guessed location;
+ * - unmapped: an administrator has not assigned a ULB yet.
+ *
+ * The legacy city is shown as its own value, separate from the official ULB
+ * name: older code-less reports route through it, so the two are not
+ * supposed to be identical and the page must not imply otherwise.
+ */
+function JurisdictionFieldset({ corporation }) {
+
+    const mapped = corporation?.mappedLocation ?? null;
+    const hasMapping = Boolean(corporation?.ulbCode);
+
+    return (
+        <fieldset className="rounded-gov border border-rule bg-white p-4 sm:p-5">
+            <legend className="flex items-center gap-1.5 px-2 text-sm font-semibold text-gov-navy">
+                <MapPin size={14} aria-hidden="true" />Official Jurisdiction
+            </legend>
+
+            {hasMapping && mapped ? (
+                <>
+                    <dl className="grid gap-x-6 gap-y-4 sm:grid-cols-2">
+                        <div className="min-w-0">
+                            <dt className="text-xs font-semibold uppercase tracking-wide text-ink-muted">State</dt>
+                            <dd className="mt-0.5 break-words text-sm text-ink">{mapped.state}</dd>
+                        </div>
+                        <div className="min-w-0">
+                            <dt className="text-xs font-semibold uppercase tracking-wide text-ink-muted">District</dt>
+                            <dd className="mt-0.5 break-words text-sm text-ink">{mapped.district}</dd>
+                        </div>
+                        <div className="min-w-0 sm:col-span-2">
+                            <dt className="text-xs font-semibold uppercase tracking-wide text-ink-muted">Official ULB / municipal area</dt>
+                            <dd className="mt-0.5 break-words text-sm text-ink">
+                                {mapped.ulbName}
+                                {mapped.ulbType && <span className="text-ink-muted"> — {mapped.ulbType}</span>}
+                            </dd>
+                        </div>
+                        <div className="min-w-0">
+                            <dt className="text-xs font-semibold uppercase tracking-wide text-ink-muted">ULB code</dt>
+                            <dd className="mt-0.5 break-words font-mono text-sm text-ink">{corporation.ulbCode}</dd>
+                        </div>
+                        <div className="min-w-0">
+                            <dt className="text-xs font-semibold uppercase tracking-wide text-ink-muted">Registered service area (legacy)</dt>
+                            <dd className="mt-0.5 break-words text-sm text-ink">{corporation.city}</dd>
+                        </div>
+                    </dl>
+                    <p className="mt-4 text-xs leading-relaxed text-ink-muted">
+                        The official ULB comes from the verified location directory and is managed by the
+                        platform administrator. The registered service area is the legacy name kept for
+                        reports filed before the directory existed — the two values are separate by design
+                        and neither can be changed from this page.
+                    </p>
+                </>
+            ) : hasMapping ? (
+                <p className="text-sm leading-relaxed text-ink">
+                    This corporation is mapped to ULB code <span className="font-mono">{corporation.ulbCode}</span>,
+                    but the official jurisdiction details could not be read from the location directory
+                    just now. Please try again later.
+                </p>
+            ) : (
+                <p className="text-sm leading-relaxed text-ink">
+                    No official ULB has been mapped to this corporation yet. An administrator assigns the
+                    mapping from the municipal corporation directory; until then, only legacy reports
+                    filed for “{corporation?.city || "this area"}” are routed to this office.
+                </p>
+            )}
+        </fieldset>
     );
 }
 

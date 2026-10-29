@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { Link } from "react-router-dom";
 import { Search, X, FileSearch, Trash2, Eye, SlidersHorizontal } from "lucide-react";
@@ -15,6 +15,7 @@ import {
     filterReports,
     deleteReport,
 } from "@/services/adminService";
+import { getLocationDirectory } from "@/services/locationService";
 import {
     REPORT_STATUS_FILTERS,
     formatReportRef,
@@ -27,10 +28,11 @@ import { getErrorMessage } from "@/utils/errorMessage";
  *
  * The hook calls this with the page number and the params it was given.
  * A keyword switches to the search endpoint; otherwise the filter endpoint
- * is used with whatever status, city and state were chosen. Both are asked
- * for newest first, so the register reads the same whichever mode is open.
+ * is used with whatever status and State + District pair were chosen. Both
+ * are asked for newest first, so the register reads the same whichever mode
+ * is open.
  */
-async function fetchRegister({ page, size, keyword, status, city, state }) {
+async function fetchRegister({ page, size, keyword, status, district, state }) {
     if (keyword) {
         return searchReports(keyword, {
             page,
@@ -42,7 +44,7 @@ async function fetchRegister({ page, size, keyword, status, city, state }) {
 
     return filterReports({
         status,
-        city,
+        district,
         state,
         page,
         size,
@@ -59,11 +61,18 @@ async function fetchRegister({ page, size, keyword, status, city, state }) {
  * Register of every garbage report, with search, filtering and deletion.
  *
  * Search and filter are distinct backend endpoints with different
- * semantics: search matches one keyword against title, city, state and
- * pincode as a substring, while filter matches status, city and state
+ * semantics: search matches one keyword against title, district,
+ * city/municipal area, state, pincode and address as a substring, while
+ * filter matches a status and the geographical State + District pair
  * exactly and combines them. They are therefore offered as two modes
  * rather than merged, and switching mode clears the other's inputs so
  * the results always match what is on screen.
+ *
+ * The geographical filter is the DISTRICT, chosen with its state from the
+ * verified location directory: a district is an administrative area, and
+ * two states can name one the same way, so the pair is submitted (as
+ * canonical names resolved from the directory codes) rather than a typed
+ * city. A report's city/ULB stays a per-row display value, never a filter.
  *
  * One page arrives per request. That used to mean the whole register,
  * sliced in the browser, so a register of a few thousand reports was
@@ -72,24 +81,54 @@ async function fetchRegister({ page, size, keyword, status, city, state }) {
  * ============================================================================
  */
 
+/* Same ordering the shared location cascade uses for directory names. */
+const LOCATION_NAME_COLLATOR = new Intl.Collator("en", {
+    sensitivity: "base",
+    numeric: true,
+    ignorePunctuation: true,
+});
+
+const EMPTY_FILTER_INPUT = { status: "ALL", stateCode: "", districtCode: "" };
+const EMPTY_FILTERS = { status: "ALL", district: "", state: "" };
+
 export default function ReportManagementPage() {
 
     // Search mode - typed value and the applied value
     const [keywordInput, setKeywordInput] = useState("");
     const [keyword, setKeyword] = useState("");
 
-    // Filter mode - applied on submit, so the register does not
-    // reload on every keystroke in the city and state boxes
-    const [filterInput, setFilterInput] = useState({
-        status: "ALL",
-        city: "",
-        state: "",
-    });
-    const [filters, setFilters] = useState({
-        status: "ALL",
-        city: "",
-        state: "",
-    });
+    // The verified directory feeds the State + District filter selects.
+    // State updates happen inside promise callbacks rather than the effect
+    // body, and the loading flag is owned by the initial value and the
+    // retry handler instead of the fetch itself.
+    const [directory, setDirectory] = useState(null);
+    const [directoryStatus, setDirectoryStatus] = useState("loading");
+
+    const fetchDirectory = useCallback(() => {
+        return getLocationDirectory()
+            .then((data) => {
+                setDirectory(data);
+                setDirectoryStatus("ready");
+            })
+            .catch(() => {
+                setDirectoryStatus("failed");
+            });
+    }, []);
+
+    useEffect(() => {
+        fetchDirectory();
+    }, [fetchDirectory]);
+
+    const retryDirectory = () => {
+        setDirectoryStatus("loading");
+        fetchDirectory();
+    };
+
+    // Filter mode - codes picked on screen; the applied pair holds the
+    // canonical NAMES resolved from the directory, which is what the
+    // backend's filter compares against
+    const [filterInput, setFilterInput] = useState(EMPTY_FILTER_INPUT);
+    const [filters, setFilters] = useState(EMPTY_FILTERS);
 
     // Deletion confirmation
     const [deleteTarget, setDeleteTarget] = useState(null);
@@ -125,7 +164,7 @@ export default function ReportManagementPage() {
             keyword,
             // "ALL" is a UI value - the parameter is omitted instead
             status: filters.status === "ALL" ? undefined : filters.status,
-            city: filters.city,
+            district: filters.district,
             state: filters.state,
         },
         fallbackMessage: "The report register could not be loaded.",
@@ -149,34 +188,50 @@ export default function ReportManagementPage() {
 
     /**
      * Applies the filter inputs and returns to the filtered register.
+     *
+     * The chosen codes are resolved back to their canonical directory names
+     * here, so the request carries names the backend compares against -
+     * codes never cross the wire as filter values.
      */
     const handleFilter = (event) => {
         event.preventDefault();
 
+        const state = directory?.states?.find(
+            (candidate) => candidate.code === filterInput.stateCode
+        );
+        const district = state?.districts?.find(
+            (candidate) => candidate.code === filterInput.districtCode
+        );
+
         setKeyword("");
         setKeywordInput("");
-        setFilters(filterInput);
+        setFilters({
+            status: filterInput.status,
+            district: district?.name ?? "",
+            state: state?.name ?? "",
+        });
     };
 
     /**
      * Clears everything and returns to the unfiltered register.
      */
     const clearAll = () => {
-        const empty = { status: "ALL", city: "", state: "" };
-
         setKeyword("");
         setKeywordInput("");
-        setFilterInput(empty);
-        setFilters(empty);
+        setFilterInput(EMPTY_FILTER_INPUT);
+        setFilters(EMPTY_FILTERS);
     };
 
     /**
-     * Updates one filter field.
+     * Updates one filter field; choosing a state clears its district,
+     * exactly like the shared location cascade.
      */
     const updateFilter = (field) => (event) => {
+        const value = event.target.value;
         setFilterInput((current) => ({
             ...current,
-            [field]: event.target.value,
+            [field]: value,
+            ...(field === "stateCode" ? { districtCode: "" } : {}),
         }));
     };
 
@@ -233,8 +288,27 @@ export default function ReportManagementPage() {
     const isNarrowed =
         !!keyword ||
         filters.status !== "ALL" ||
-        !!filters.city ||
+        !!filters.district ||
         !!filters.state;
+
+    // Directory options for the two geographical selects, in the shared order
+    const stateOptions = useMemo(
+        () => [...(directory?.states ?? [])].sort(
+            (a, b) => LOCATION_NAME_COLLATOR.compare(a.name, b.name)
+        ),
+        [directory]
+    );
+
+    const selectedState = stateOptions.find(
+        (candidate) => candidate.code === filterInput.stateCode
+    );
+
+    const districtOptions = useMemo(
+        () => [...(selectedState?.districts ?? [])].sort(
+            (a, b) => LOCATION_NAME_COLLATOR.compare(a.name, b.name)
+        ),
+        [selectedState]
+    );
 
     return (
         <div>
@@ -262,7 +336,7 @@ export default function ReportManagementPage() {
                                 htmlFor="report-search"
                                 className="mb-1 block text-[11px] font-semibold tracking-[0.1em] text-ink-muted uppercase"
                             >
-                                Search by title, city, state or pincode
+                                Search by title, district, city/municipal area, state or pincode
                             </label>
 
                             <div className="relative">
@@ -326,23 +400,19 @@ export default function ReportManagementPage() {
                             </select>
                         </div>
 
-                        <div>
-                            <label
-                                htmlFor="city-filter"
-                                className="mb-1 block text-xs text-ink-muted"
-                            >
-                                City
-                            </label>
-
-                            <input
-                                id="city-filter"
-                                type="text"
-                                value={filterInput.city}
-                                onChange={updateFilter("city")}
-                                placeholder="Exact city name"
-                                className="rounded-gov border border-rule bg-white px-3 py-2 text-sm text-ink outline-none transition focus:border-gov-blue"
-                            />
-                        </div>
+                        {directoryStatus === "failed" && (
+                            <p className="text-sm text-red-600">
+                                The location directory could not be loaded, so the
+                                district filter is unavailable.
+                                <button
+                                    type="button"
+                                    onClick={retryDirectory}
+                                    className="ml-1 font-semibold text-gov-blue hover:underline"
+                                >
+                                    Retry
+                                </button>
+                            </p>
+                        )}
 
                         <div>
                             <label
@@ -352,14 +422,46 @@ export default function ReportManagementPage() {
                                 State
                             </label>
 
-                            <input
+                            <select
                                 id="state-filter"
-                                type="text"
-                                value={filterInput.state}
-                                onChange={updateFilter("state")}
-                                placeholder="Exact state name"
-                                className="rounded-gov border border-rule bg-white px-3 py-2 text-sm text-ink outline-none transition focus:border-gov-blue"
-                            />
+                                value={filterInput.stateCode}
+                                onChange={updateFilter("stateCode")}
+                                disabled={directoryStatus !== "ready"}
+                                className="rounded-gov border border-rule bg-white px-3 py-2 text-sm text-ink outline-none transition focus:border-gov-blue disabled:cursor-not-allowed disabled:opacity-60"
+                            >
+                                <option value="">All states</option>
+                                {stateOptions.map((state) => (
+                                    <option key={state.code} value={state.code}>
+                                        {state.name}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+
+                        <div>
+                            <label
+                                htmlFor="district-filter"
+                                className="mb-1 block text-xs text-ink-muted"
+                            >
+                                District
+                            </label>
+
+                            <select
+                                id="district-filter"
+                                value={filterInput.districtCode}
+                                onChange={updateFilter("districtCode")}
+                                disabled={directoryStatus !== "ready" || !selectedState}
+                                className="rounded-gov border border-rule bg-white px-3 py-2 text-sm text-ink outline-none transition focus:border-gov-blue disabled:cursor-not-allowed disabled:opacity-60"
+                            >
+                                <option value="">
+                                    {selectedState ? "All districts" : "Choose a state first"}
+                                </option>
+                                {districtOptions.map((district) => (
+                                    <option key={district.code} value={district.code}>
+                                        {district.name}
+                                    </option>
+                                ))}
+                            </select>
                         </div>
 
                         <button
@@ -418,7 +520,7 @@ export default function ReportManagementPage() {
                         </p>
                         <p className="mt-1 text-sm text-ink-muted">
                             {isNarrowed
-                                ? "Adjust the search term or filters. City and state must match exactly."
+                                ? "Adjust the search term or filters. The state and district pair must match exactly; legacy reports without a reconciled district never match a district filter."
                                 : "No reports have been filed on the platform yet."}
                         </p>
                     </div>

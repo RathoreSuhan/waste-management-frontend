@@ -183,18 +183,22 @@ export async function searchReports(
 }
 
 /**
- * One page of reports filtered by status, city and state.
+ * One page of reports filtered by status and the geographical
+ * State + District pair.
  *
- * Every parameter is optional and they combine. City and state are
- * matched exactly (case-insensitively), not as a substring, which is
- * what separates this from the search above.
+ * Every parameter is optional, but a district always means the district of
+ * the given state - identically named districts in different states are
+ * different places. Both are matched exactly (case-insensitively) against
+ * the stored canonical names, not as a substring, which is what separates
+ * this from the search above. A report whose district was never reconciled
+ * (legacy rows) matches no district filter.
  *
- * @param {Object} options - { status, city, state, page, size, sortBy, direction }
+ * @param {Object} options - { status, district, state, page, size, sortBy, direction }
  * @returns PageResponse<ReportResponse>
  */
 export async function filterReports({
     status,
-    city,
+    district,
     state,
     page,
     size,
@@ -203,12 +207,12 @@ export async function filterReports({
 } = {}) {
     const response = await axiosClient.get(`${ADMIN_API}/reports/filter`, {
         // Only send what was actually chosen - see the note at the top.
-        // City and state are trimmed here rather than left to the caller,
-        // so a stray space cannot turn "no filter" into a filter that
-        // matches nothing.
+        // District and state are trimmed here rather than left to the
+        // caller, so a stray space cannot turn "no filter" into a filter
+        // that matches nothing.
         params: compact({
             status,
-            city: city?.trim(),
+            district: district?.trim(),
             state: state?.trim(),
             page,
             size,

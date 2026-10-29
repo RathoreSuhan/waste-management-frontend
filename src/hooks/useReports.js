@@ -16,12 +16,15 @@ import { getErrorMessage } from "@/utils/errorMessage";
  * Usage:
  * const { data, loading, error, reload } = useReports(getMyReports);
  *
+ * `failureFallback` is the message used when an error carries no readable
+ * backend reason (a bare 403 or a network drop, for example). Consumers pass
+ * one naming their own domain so a leaderboard never apologises for reports.
+ *
  * Note: pass a stable function (module level service function or a
  * useCallback result) so the effect does not run on every render.
  * ============================================================================
  */
-
-export default function useReports(fetcher, initialValue = []) {
+export default function useReports(fetcher, initialValue = [], failureFallback = "Unable to load reports.") {
 
     // Data returned by the backend
     const [data, setData] = useState(initialValue);
@@ -53,7 +56,7 @@ export default function useReports(fetcher, initialValue = []) {
             .catch((requestError) => {
                 if (!ignore) {
                     // Convert the Axios error into a readable message
-                    setError(getErrorMessage(requestError, "Unable to load reports."));
+                    setError(getErrorMessage(requestError, failureFallback));
                 }
             })
             .finally(() => {
@@ -66,7 +69,7 @@ export default function useReports(fetcher, initialValue = []) {
         return () => {
             ignore = true;
         };
-    }, [fetcher, reloadKey]);
+    }, [fetcher, reloadKey, failureFallback]);
 
     /**
      * Retry the request (used by the error state button).

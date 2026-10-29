@@ -31,10 +31,11 @@ import {
  * list by proposing, a site stays visible to everyone until an officer approves
  * one proposal.
  *
- * The backend only accepts work inside a cleaner's own registered city and
- * state, but the open list is not filtered by that rule, so sites from
- * elsewhere can appear. The refusal is left to the proposal request, which
- * names the actual restriction.
+ * The backend filters the open list to the cleaner's own registered
+ * state + district - every ULB in the district, nothing outside it, and
+ * nothing from an unreconciled legacy report. The proposal request proves
+ * the same rule again server-side, so a stale page can never be the
+ * security boundary.
  * ============================================================================
  */
 
