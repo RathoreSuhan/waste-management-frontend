@@ -39,6 +39,7 @@
 | **[The product in fifteen screens](#the-product-in-fifteen-screens)** | annotated tour, grouped by audience |
 | **[What each role can do](#what-each-role-can-do)** | capability matrix |
 | **[The life of a report, from the UI side](#the-life-of-a-report-from-the-ui-side)** | six stages, from filing to municipal sign-off |
+| **[Location V2 contract and rollout status](#location-v2-contract-and-rollout-status)** | directory hierarchy, feature flag, routing and verified production state |
 | **[Engineering notes](#engineering-notes)** | the decisions worth explaining |
 | **[Project structure](#project-structure)** | annotated `src/` |
 | **[Getting started](#getting-started)** | install, configure, run |
@@ -53,16 +54,23 @@ Uncollected waste is rarely a mystery to the people living beside it. They know 
 
 That is the entire brief for this client:
 
-- **Make reporting take under a minute.** One photograph, one heading, one location — captured from the device rather than typed from memory.
+- **Make reporting take under a minute.** One photograph, one heading, one fresh device position, and one municipal area chosen from the verified directory rather than typed from memory.
 - **Make the queue public.** Every report, every rating, every comment and every completed cleanup is readable **without an account**. Participation needs a login; observation does not.
 - **Make the outcome undeniable.** A cleanup is published as a before-and-after pair carrying the AI verification confidence that closed it — not as a status field flipped to `RESOLVED`.
 - **Make it usable in the country it is for.** Every heading, every navigation label and every status word appears in English and Hindi, and the text size can be raised from the header without a browser zoom.
 
-> **This is the web client only.** The Spring Boot API — JWT authentication, Gemini Vision image validation, duplicate detection, Cloudinary storage, assignment lifecycle, reward points and leaderboard computation — lives in the companion **`wastemanagement`** repository. Read its README first if you want to understand *why* a screen behaves the way it does; this one explains *how* the behaviour is presented.
+> **This is the web client only.** The Spring Boot API — JWT authentication, Gemini Vision image validation, duplicate detection, Cloudinary storage, assignment lifecycle, reward points and leaderboard computation — lives in the companion **[waste-management-backend](https://github.com/RathoreSuhan/waste-management-backend#readme)** repository. Read its README first if you want to understand *why* a screen behaves the way it does; this one explains *how* the behaviour is presented.
 
 ---
 
 ## The product in fifteen screens
+
+> **Screenshot provenance.** The fifteen checked-in captures predate the
+> October 2026 location-V2 rollout. In particular, screen 06 has no District
+> tab, screen 09 shows the former typed registration location, screen 14
+> predates the report cascade, and screen 13 ends before Municipal Contact.
+> The images remain layout references; the captions below describe the current
+> source behavior.
 
 ### Part one · The public surface
 
@@ -102,7 +110,7 @@ Nine of these fifteen screens are reachable with no account at all. That is deli
 <td valign="top">
 <img src="docs/screenshots/screen-06.jpg" alt="Leaderboard page" />
 <br /><b>06 · Leaderboard — recognition, scoped</b><br />
-<sub>National, by state or by city. Badge tiers are documented in place — <b>Gold 500+, Silver 200–499, Bronze under 200</b> — as is the ranking rule: equal points share a rank and the next rank skips, so repeated rank numbers are correct rather than a bug.</sub>
+<sub>National, by state, by district, or by city. In the production location-V2 build, the District tab uses searchable State → District selection and aggregates every ULB inside that exact pair; the existing City scope remains available. Badge tiers are documented in place — <b>Gold 500+, Silver 200–499, Bronze under 200</b> — as is the ranking rule: equal points share a rank and the next rank skips.</sub>
 </td>
 </tr>
 <tr>
@@ -114,7 +122,7 @@ Nine of these fifteen screens are reachable with no account at all. That is deli
 <td valign="top">
 <img src="docs/screenshots/screen-13.jpg" alt="Report detail page" />
 <br /><b>08 · Report detail — the case file</b><br />
-<sub>Reference number and status in the header, before-and-after side by side, then the reporter's description and a full location block: address, landmark, city, state, pin code, coordinates and a <i>View on Map</i> link for whoever has to physically get there.</sub>
+<sub>Reference number and status in the header, before-and-after side by side, then the reporter's description and a full visible location block: address, landmark, city, state, pin code, coordinates and a <i>View on Map</i> link. Below this crop, signed-in readers get the municipal contact resolved by exact ULB code for location-V2 reports; reports without a ULB code retain the legacy city lookup.</sub>
 </td>
 </tr>
 <tr>
@@ -134,7 +142,7 @@ Nine of these fifteen screens are reachable with no account at all. That is deli
 <div align="center">
 <img src="docs/screenshots/screen-09.jpg" alt="Create account page" width="62%" />
 <br /><b>11 · Create account</b><br />
-<sub>Grouped into <b>Account details → Role → Location</b>. Choosing a role reveals a plain-language description of what that role may do, and the location fields carry their own justification: <i>"used to place you on the state and city leaderboards, and to route reports to the right municipal corporation."</i> No field is asked for without a stated reason. Pressing <i>Create Account</i> proves the address first: a six-digit code is emailed to whatever was typed (ten minutes to use it, a fresh one after sixty seconds), and only the code creates the account. <i>Continue with Google</i> skips the code entirely — the address arrives inside a token Google signed, so there is nothing to prove.</sub>
+<sub>Grouped into <b>Account details → Role → Location</b>. Location is always selected from searchable <b>State → District → City or municipal area</b> lists served by the backend directory; changing a parent clears its children, loading and failure states are explicit, and Retry is available. Email-code and Google registration both submit <code>stateCode</code>, <code>districtCode</code> and <code>ulbCode</code>; this registration cascade is not controlled by the report feature flag. Pressing <i>Create Account</i> proves a typed address with a six-digit code, while <i>Continue with Google</i> uses Google's verified address.</sub>
 </div>
 
 ### Part two · Signed in — four dashboards, one shell
@@ -163,14 +171,14 @@ Once authenticated, every role gets the same chrome — breadcrumbs, a bilingual
 <td valign="top">
 <img src="docs/screenshots/screen-14.jpg" alt="File a report form" />
 <br /><b>15 · File a report</b><br />
-<sub>Numbered into <b>Report details → Photograph → Location details</b>. Every field carries an example rather than a rule. The location panel opens as <i>Location Not Yet Confirmed</i> and asks the reporter to capture their position from within ~50 m of the site — because a cleanup crew is going to be sent to that coordinate.</sub>
+<sub>Numbered into <b>Report details → Photograph → Location details</b>. The location panel opens as <i>Location Not Yet Captured</i> and accepts only a fresh device fix. In the production location-V2 build, the former typed City/State fields are replaced by the searchable State → District → City/municipal-area cascade; directory codes and the separately captured GPS coordinates are submitted together.</sub>
 </td>
 </tr>
 </table>
 
 #### The municipal corporation console
 
-A city's municipal corporation gets its own set of screens rather than a panel bolted onto somebody else's dashboard. Every call the console makes is scoped by the API to that corporation's **own city**, so a Mohali account cannot read, approve or reject anything filed for Pune.
+A Municipal Corporation gets its own set of screens rather than a panel bolted onto somebody else's dashboard. Every console call is scoped by the API to assignments whose <code>assignedMunicipalCorporation</code> is that authenticated corporation — not to a client-supplied city or district — so one organization cannot read or decide another corporation's work even when legacy city labels and canonical ULB names differ.
 
 | Route | Page | What it is for |
 |---|---|---|
@@ -182,7 +190,7 @@ A city's municipal corporation gets its own set of screens rather than a panel b
 
 The machine verdict is always captioned for what it is — *AI assessment — advisory only*. It never closes a cleanup by itself; a human decision recorded through `ApprovalDecisionDialog` does.
 
-**How a corporation signs in.** Municipal accounts are never self-registered. An administrator adds the city's contact row under *Municipal Bodies*, and from that point only that registered email can open the console for that city — the public sign-up form offers no municipal option at all. Picking `MUNICIPAL` as a **cleaner type** merely describes what kind of crew a sanitation account belongs to; it grants no console access whatsoever. The first-login password is issued together with the row (documented for the operator, never printed by the UI or the API) and is meant to be replaced straight away from the shared `/app/profile` page, which sends `PATCH /api/account/password`.
+**How a corporation signs in and is mapped.** Municipal accounts are never self-registered. An administrator creates a new body from the verified State → District → ULB cascade, or maps an existing row to an official ULB. Mapping adds the ULB code while preserving the row's legacy <code>city</code>, so older code-less reports keep their supported route. A directory ULB is not automatically an onboarded organization. Only the registered official email can open that corporation's console; choosing `MUNICIPAL` as a cleaner type grants no approval power. The issued first-login password is operator-held, never returned by the API, and is meant to be replaced from `/app/profile`.
 
 ### Profile and account management
 
@@ -210,10 +218,10 @@ Every signed-in role reaches the consolidated `/app/profile` page from the appli
 | Platform statistics dashboard | — | — | — | — | ✅ |
 | Search / filter users, promote, delete | — | — | — | — | ✅ |
 | Search / filter reports, delete with cascade | — | — | — | — | ✅ |
-| Maintain municipal corporation directory | — | — | — | — | ✅ |
+| Maintain municipal corporation directory and official ULB mappings | — | — | — | — | ✅ |
 | Change own password | — | ✅ | ✅ | ✅ | ✅ |
 
-Everything in the *Municipal Corporation* column is additionally scoped to the signed-in corporation's own city — the role alone is not enough.
+Everything in the *Municipal Corporation* column is additionally scoped to the signed-in corporation assigned to that report or cleanup — the role alone is not enough. Cleaner proposal eligibility is district-wide across ULBs and fails closed when either the cleaner or report lacks a reconciled district; the backend enforces this when a proposal is submitted rather than trusting a client-side filter.
 
 The UI never relies on this table as a security boundary. Roles are enforced by the API; the frontend simply avoids offering an action it knows will return `403`, and routes every restricted page through a `RoleRoute` guard so a hand-typed URL lands somewhere sensible instead of on a broken screen.
 
@@ -244,17 +252,110 @@ The UI never relies on this table as a security boundary. Roles are enforced by 
    points                  + GPS ≤ 50 m            / Reject Proposal
 ```
 
-**① Filed.** `CreateReportPage` walks three numbered sections and keeps a draft in local storage, so a dropped connection or an accidental back-navigation does not cost the reporter their description. `LocationVerificationPanel` refuses to report a coordinate it has not actually measured.
+**① Filed.** `CreateReportPage` walks three numbered sections and keeps a draft in local storage, so a dropped connection or an accidental back-navigation does not cost the reporter their description. `LocationVerificationPanel` refuses to report a coordinate it has not actually measured. The source-safe flag default keeps the legacy `city`/`state` shape; the production location-V2 build requires `stateCode`, `districtCode` and `ulbCode` and strips the legacy fields before submission.
 
-**② Validated.** Submitting waits on Gemini Vision, which is why the upload client uses a **120-second** timeout while the rest of the app uses the default. A rejection comes back as a reason, not a code — *this does not appear to show waste*, *this looks like a screenshot* — and is rendered as such.
+**② Validated.** For a code-backed report, the backend validates the directory triple and verifies that the exact ULB has an onboarded corporation **before** Gemini, duplicate detection or image upload. An unconfigured ULB therefore returns an actionable error without creating a partial report. Subsequent image validation keeps its **120-second** upload budget and plain-language rejection reasons.
 
-**③ Routed.** The citizen's own dashboard and `MyReportsPage` show the status chip, and `MunicipalContactPanel` names the corporation answerable for that city. Nothing is assigned yet: a report is routed to a city body, never handed straight to a crew.
+**③ Routed.** A code-backed report routes only to the corporation mapped to its exact ULB code; it never falls back to a city alias or substitutes another organization. A report without `ulbCode` retains the legacy case-insensitive city route. `MunicipalContactPanel` follows that same split: signed-in readers use exact `/ulb/{code}` contact lookup when possible, while legacy reports use `/city/{city}`. Nothing is assigned straight to a crew.
 
 **④ Proposed.** A sanitation officer reads the open sites in `AvailableTasksPage` and submits a plan through `SubmitProposalPage` — what they intend to do, with what, and when. `MyProposalsPage` follows each verdict, and `hooks/useProposals.js` keeps the UI from offering a second proposal for a site this officer has already proposed. The corporation then decides in `ProposalQueuePage` through `ApprovalDecisionDialog`: an approval creates the assignment, a revision request returns with the reviewer's note, a rejection closes the proposal.
 
 **⑤ Cleaned.** Only authorised work can start. `StartCleanupDialog` with `CleanupLocationCapture` demands a live fix within ~50 m of the site before the task moves to *In progress*, `ActivityLogDialog` records optional progress notes the corporation can read while the work is running, and `CleanupUploadDialog` closes the visit with a GPS-stamped after-photograph that Gemini compares against the original. Passing that check still does not finish the job — the assignment only moves to *Awaiting approval*.
 
 **⑥ Signed off, then published.** The corporation weighs the evidence in `CompletionReviewPage` and `AssignmentReviewPage` and either approves the completion, sends it back as rework, or rejects the evidence outright. Approval is the single event that resolves the report, credits the officer's reward points **exactly once**, and lets the cleanup surface in Success Stories as a before-and-after pair with its confidence score — the leaderboard, computed on demand with no cached ranking table, reflects it on the next read.
+
+---
+
+## Location V2 contract and rollout status
+
+Clean Bharat uses the backend's generated LGD State → District → ULB directory
+rather than treating an arbitrary city string as municipal identity. The full
+dataset, generator, migration procedure and schema notes live in the
+**[backend README](https://github.com/RathoreSuhan/waste-management-backend#readme)**;
+this section documents the frontend contract.
+
+### Registration — always directory-backed
+
+`RegisterPage` fetches public `GET /api/locations`, then offers searchable,
+alphabetized State/UT → District → City/municipal-area selectors. ULB labels
+include their type. Changing State clears District and ULB; changing District
+clears ULB. Loading, no-row, failure and Retry states are explicit, and account
+submission is disabled until the directory is ready. Email-code and Google
+registration both send `stateCode`, `districtCode` and `ulbCode`; the backend
+validates the triple and derives canonical names. This registration behavior is
+always active and is **not** controlled by the report feature flag.
+
+`RegisterPage` retains the original cascade implementation. The shared
+`LocationCascade` component implements the same contract for report filing,
+municipal-body create/edit and the District leaderboard (without the ULB level
+for the latter).
+
+### Report form and build-time flag
+
+Source uses the exact check:
+
+```js
+import.meta.env.VITE_LOCATION_V2_ENABLED === "true"
+```
+
+Unset or any other value is false. When disabled, report submission keeps the
+legacy `city` / `state` payload. When enabled, those typed fields are replaced
+by the directory cascade and the multipart request sends `stateCode`,
+`districtCode` and `ulbCode`. Both modes separately require a fresh device GPS
+fix. The same flag exposes the **By District** leaderboard tab; it does not
+control registration, municipal mapping or municipal-contact lookup.
+
+### Leaderboard scopes
+
+National, State and City remain supported. The enabled build adds District:
+the picker selects a State/District pair from the directory and calls
+`GET /api/leaderboard/district/{state}/{district}`, aggregating every ULB in
+that district. The City endpoint remains available for compatibility. Current
+backend source does **not** include the District route in its anonymous
+`permitAll` matcher, so that request presently requires authentication even
+though the page itself is public; this is an explicitly documented source
+limitation, not an anonymous-access promise.
+
+### Municipal mapping and contact lookup
+
+New municipal-body records are created from the directory cascade. Editing an
+existing row can map its ULB code while keeping the stored legacy `city`
+read-only and unchanged, so historical reports retain their supported route.
+An official directory ULB is not the same thing as an onboarded corporation.
+
+For a signed-in reader, `MunicipalContactPanel` chooses exactly one endpoint:
+
+| Report | Contact request | Behavior |
+|---|---|---|
+| `ulbCode` present | `GET /api/municipal-corporations/ulb/{code}` | Exact ULB match; a `404` does not retry by city or substitute another corporation |
+| no `ulbCode` | `GET /api/municipal-corporations/city/{city}` | Preserved legacy behavior |
+
+Both endpoints are authenticated. A logged-out reader can still read the public
+report, but the panel deliberately skips the contact request/card. A non-404
+network or permission failure renders no false “not registered” answer.
+Organization name, phone and email render independently, so one absent optional
+field does not hide the available contact.
+
+### Status boundaries — source, production and verification
+
+> **Source default.** `VITE_LOCATION_V2_ENABLED` is false unless its build-time
+> value is exactly `true`; that default remains useful for a fresh clone or an
+> application rollback.
+
+> **Operator-verified production record — 28 October 2026.** Production is built
+> with the flag set to `true`; T0–T5 are complete; all 18 original reconciliation
+> entries were reported `MAPPED`; report `#24` and Municipal Corporation `#5`
+> share ULB code `248325`; the corporation's legacy city remains `Mohali` and its
+> phone/email are populated. `MAPPED` is an operator result — the checked-in
+> audit table has no status column.
+
+> **Implemented and locally validated; deployment/live verification pending.**
+> Exact ULB-code contact lookup, no city fallback after an exact miss, legacy
+> compatibility and partial-contact rendering are present in current source.
+> The supplied local validation record is **316 backend tests passing**, frontend
+> lint with **0 errors / 6 React Hook Form warnings**, and a passing production
+> build. It does not establish that the municipal-contact fix is deployed or
+> working live.
 
 ---
 
@@ -306,7 +407,7 @@ ProtectedRoute → MainLayout → RoleRoute "ROLE_ADMIN"             → admin p
 - One Axios instance in `api/axiosClient.js`. A request interceptor attaches the JWT; a response interceptor is the single place a refused session is detected — it clears the stored credentials and announces it through `api/sessionExpiry.js`, which `SessionExpiryWatcher` turns into a real sign-out and a redirect to the login form. No page contains logout logic, and no page is left claiming a session the server has stopped accepting.
 - Every path lives in `constants/apiConstants.js`, documented with its backend security posture — which endpoints are `permitAll`, which fall through to `authenticated()`, which are `hasRole(...)`. A component never has to guess whether a call will work while signed out.
 - `utils/errorMessage.js` reduces the various shapes a failure can arrive in — validation envelope, plain string body, network timeout — to one human sentence, so no screen ever prints `[object Object]`.
-- Thirteen thin service modules, one per domain (`reportService`, `voteService`, `commentService`, `cleanupService`, `rewardService`, `publicFeedService`, `analyticsService`, `leaderboardService`, `municipalCorporationService`, `municipalService`, `adminService`, `authService`, `accountService`). Components call services; components never call Axios. The split between the two municipal modules is deliberate: `municipalCorporationService` is the admin-facing city directory, `municipalService` is the console a signed-in corporation actually works in.
+- Fifteen thin service modules, one per domain. `locationService` fetches the public LGD directory; `healthService` handles backend wake-up; the remaining modules cover reports, voting, comments, cleanup, rewards, feed, analytics, leaderboards, the two municipal domains, admin, auth and accounts. Components call services; components never call Axios. The municipal split is deliberate: `municipalCorporationService` manages directory/contact records, while `municipalService` is the console a signed-in corporation works in.
 - `accountService` keeps the Profile page's account calls together: profile read/update, Cloudinary-backed profile-picture upload/removal, the signed-in account record, and password change through `PATCH /api/account/password`.
 - Timeouts matched to the hosting, not the code. The backend sleeps on a free plan and takes the better part of a minute to wake, so auth calls (`authService`, 90-second `COLD_START_TIMEOUT`) carry a longer budget than the default client timeout — and a `BackendWakeNotice` says so on the page, rather than letting a cold start read as a broken form. Reads get one automatic retry; a `POST` is never re-sent.
 
@@ -383,7 +484,7 @@ WM Fronted/
     │                            #   useModalBehaviour
     ├── i18n/strings.js          # English + Hindi string pairs
     ├── schemas/                 # Zod validation, one file per form family
-    ├── services/                # one module per API domain (13 of them)
+    ├── services/                # 15 API-domain modules; locationService fetches GET /api/locations
     ├── utils/                   # formatters · errorMessage · geo · reportDraft …
     │
     ├── layouts/
@@ -396,8 +497,8 @@ WM Fronted/
     │   └── RoleRoute.jsx        # requires a specific role
     │
     ├── components/
-    │   ├── ui/                  # Button · Input · Textarea · Alert
-    │   ├── common/              # StatCard · BiText · PageHeading · Pagination
+    │   ├── ui/                  # Button · Input · Textarea · Alert · SearchableSelect
+    │   ├── common/              # StatCard · BiText · PageHeading · Pagination · LocationCascade
     │   ├── layout/              # SiteHeader · SiteFooter · Sidebar · nav drawers
     │   │                        #   Breadcrumbs · PageContainer/Section/Intro
     │   │                        #   AccountControl · ScrollManager
@@ -476,11 +577,11 @@ Create a `.env.local` in the frontend root when you need to point at a non-defau
 |---|:---:|---|---|
 | `VITE_API_BASE_URL` | No | `http://localhost:8080` | Base URL of the Spring Boot API. Trailing slashes are trimmed automatically. |
 | `VITE_GOOGLE_CLIENT_ID` | No | *(empty)* | OAuth 2.0 **Web application** client id, the same value the backend holds as `GOOGLE_CLIENT_ID`. Left unset, the Google button and its divider are **not rendered at all** and the sign-up form is the way in — so a fresh clone runs without it. |
-| `VITE_LOCATION_V2_ENABLED` | No | `false` | **Location model opt-in.** When `true`, the report form replaces its typed city/state fields with the LGD **state → district → ULB directory cascade**, and the leaderboard gains a **By District** tab (`/api/leaderboard/district/{state}/{district}`). The backend must be deployed with the location refactor first, and its municipal-mapping preflight must have passed — until then leave this off and both screens behave exactly as before. |
+| `VITE_LOCATION_V2_ENABLED` | No | `false` in source; `true` in production *(operator-verified record, 2026-10-28)* | Exact build-time switch: only lowercase `true` enables the directory-backed report form and **By District** tab. Registration, municipal-body mapping and contact lookup are location-aware independently. |
 
-Three variables, all with working defaults, so a fresh clone runs against a local backend with no setup at all. Google sign-in is genuinely optional: without it, `/login` and `/register` are simply the form, exactly as they were before Google was added. The location cascade is likewise opt-in: the flag ships `false`, and the backend's deployment runbook (see the backend README's location-model section) says exactly when to flip it.
+Three variables have source-safe defaults. Without Google configuration the normal login/register forms remain available; an unset location flag keeps the legacy report shape and hides District, which remains useful for a fresh clone or rollback. The verified production record is different: T0–T5 are complete and production is built with `VITE_LOCATION_V2_ENABLED=true`.
 
-> **Three things to keep in mind.** Vite only exposes variables prefixed `VITE_`, and it **inlines them at build time** — so changing either value on a host requires a rebuild, not a restart. Because anything inlined into a bundle is public by definition, no secret ever belongs in this file: API keys, the JWT signing secret, the SMTP password and the Cloudinary credentials are the backend's business alone. The Google client id is the one deliberate exception, and it is not a secret — it only identifies the application to Google, and there is **no Google client secret anywhere in this project**: the browser hands the backend a signed ID token, which the backend verifies against that same client id as the token's audience.
+> **Three things to keep in mind.** Vite only exposes variables prefixed `VITE_`, and it **inlines them at build time** — so changing any value on a host requires a rebuild/redeploy, not a restart. Because anything inlined into a bundle is public by definition, no secret ever belongs in this file: API keys, the JWT signing secret, the SMTP password and the Cloudinary credentials are the backend's business alone. The Google client id is the one deliberate exception, and it is not a secret — it only identifies the application to Google, and there is **no Google client secret anywhere in this project**: the browser hands the backend a signed ID token, which the backend verifies against that same client id as the token's audience.
 
 **Google Cloud Console.** The client id's **Authorized JavaScript origins** must list every origin this app is served from — `http://localhost:5173` for development, plus the deployed origins. No **Authorized redirect URIs** are needed; this flow has no redirect. If the button does not appear, that variable is unset; if it appears but fails on click, the origin is missing from that list.
 
@@ -516,7 +617,18 @@ Configured for **Vercel**, with `vercel.json` doing three jobs.
 
 **3 · Security headers on every response.** `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy: strict-origin-when-cross-origin`, and a `Permissions-Policy` that denies camera and microphone outright while allowing `geolocation=(self)` — which the report form genuinely needs and nothing else does.
 
-**Build settings.** Root directory `WM Fronted`, build command `npm run build`, output directory `dist`. Set `VITE_API_BASE_URL` and `VITE_GOOGLE_CLIENT_ID` in the project's environment variables and redeploy — remember both are inlined at build time, and add the deployed origin to the Google client's Authorized JavaScript origins.
+**Build settings.** For this standalone frontend repository, use the repository
+root, build command `npm run build`, and output directory `dist`. Set
+`VITE_API_BASE_URL`, optionally set `VITE_GOOGLE_CLIENT_ID`, and set the
+production location build to `VITE_LOCATION_V2_ENABLED=true`. Redeploy after
+changing any value because Vite inlines it at build time; add every deployed
+origin to the Google client's Authorized JavaScript origins. Vercel project
+identifiers and actual environment values are not stored in this repository.
+
+**Configured frontend origins.** The companion backend currently allows
+`https://waste-management-frontend-xi.vercel.app`, `https://cleanbharat.tech`
+and `https://www.cleanbharat.tech` through CORS. These checked-in origins are
+configuration evidence, not a live availability check.
 
 ---
 
