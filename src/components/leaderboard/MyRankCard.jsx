@@ -13,12 +13,19 @@ import { getBadgeMeta, BADGE } from "@/constants/badgeConstants";
  * Data comes from GET /api/leaderboard/me, which is cleaner-only, so this
  * card is rendered for ROLE_CLEANER and for nobody else.
  *
- * The national ranking is a top 10, but this rank is the cleaner's true
- * position across every cleaner. Someone ranked 34th therefore sees their
- * number here while being absent from the table below - which is the point
- * of the card.
+ * The heading qualifies the rank as national: the number is the cleaner's
+ * position across EVERY cleaner, computed the same way the National
+ * board's ranks are, not a position in the top-10 table below.
+ *
+ * The number itself is shown only while the cleaner sits inside the top
+ * 10 - the same window the national board displays. Beyond it the badge,
+ * points and cleanup counts still tell their story, but the rank number
+ * is hidden rather than showing a figure the table cannot corroborate.
  * ============================================================================
  */
+
+/** The national board displays the top 10; beyond it the rank number hides. */
+const NATIONAL_BOARD_SIZE = 10;
 
 /**
  * Name of the badge above the current one.
@@ -60,20 +67,30 @@ export default function MyRankCard({ ranking }) {
                 <p className="flex items-center gap-2 text-[11px] font-semibold tracking-[0.2em] uppercase">
                     <Trophy size={13} aria-hidden="true" />
                     My Standing
+                    <span className="font-medium text-white/60">
+                        &middot; National Rank
+                    </span>
                 </p>
             </div>
 
             <div className="flex flex-wrap items-center gap-x-8 gap-y-4 px-5 py-4">
 
-                {/* Position across all cleaners, not just the top 10 */}
+                {/* Position across all cleaners, shown only inside the
+                    top 10 the national board can corroborate */}
                 <div>
                     <p className="text-[11px] font-semibold tracking-[0.15em] text-ink-muted uppercase">
                         Rank
                     </p>
 
-                    <p className="mt-1 font-serif text-3xl font-bold text-gov-navy tabular-nums">
-                        {ranking.rank ?? "\u2014"}
-                    </p>
+                    {ranking.rank != null && ranking.rank <= NATIONAL_BOARD_SIZE ? (
+                        <p className="mt-1 font-serif text-3xl font-bold text-gov-navy tabular-nums">
+                            {ranking.rank}
+                        </p>
+                    ) : (
+                        <p className="mt-2 text-sm text-ink-muted">
+                            Outside the top {NATIONAL_BOARD_SIZE}
+                        </p>
+                    )}
                 </div>
 
                 {/* Current badge */}
