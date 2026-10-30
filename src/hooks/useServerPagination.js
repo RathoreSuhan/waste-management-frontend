@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { PAGE_SIZE } from "@/constants/paginationConstants";
 import { getErrorMessage } from "@/utils/errorMessage";
@@ -37,6 +37,17 @@ import { getErrorMessage } from "@/utils/errorMessage";
  *   reload()  - show the skeleton again (used by a failed request's retry)
  *   refresh() - re-fetch silently (used after an edit, where the page on
  *               screen is still valid and should not be unmounted)
+ *
+ * DUPLICATE REQUESTS
+ *
+ *   React StrictMode's development replay runs an effect, cleans it up and
+ *   runs it again with the same query. Letting both runs call the fetcher
+ *   would put two identical requests on the network - ignoring the first
+ *   response would only hide the duplicate, not prevent it. While a
+ *   request is still in flight, an identical query reuses its promise, so
+ *   exactly one request is sent. The in-flight entry is dropped the moment
+ *   the request settles: this is coalescing, not caching - a later visit
+ *   to the same page asks the server again.
  * ============================================================================
  */
 
@@ -126,16 +137,57 @@ export default function useServerPagination(
         setLoading(true);
     }
 
+    /*
+      The request currently on the wire for this list, remembered only
+      until it settles.
+
+      An ignore flag alone cannot stop StrictMode's replay from dispatching
+      the same request twice - it can only stop the first response from
+      landing. Holding the in-flight promise keyed to the exact query is
+      what actually keeps the Network tab at one request per page load.
+    */
+    const inFlightRef = useRef(null);
+
     useEffect(() => {
 
         // Prevents a late response from an abandoned request landing
         let ignore = false;
 
-        fetcher({
-            page: query.page,
-            size: pageSize,
-            ...JSON.parse(criteriaKey),
-        })
+        const requestKey = `${query.page}|${criteriaKey}|${pageSize}|${reloadKey}`;
+
+        const inFlight = inFlightRef.current;
+        const sameQueryStillFlying =
+            inFlight !== null &&
+            inFlight.key === requestKey &&
+            inFlight.fetcher === fetcher;
+
+        const request = sameQueryStillFlying
+            ? inFlight.promise
+            : fetcher({
+                  page: query.page,
+                  size: pageSize,
+                  ...JSON.parse(criteriaKey),
+              });
+
+        if (!sameQueryStillFlying) {
+            inFlightRef.current = { key: requestKey, fetcher, promise: request };
+
+            /*
+              Both handlers, so the bookkeeping chain can never raise an
+              unhandled rejection on its own; the state chain below stays
+              the owner of error handling. A superseded request (the query
+              moved on before this one settled) finds a newer entry in the
+              ref and correctly leaves it alone.
+            */
+            const releaseEntry = () => {
+                if (inFlightRef.current?.promise === request) {
+                    inFlightRef.current = null;
+                }
+            };
+            request.then(releaseEntry, releaseEntry);
+        }
+
+        request
             .then((response) => {
 
                 if (ignore) {

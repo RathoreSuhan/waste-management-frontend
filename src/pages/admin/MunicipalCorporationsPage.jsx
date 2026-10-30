@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useRef, useState } from "react";
 
 import { Link, useNavigate } from "react-router-dom";
 import { Building2, Plus, Pencil, Search, Trash2, X } from "lucide-react";
@@ -7,7 +7,7 @@ import PageHeading from "@/components/common/PageHeading";
 import Alert from "@/components/ui/Alert";
 import ConfirmDialog from "@/components/admin/ConfirmDialog";
 import Pagination from "@/components/common/Pagination";
-import usePagination from "@/hooks/usePagination";
+import useServerPagination from "@/hooks/useServerPagination";
 
 
 import {
@@ -26,19 +26,29 @@ import { getErrorMessage } from "@/utils/errorMessage";
  * This replaces the previously planned hardcoded city mapping, so
  * administrators can add new cities and update contact details without
  * changing code.
+ *
+ * The register is paginated by the server: each request asks for one page
+ * of ten and only those rows are read from the database, the same contract
+ * the account and report registers run on.
  * ============================================================================
  */
+
+/*
+  The register's fetcher, at module level so its identity never changes
+  across renders (a fresh function every render would re-run the fetch).
+
+  No sortBy/direction is sent: the backend register defaults to id
+  descending, and the row carries no date - a higher id is the more recent
+  registration, which is the newest-first order this screen has always
+  shown.
+*/
+async function fetchCorporations({ page, size, keyword }) {
+    return getMunicipalCorporations({ page, size, keyword });
+}
 
 export default function MunicipalCorporationsPage() {
 
     const navigate = useNavigate();
-
-    const [corporations, setCorporations] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState("");
-
-    // Reload counter, incremented after every successful deletion
-    const [reloadKey, setReloadKey] = useState(0);
 
     // Deletion confirmation dialog state
     const [deleteTarget, setDeleteTarget] = useState(null);
@@ -49,12 +59,13 @@ export default function MunicipalCorporationsPage() {
     const [query, setQuery] = useState("");
 
     /*
-      What the table is actually filtered by.
+      What the register is actually searched by.
 
       Kept apart from `query` on purpose. The box updates on every
-      keystroke; this only moves when the search is submitted, so the rows
-      hold still while a city name is being typed instead of reshuffling
-      under the reader after every letter.
+      keystroke; this only moves when the search is submitted, so no
+      request is made while a city name is being typed. The pagination
+      hook watches this value: when it changes, the reader goes back to
+      the first page of the narrowed result set.
     */
     const [appliedQuery, setAppliedQuery] = useState("");
 
@@ -62,67 +73,32 @@ export default function MunicipalCorporationsPage() {
 
     const isSearching = trimmedQuery.length > 0;
 
-
     /*
-      Filtering happens here rather than over the network.
+      One page of corporations, fetched on demand.
 
-      The whole register is already in memory from the load above, and it
-      is a list of cities - tens of rows, not thousands. Matching them
-      locally answers on the keystroke, with no debounce and no spinner.
-
-      The backend's /city/{city} route is deliberately not used for this:
-      it matches a city name exactly, so it would find nothing until the
-      name were typed in full and correctly - useless while typing.
-
-      All four visible columns are searched, because an administrator
-      chasing a wrong phone number or a bounced email should be able to
-      paste that value in rather than first recalling which city it
-      belonged to.
-    */
-    const filtered = useMemo(() => {
-
-        /*
-          Newest first. The API returns these in insertion order, so the
-          first body ever registered sat at the top. Sorted by id
-          descending because the response carries no date field - id is
-          auto-increment, so a higher id is the more recent record. Copied
-          before sorting, as sort() works in place.
-        */
-        const newestFirst = [...corporations].sort(
-            (a, b) => (b.id ?? 0) - (a.id ?? 0)
-        );
-
-        // Sorted before filtering, so search results are newest first too
-        if (!isSearching) {
-            return newestFirst;
-        }
-
-        const needle = trimmedQuery.toLowerCase();
-
-        return newestFirst.filter((corp) =>
-            [corp.city, corp.organizationName, corp.phone, corp.email]
-                // A record missing an optional field must not break the search
-                .filter(Boolean)
-                .some((field) => String(field).toLowerCase().includes(needle))
-        );
-    }, [corporations, isSearching, trimmedQuery]);
-
-    /*
-      Ten corporations to a page, over the filtered list.
-
-      usePagination resets to page 1 whenever the count changes, so
-      narrowing the search while on page 3 cannot strand the reader on a
-      page that no longer exists.
+      The hook asks for page 0 on open, again only when a pager button is
+      pressed or the keyword above changes, and holds nothing but the
+      current page - the database does the slicing and the searching now,
+      so 353 registered bodies no longer travel on the first request.
+      A search that arrives while reading page 3 restarts at page 1 of the
+      narrowed set, which is what the old local filtering reset did.
     */
     const {
-        page,
         pageItems,
+        page,
         totalPages,
         total,
         rangeStart,
         rangeEnd,
         goToPage,
-    } = usePagination(filtered);
+        loading,
+        error,
+        refresh,
+    } = useServerPagination(fetchCorporations, {
+        params: { keyword: trimmedQuery },
+        fallbackMessage: "Municipal corporations could not be loaded.",
+    });
+
 
     // Anchor for the jump back up when the page changes
     const tableTopRef = useRef(null);
@@ -165,41 +141,6 @@ export default function MunicipalCorporationsPage() {
         setAppliedQuery("");
     }
 
-
-
-
-    /**
-     * Load all corporations on mount and after every deletion.
-     */
-    useEffect(() => {
-
-        let ignore = false;
-
-        getMunicipalCorporations()
-
-            .then((data) => {
-                if (!ignore) {
-                    setCorporations(data);
-                }
-            })
-            .catch((err) => {
-                if (!ignore) {
-                    setError(
-                        getErrorMessage(err, "Municipal corporations could not be loaded.")
-                    );
-                }
-            })
-            .finally(() => {
-                if (!ignore) {
-                    setLoading(false);
-                }
-            });
-
-        return () => {
-            ignore = true;
-        };
-    }, [reloadKey]);
-
     /**
      * Opens the confirmation dialog for a corporation.
      */
@@ -232,9 +173,14 @@ export default function MunicipalCorporationsPage() {
 
         deleteMunicipalCorporation(deleteTarget.id)
             .then(() => {
-                // Close the dialog and reload the list
+                /*
+                  Close the dialog and let the register catch up. refresh()
+                  re-asks the server for the page on screen without tearing
+                  it down; if this was the last row of the last page, the
+                  hook pulls the reader back to the page that still exists.
+                */
                 setDeleteTarget(null);
-                setReloadKey((key) => key + 1);
+                refresh();
             })
             .catch((err) => {
                 // Error is shown inside the dialog so the user can retry
@@ -286,8 +232,13 @@ export default function MunicipalCorporationsPage() {
                     </div>
                 )}
 
-                {/* Empty state */}
-                {!loading && !error && corporations.length === 0 && (
+                {/*
+                  Empty register. Only meaningful when nothing is being
+                  searched: a search that matches nothing gets the register's
+                  own no-match message below, not this "add the first one"
+                  prompt.
+                */}
+                {!loading && !error && !isSearching && total === 0 && (
                     <div className="rounded-gov border border-rule bg-white p-8 text-center">
                         <Building2
                             size={32}
@@ -311,14 +262,26 @@ export default function MunicipalCorporationsPage() {
                     </div>
                 )}
 
-                {/* Corporation list */}
-                {!loading && corporations.length > 0 && (
+                {/*
+                  The register panel. Rendered whenever the current result
+                  set has rows, or a search is in play that can describe its
+                  own no-match state - `pageItems` is only the page on
+                  screen, so `total` is what knows whether anything matched.
+                */}
+                {!loading && !error && (total > 0 || isSearching) && (
                     <div className="rounded-gov border border-rule bg-white">
 
                         <div className="border-b border-rule bg-paper px-5 py-3">
                             <h2 className="text-[11px] font-semibold tracking-[0.15em] text-ink-muted uppercase">
+                                {/*
+                                  While searching, `total` is the count of
+                                  matches - the unfiltered register is no
+                                  longer in memory to count against, so the
+                                  old "N of M" line would need a second
+                                  request to stay honest.
+                                */}
                                 {isSearching
-                                    ? `Showing ${total} of ${corporations.length} corporation${corporations.length !== 1 ? "s" : ""}`
+                                    ? `Corporations matching “${trimmedQuery}” (${total})`
                                     : `Registered Corporations (${total})`}
 
                             </h2>
@@ -416,8 +379,8 @@ export default function MunicipalCorporationsPage() {
                                     No corporations match &ldquo;{trimmedQuery}&rdquo;
                                 </p>
                                 <p className="mt-1 text-sm text-ink-muted">
-                                    Check the spelling, or clear the search to see all{" "}
-                                    {corporations.length} registered corporations.
+                                    Check the spelling, or clear the search to
+                                    see every registered corporation.
                                 </p>
 
                                 <button

@@ -10,7 +10,8 @@ import { MUNICIPAL_CORPORATIONS_API } from "@/constants/apiConstants";
  *
  * Backend endpoints:
  *   POST   /api/municipal-corporations            -> create
- *   GET    /api/municipal-corporations            -> list
+ *   GET    /api/municipal-corporations            -> one page of the register
+ *                                                   (optional keyword/page/size)
  *   GET    /api/municipal-corporations/{id}       -> one record
  *   GET    /api/municipal-corporations/city/{city}-> legacy lookup by city
  *   GET    /api/municipal-corporations/ulb/{code} -> location-V2 lookup by exact ULB code
@@ -49,12 +50,39 @@ export async function createMunicipalCorporation(corporation) {
 }
 
 /**
- * Every registered municipal corporation.
+ * Query parameters that mean "not set" are dropped rather than sent.
  *
- * @returns Array of MunicipalCorporationResponse
+ * Same helper as adminService: an empty `keyword` is not a search, and a
+ * blank query string value has no meaning to drop on the backend either.
  */
-export async function getMunicipalCorporations() {
-    const response = await axiosClient.get(MUNICIPAL_CORPORATIONS_API);
+function compact(params) {
+    return Object.fromEntries(
+        Object.entries(params ?? {}).filter(
+            ([, value]) => value !== undefined && value !== null && value !== "",
+        ),
+    );
+}
+
+/**
+ * One page of the registered municipal corporations.
+ *
+ * The register is cut by the database: `page` is zero-based and `size`
+ * defaults to 10 on the backend, so only the requested rows leave it.
+ * The optional `keyword` searches city, organisation name, phone and
+ * email - the same four fields this screen has always searched, now
+ * matched in the query rather than over a downloaded array.
+ *
+ * @param {Object} [options]
+ * @param {string} [options.keyword] - substring to search the register by
+ * @param {number} [options.page] - zero-based page index
+ * @param {number} [options.size] - rows per page (backend default 10)
+ * @returns PageResponse of MunicipalCorporationResponse:
+ *   { content, page, size, totalElements, totalPages, hasNext, hasPrevious }
+ */
+export async function getMunicipalCorporations({ keyword, page, size } = {}) {
+    const response = await axiosClient.get(MUNICIPAL_CORPORATIONS_API, {
+        params: compact({ keyword, page, size }),
+    });
 
     return response.data;
 }

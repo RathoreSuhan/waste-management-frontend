@@ -5,10 +5,13 @@
  *
  * One page size for the whole portal.
  *
- * Every list endpoint on the backend returns its full result set in a
- * single array - there is no page parameter to pass. So paging happens
- * here, over the array already in memory: the request is unchanged, but
- * the reader is never handed four hundred rows at once.
+ * The large registers (reports, the public feed, the admin lists, the
+ * municipal register) are paginated by the backend: the request carries
+ * page and size, and only that page's rows are read from the database.
+ * The array-slicing helper below remains for the lists that are naturally
+ * small or already scoped - comments under one report, a cleaner's own
+ * history, a corporation's own queues - where the full set is in memory
+ * anyway and the reader is still never handed hundreds of rows at once.
  *
  * Ten is the figure the leaderboard already uses. The backend caps that
  * ranking at ten entries server-side, and matching it everywhere else
