@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Search } from "lucide-react";
 import { useForm } from "react-hook-form";
 
@@ -6,8 +6,21 @@ import {
     LEADERBOARD_SCOPE,
     LEADERBOARD_SCOPES,
 } from "@/constants/badgeConstants";
+import BiText from "@/components/common/BiText";
 import LocationCascade from "@/components/common/LocationCascade";
+import SearchableSelect from "@/components/ui/SearchableSelect";
 import { getLocationDirectory } from "@/services/locationService";
+import { UI } from "@/i18n/strings";
+
+/*
+  Alphabetizes State/UT names so the dropdown options are predictable.
+  Same collation settings the shared LocationCascade uses for its own lists.
+*/
+const STATE_NAME_COLLATOR = new Intl.Collator("en", {
+    sensitivity: "base",
+    numeric: true,
+    ignorePunctuation: true,
+});
 
 /**
  * The district picker's own form scope, mounted only while the DISTRICT tab
@@ -116,6 +129,121 @@ function DistrictPicker({ onSubmitPlace }) {
     );
 }
 
+/*
+ * State/Union Territory picker, mounted only while the STATE tab is active.
+ * Reuses SearchableSelect and the public location directory to offer every
+ * State/UT as a searchable dropdown, submitting the canonical state name to
+ * the existing state leaderboard API.
+ *
+ * The directory is fetched here, scoped to this tab's lifetime: it is a
+ * public reference file cached for a day at the browser, so reopening the
+ * tab within a session costs nothing.
+ */
+function StatePicker({ onSubmitPlace }) {
+
+    const [directory, setDirectory] = useState(null);
+    const [directoryStatus, setDirectoryStatus] = useState("loading");
+    const [selectedState, setSelectedState] = useState("");
+
+    const loadDirectory = useCallback(async () => {
+
+        setDirectoryStatus("loading");
+
+        try {
+            const data = await getLocationDirectory();
+            setDirectory(data);
+            setDirectoryStatus("ready");
+        } catch {
+            setDirectoryStatus("failed");
+        }
+
+    }, []);
+
+    useEffect(() => {
+
+        let ignore = false;
+
+        // Directory fetch on mount; setting "loading" here is intentional
+        // and matches the existing DistrictPicker pattern in this file.
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        setDirectoryStatus("loading");
+
+        getLocationDirectory()
+            .then((data) => {
+                if (!ignore) {
+                    setDirectory(data);
+                    setDirectoryStatus("ready");
+                }
+            })
+            .catch(() => {
+                if (!ignore) setDirectoryStatus("failed");
+            });
+
+        return () => {
+            ignore = true;
+        };
+
+    }, []);
+
+    const states = useMemo(() => directory?.states ?? [], [directory]);
+
+    const stateOptions = useMemo(() => [...states]
+        .sort((first, second) => STATE_NAME_COLLATOR.compare(first.name, second.name))
+        .map((state) => ({ value: state.name, label: state.name })),
+        [states]);
+
+    // Show means something only once a state is chosen
+    const pickReady = Boolean(selectedState.trim());
+
+    function handleSubmit(event) {
+
+        // Keep the page from reloading on submit
+        event.preventDefault();
+
+        onSubmitPlace(selectedState.trim());
+    }
+
+    return (
+        <form onSubmit={handleSubmit} className="flex flex-wrap items-center gap-2">
+            {directoryStatus === "failed" && (
+                <div className="w-full text-sm text-red-600">
+                    <BiText {...UI.auth.locationUnavailable} />
+                    <button
+                        type="button"
+                        onClick={loadDirectory}
+                        className="mt-1 block font-semibold text-gov-blue hover:underline"
+                    >
+                        <BiText {...UI.backend.retry} />
+                    </button>
+                </div>
+            )}
+            <SearchableSelect
+                label={<BiText {...UI.auth.locationState} />}
+                options={stateOptions}
+                value={selectedState}
+                onChange={setSelectedState}
+                required
+                disabled={directoryStatus === "failed"}
+                loading={directoryStatus === "loading"}
+                placeholderElement={<BiText {...UI.auth.locationChooseState} />}
+                loadingText={<BiText {...UI.auth.locationListLoading} />}
+                noMatchesText={<BiText {...UI.auth.locationNoMatches} />}
+                dense={true}
+                hideLabel={true}
+                className="w-40 sm:w-48 min-w-0"
+            />
+            <button
+                type="submit"
+                disabled={!pickReady || directoryStatus !== "ready"}
+                className="inline-flex items-center gap-1.5 border border-gov-navy bg-gov-navy px-3 py-1.5 text-sm font-medium text-white transition hover:bg-gov-navy/90 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-gov-navy"
+            >
+                <Search size={14} aria-hidden="true" />
+                Show
+            </button>
+        </form>
+    );
+}
+
 /**
  * ============================================================================
  * Scope Selector
@@ -157,10 +285,7 @@ export default function ScopeSelector({
 
     const isDistrict = scope === LEADERBOARD_SCOPE.DISTRICT;
 
-    const placeholder =
-        scope === LEADERBOARD_SCOPE.STATE
-            ? "Enter a state, e.g. Bihar"
-            : "Enter a city, e.g. Patna";
+    const placeholder = "Enter a city, e.g. Patna";
 
     /**
      * Hand the typed location upwards.
@@ -226,12 +351,12 @@ export default function ScopeSelector({
                     })}
                 </div>
 
-                {/* Free-text location box, shown only for the state and city scopes */}
-                {needsLocation && !isDistrict && (
+                {/* City scope: free-text location box */}
+                {needsLocation && !isDistrict && scope !== LEADERBOARD_SCOPE.STATE && (
                     <form onSubmit={handleSubmit} className="flex items-center gap-2">
 
                         <label htmlFor="leaderboard-location" className="sr-only">
-                            {scope === LEADERBOARD_SCOPE.STATE ? "State name" : "City name"}
+                            City name
                         </label>
 
                         <input
@@ -252,6 +377,11 @@ export default function ScopeSelector({
                             Show
                         </button>
                     </form>
+                )}
+
+                {/* State scope: directory-backed dropdown */}
+                {scope === LEADERBOARD_SCOPE.STATE && (
+                    <StatePicker onSubmitPlace={onLocationSubmit} />
                 )}
 
                 {/* District scope: the same toolbar row, directory-backed */}
